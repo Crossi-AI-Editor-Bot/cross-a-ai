@@ -11,21 +11,18 @@ interface Message {
 const MESSAGES_KEY = "ai_chat_messages";
 
 export const useChat = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Lazy initialization: load from localStorage only once on mount
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const storedMessages = localStorage.getItem(MESSAGES_KEY);
+      return storedMessages ? JSON.parse(storedMessages) : [];
+    } catch (error) {
+      console.error("Failed to parse stored messages:", error);
+      return [];
+    }
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-
-  // Load messages from localStorage on mount
-  useEffect(() => {
-    const storedMessages = localStorage.getItem(MESSAGES_KEY);
-    if (storedMessages) {
-      try {
-        setMessages(JSON.parse(storedMessages));
-      } catch (error) {
-        console.error("Failed to parse stored messages:", error);
-      }
-    }
-  }, []);
 
   // Save messages to localStorage whenever they change
   useEffect(() => {
