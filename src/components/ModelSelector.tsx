@@ -20,7 +20,7 @@ const models = [
   { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", cost: 0.5 },
   { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", cost: 1 },
   { value: "openai/gpt-5", label: "GPT 5 (High Detail)", cost: 3 },
-  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (High Detail)", cost: 3 },
+  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (High Detail)", cost: 10 },
 ];
 
 const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
