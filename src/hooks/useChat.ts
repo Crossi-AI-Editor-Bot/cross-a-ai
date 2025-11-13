@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { AIModel } from "@/components/ModelSelector";
 import { models } from "@/components/ModelSelector";
@@ -8,10 +8,31 @@ interface Message {
   content: string;
 }
 
+const MESSAGES_KEY = "ai_chat_messages";
+
 export const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    const storedMessages = localStorage.getItem(MESSAGES_KEY);
+    if (storedMessages) {
+      try {
+        setMessages(JSON.parse(storedMessages));
+      } catch (error) {
+        console.error("Failed to parse stored messages:", error);
+      }
+    }
+  }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    }
+  }, [messages]);
 
   const sendMessage = async (content: string, model: AIModel, deductCredits: (amount: number) => boolean) => {
     // Get model cost
