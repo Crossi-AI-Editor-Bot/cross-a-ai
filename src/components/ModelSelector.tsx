@@ -27,23 +27,30 @@ const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
   const selectedModel = models.find(m => m.value === value);
 
   return (
-    <div className="flex items-center gap-2">
-      <Brain className="w-4 h-4 text-muted-foreground" />
-      <Select value={value} onValueChange={(v) => onChange(v as AIModel)}>
-        <SelectTrigger className="w-[240px]">
-          <SelectValue>
-            {selectedModel?.label} ({selectedModel?.cost} credits)
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {models.map((model) => (
-            <SelectItem key={model.value} value={model.value}>
-              {model.label} ({model.cost} credits)
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select value={value} onValueChange={(v) => onChange(v as AIModel)}>
+      <SelectTrigger className="w-10 h-10 p-0 md:w-[240px] md:p-2">
+        {/* Mobile: Just icon */}
+        <div className="flex items-center justify-center md:hidden">
+          <Brain className="w-5 h-5" />
+        </div>
+        {/* Desktop: Icon + text */}
+        <SelectValue className="hidden md:flex md:items-center md:gap-2">
+          <div className="flex items-center gap-2">
+            <Brain className="w-4 h-4 text-muted-foreground" />
+            <span>
+              {selectedModel?.label} ({selectedModel?.cost} credits)
+            </span>
+          </div>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {models.map((model) => (
+          <SelectItem key={model.value} value={model.value}>
+            {model.label} ({model.cost} credits)
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 };
 
