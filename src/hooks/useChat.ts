@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import type { AIModel } from "@/components/ModelSelector";
+import { models } from "@/components/ModelSelector";
 
 interface Message {
   role: "user" | "assistant";
@@ -11,7 +13,20 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const sendMessage = async (content: string) => {
+  const sendMessage = async (content: string, model: AIModel, deductCredits: (amount: number) => boolean) => {
+    // Get model cost
+    const modelConfig = models.find(m => m.value === model);
+    if (!modelConfig) return;
+
+    // Check and deduct credits
+    if (!deductCredits(modelConfig.cost)) {
+      toast({
+        title: "Not Enough Credits",
+        description: `You need ${modelConfig.cost} credits to use this model. You'll get 20 credits tomorrow.`,
+        variant: "destructive",
+      });
+      return;
+    }
     const userMessage: Message = { role: "user", content };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
@@ -40,7 +55,7 @@ export const useChat = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ messages: [...messages, userMessage] }),
+          body: JSON.stringify({ messages: [...messages, userMessage], model }),
         }
       );
 

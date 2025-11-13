@@ -1,12 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot } from "lucide-react";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import TypingIndicator from "@/components/TypingIndicator";
+import ModelSelector, { type AIModel } from "@/components/ModelSelector";
+import CreditsDisplay from "@/components/CreditsDisplay";
 import { useChat } from "@/hooks/useChat";
+import { useCredits } from "@/hooks/useCredits";
 
 const Index = () => {
   const { messages, isLoading, sendMessage } = useChat();
+  const { credits, deductCredits } = useCredits();
+  const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -22,13 +27,19 @@ const Index = () => {
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
         <div className="container max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
-              <Bot className="w-6 h-6 text-primary-foreground" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
+                <Bot className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground">AI Chat</h1>
+                <p className="text-sm text-muted-foreground">Your intelligent assistant</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">AI Chat</h1>
-              <p className="text-sm text-muted-foreground">Your intelligent assistant</p>
+            <div className="flex items-center gap-3">
+              <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+              <CreditsDisplay credits={credits} />
             </div>
           </div>
         </div>
@@ -66,7 +77,10 @@ const Index = () => {
       {/* Input Area */}
       <footer className="border-t border-border bg-card/50 backdrop-blur-sm sticky bottom-0 shadow-lg">
         <div className="container max-w-4xl mx-auto px-4 py-4">
-          <ChatInput onSend={sendMessage} disabled={isLoading} />
+          <ChatInput 
+            onSend={(content) => sendMessage(content, selectedModel, deductCredits)} 
+            disabled={isLoading} 
+          />
         </div>
       </footer>
     </div>
