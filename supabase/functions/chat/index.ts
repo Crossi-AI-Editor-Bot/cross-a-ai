@@ -89,6 +89,27 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Model cost mapping
+    const modelCosts: Record<string, number> = {
+      'openai/gpt-5-nano': 0.2,
+      'openai/gpt-5-mini': 0.5,
+      'google/gemini-2.5-flash-lite': 0.1,
+      'google/gemini-2.5-flash': 0.5,
+      'openai/gpt-5': 2,
+      'google/gemini-2.5-pro': 1.5,
+    };
+
+    const creditCost = modelCosts[model] || 0.5;
+    const initialCredits = userCredits.credits;
+
+    // Validate sufficient credits
+    if (initialCredits < creditCost) {
+      return new Response(
+        JSON.stringify({ error: 'Insufficient credits' }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -141,9 +162,10 @@ Deno.serve(async (req) => {
     }
 
     // Deduct credits after successful API call
+    const newCredits = initialCredits - creditCost;
     const { error: deductError } = await supabase
       .from('user_credits')
-      .update({ credits: userCredits.credits - 0.1 })
+      .update({ credits: newCredits })
       .eq('user_id', user.id);
 
     if (deductError) {
@@ -152,7 +174,29 @@ Deno.serve(async (req) => {
 
     console.log('Streaming response from AI gateway');
 
-    return new Response(response.body, {
+    // Create a stream that includes the credits update
+    const reader = response.body?.getReader();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          while (true) {
+            const { done, value } = await reader!.read();
+            if (done) {
+              // Send credits update before closing
+              const creditsEvent = `data: ${JSON.stringify({ type: 'credits', credits: newCredits })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(creditsEvent));
+              controller.close();
+              break;
+            }
+            controller.enqueue(value);
+          }
+        } catch (error) {
+          controller.error(error);
+        }
+      }
+    });
+
+    return new Response(stream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
