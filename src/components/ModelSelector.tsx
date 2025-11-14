@@ -18,7 +18,7 @@ const models = [
   { value: "openai/gpt-5", label: "Cross 1.0 Pro (High Detail)", cost: 2 },
   { value: "google/gemini-2.5-pro", label: "Crossi 1.0 Pro Lite (High Detail)", cost: 1.5 },
   { value: "openai/gpt-5-mini", label: "Crossi 1.0", cost: 0.5 },
-  { value: "google/gemini-2.5-flash", label: "Crossi 1.0 Lite", cost: 0.5 },
+  { value: "google/gemini-2.5-flash", label: "Crossi 1.0 Lite", cost: 0.4 },
   { value: "openai/gpt-5-nano", label: "Crossi 1.0 Mini", cost: 0.2 },
   { value: "google/gemini-2.5-flash-lite", label: "Crossi 1.0 Mini Lite", cost: 0.1 },
 ];
