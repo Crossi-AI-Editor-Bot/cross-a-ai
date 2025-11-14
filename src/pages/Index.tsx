@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Bot, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import TypingIndicator from "@/components/TypingIndicator";
@@ -9,10 +12,36 @@ import { useChat } from "@/hooks/useChat";
 import { useCredits } from "@/hooks/useCredits";
 
 const Index = () => {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const { messages, isLoading, sendMessage } = useChat();
-  const { credits, deductCredits } = useCredits();
+  const { credits, deductCredits, loading: creditsLoading } = useCredits();
   const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Check authentication
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+        setLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -21,6 +50,14 @@ const Index = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  if (loading || creditsLoading || !user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
@@ -40,6 +77,14 @@ const Index = () => {
             <div className="flex items-center gap-3">
               <ModelSelector value={selectedModel} onChange={setSelectedModel} />
               <CreditsDisplay credits={credits} />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSignOut}
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>

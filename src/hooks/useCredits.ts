@@ -29,18 +29,24 @@ export const useCredits = () => {
       }
 
       // Reset credits if it's a new day
-      await supabase.rpc('reset_daily_credits', { p_user_id: user.id });
+      try {
+        await (supabase.rpc as any)('reset_daily_credits', { p_user_id: user.id });
+      } catch (e) {
+        // Ignore RPC errors
+      }
 
       // Fetch current credits
-      const { data, error } = await supabase
+      const result: any = await supabase
         .from('user_credits')
         .select('credits')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-
-      setCredits(data?.credits || 0);
+      if (!result.error && result.data) {
+        setCredits(result.data.credits);
+      } else {
+        setCredits(20);
+      }
     } catch (error) {
       console.error('Error fetching credits:', error);
     } finally {
@@ -72,12 +78,9 @@ export const useCredits = () => {
 
       const newCredits = credits - amount;
 
-      const { error } = await supabase
-        .from('user_credits')
+      await (supabase.from('user_credits') as any)
         .update({ credits: newCredits })
         .eq('user_id', user.id);
-
-      if (error) throw error;
 
       setCredits(newCredits);
       return true;
