@@ -32,21 +32,7 @@ export const useChat = () => {
     }
   }, [messages]);
 
-  const sendMessage = async (content: string, model: AIModel, deductCredits: (amount: number) => Promise<boolean>) => {
-    // Get model cost
-    const modelConfig = models.find(m => m.value === model);
-    if (!modelConfig) return;
-
-    // Check and deduct credits
-    const creditsDeducted = await deductCredits(modelConfig.cost);
-    if (!creditsDeducted) {
-      toast({
-        title: "Not Enough Credits",
-        description: `You need ${modelConfig.cost} credits to use this model. You'll get 20 credits tomorrow.`,
-        variant: "destructive",
-      });
-      return;
-    }
+  const sendMessage = async (content: string, model: AIModel) => {
     const userMessage: Message = { role: "user", content };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
@@ -102,17 +88,29 @@ export const useChat = () => {
             description: errorData.error || "Too many requests. Please try again later.",
             variant: "destructive",
           });
-          setMessages((prev) => prev.slice(0, -1)); // Remove user message
+          setMessages((prev) => prev.slice(0, -1));
           return;
         }
         
         if (response.status === 402) {
           toast({
-            title: "Payment Required",
-            description: errorData.error || "Please add credits to continue.",
+            title: "Insufficient Credits",
+            description: "You don't have enough credits. You'll get 20 credits tomorrow.",
             variant: "destructive",
           });
-          setMessages((prev) => prev.slice(0, -1)); // Remove user message
+          setMessages((prev) => prev.slice(0, -1));
+          // Refresh credits display
+          window.location.reload();
+          return;
+        }
+        
+        if (response.status === 400) {
+          toast({
+            title: "Invalid Request",
+            description: errorData.error || "Please check your input and try again.",
+            variant: "destructive",
+          });
+          setMessages((prev) => prev.slice(0, -1));
           return;
         }
         

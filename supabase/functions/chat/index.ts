@@ -1,9 +1,26 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const chatRequestSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string().min(1).max(10000)
+  })).min(1).max(100),
+  model: z.enum([
+    'google/gemini-2.5-flash',
+    'google/gemini-2.5-pro', 
+    'google/gemini-2.5-flash-lite',
+    'openai/gpt-5',
+    'openai/gpt-5-mini',
+    'openai/gpt-5-nano'
+  ]).default('google/gemini-2.5-flash')
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -35,15 +52,50 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messages, model = "google/gemini-2.5-flash" } = await req.json();
-    console.log('Authenticated chat request from user:', user.id);
+    // Validate input
+    const body = await req.json();
+    let validatedData;
+    
+    try {
+      validatedData = chatRequestSchema.parse(body);
+    } catch (e) {
+      const error = e as z.ZodError;
+      return new Response(
+        JSON.stringify({ error: 'Invalid request format', details: error.errors }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { messages, model } = validatedData;
+
+    // Check and deduct credits server-side
+    const { data: userCredits, error: creditsError } = await supabase
+      .from('user_credits')
+      .select('credits')
+      .eq('user_id', user.id)
+      .single();
+
+    if (creditsError || !userCredits) {
+      return new Response(
+        JSON.stringify({ error: 'Unable to verify credits' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (userCredits.credits < 0.1) {
+      return new Response(
+        JSON.stringify({ error: 'Insufficient credits' }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log('Starting chat with messages:', messages);
+    console.log('Processing chat request - User:', user.id, 'Messages:', messages.length, 'Model:', model);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -86,6 +138,16 @@ Deno.serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Deduct credits after successful API call
+    const { error: deductError } = await supabase
+      .from('user_credits')
+      .update({ credits: userCredits.credits - 0.1 })
+      .eq('user_id', user.id);
+
+    if (deductError) {
+      console.error('Failed to deduct credits:', deductError);
     }
 
     console.log('Streaming response from AI gateway');
