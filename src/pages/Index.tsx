@@ -123,7 +123,7 @@ const Index = () => {
       <footer className="border-t border-border bg-card/50 backdrop-blur-sm sticky bottom-0 shadow-lg">
         <div className="container max-w-4xl mx-auto px-4 py-4">
           <ChatInput 
-            onSend={(content) => sendMessage(content, selectedModel, deductCredits)} 
+            onSend={(content) => sendMessage(content, selectedModel)} 
             disabled={isLoading} 
           />
         </div>
