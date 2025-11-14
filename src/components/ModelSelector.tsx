@@ -15,12 +15,12 @@ interface ModelSelectorProps {
 }
 
 const models = [
-  { value: "openai/gpt-5-nano", label: "GPT 5 Nano", cost: 0.5 },
-  { value: "openai/gpt-5-mini", label: "GPT 5 Mini", cost: 1 },
-  { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", cost: 0.5 },
-  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", cost: 1 },
-  { value: "openai/gpt-5", label: "GPT 5 (High Detail)", cost: 3 },
-  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (High Detail)", cost: 3 },
+  { value: "openai/gpt-5-nano", label: "GPT 5 Nano", cost: 0.2 },
+  { value: "openai/gpt-5-mini", label: "GPT 5 Mini", cost: 0.5 },
+  { value: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", cost: 0.1 },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", cost: 0.5 },
+  { value: "openai/gpt-5", label: "GPT 5 (High Detail)", cost: 2 },
+  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro (High Detail)", cost: 1.5 },
 ];
 
 const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {

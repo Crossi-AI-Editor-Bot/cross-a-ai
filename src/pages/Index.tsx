@@ -15,8 +15,8 @@ const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { messages, isLoading, sendMessage } = useChat();
-  const { credits, deductCredits, loading: creditsLoading } = useCredits();
+  const { messages, isLoading, sendMessage, newCredits } = useChat();
+  const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +50,12 @@ const Index = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (newCredits !== null) {
+      updateCredits(newCredits);
+    }
+  }, [newCredits, updateCredits]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

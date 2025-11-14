@@ -23,6 +23,7 @@ export const useChat = () => {
     }
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [newCredits, setNewCredits] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Save messages to localStorage whenever they change
@@ -36,6 +37,7 @@ export const useChat = () => {
     const userMessage: Message = { role: "user", content };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+    setNewCredits(null);
 
     let assistantContent = "";
 
@@ -145,6 +147,13 @@ export const useChat = () => {
 
           try {
             const parsed = JSON.parse(jsonStr);
+            
+            // Check for credits update event
+            if (parsed.type === 'credits') {
+              setNewCredits(parsed.credits);
+              continue;
+            }
+            
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               updateAssistantMessage(content);
@@ -167,6 +176,13 @@ export const useChat = () => {
           if (jsonStr === "[DONE]") continue;
           try {
             const parsed = JSON.parse(jsonStr);
+            
+            // Check for credits update event
+            if (parsed.type === 'credits') {
+              setNewCredits(parsed.credits);
+              continue;
+            }
+            
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) updateAssistantMessage(content);
           } catch {}
@@ -185,5 +201,5 @@ export const useChat = () => {
     }
   };
 
-  return { messages, isLoading, sendMessage };
+  return { messages, isLoading, sendMessage, newCredits };
 };

@@ -95,5 +95,9 @@ export const useCredits = () => {
     }
   };
 
-  return { credits, deductCredits, loading };
+  const updateCredits = (newCredits: number) => {
+    setCredits(newCredits);
+  };
+
+  return { credits, deductCredits, loading, updateCredits };
 };
