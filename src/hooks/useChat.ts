@@ -9,31 +9,48 @@ interface Message {
   content: string;
 }
 
-const MESSAGES_KEY = "ai_chat_messages";
-
-export const useChat = () => {
-  // Lazy initialization: load from localStorage only once on mount
-  const [messages, setMessages] = useState<Message[]>(() => {
-    try {
-      const storedMessages = localStorage.getItem(MESSAGES_KEY);
-      return storedMessages ? JSON.parse(storedMessages) : [];
-    } catch (error) {
-      console.error("Failed to parse stored messages:", error);
-      return [];
-    }
-  });
+export const useChat = (conversationId: string | null) => {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [newCredits, setNewCredits] = useState<number | null>(null);
   const { toast } = useToast();
 
-  // Save messages to localStorage whenever they change
+  // Load messages from database when conversation changes
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    if (conversationId) {
+      loadMessages();
+    } else {
+      setMessages([]);
     }
-  }, [messages]);
+  }, [conversationId]);
+
+  const loadMessages = async () => {
+    if (!conversationId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('role, content')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setMessages((data || []) as Message[]);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
+  };
 
   const sendMessage = async (content: string, model: AIModel) => {
+    if (!conversationId) {
+      toast({
+        title: "No conversation",
+        description: "Please create a conversation first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const userMessage: Message = { role: "user", content };
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
@@ -188,6 +205,9 @@ export const useChat = () => {
           } catch {}
         }
       }
+
+      // Save messages to database after successful response
+      await saveMessagesToDatabase([userMessage, { role: "assistant", content: assistantContent }]);
     } catch (error) {
       console.error("Chat error:", error);
       toast({
@@ -201,9 +221,51 @@ export const useChat = () => {
     }
   };
 
-  const clearMessages = () => {
-    setMessages([]);
-    localStorage.removeItem(MESSAGES_KEY);
+  const saveMessagesToDatabase = async (messagesToSave: Message[]) => {
+    if (!conversationId) return;
+
+    try {
+      const messagesWithConversationId = messagesToSave.map(msg => ({
+        conversation_id: conversationId,
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      const { error } = await supabase
+        .from('messages')
+        .insert(messagesWithConversationId);
+
+      if (error) throw error;
+
+      // Update conversation's updated_at timestamp
+      await supabase
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    } catch (error) {
+      console.error('Error saving messages:', error);
+    }
+  };
+
+  const clearMessages = async () => {
+    if (!conversationId) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+      if (error) throw error;
+      setMessages([]);
+    } catch (error) {
+      console.error('Error clearing messages:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear messages",
+        variant: "destructive",
+      });
+    }
   };
 
   return { messages, isLoading, sendMessage, newCredits, clearMessages };
