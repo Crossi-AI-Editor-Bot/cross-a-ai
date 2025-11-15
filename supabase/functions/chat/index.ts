@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       'openai/gpt-5-mini': 0.5,
       'google/gemini-2.5-flash-lite': 0.1,
       'google/gemini-2.5-flash': 0.5,
-      'openai/gpt-5': 2,
+      'openai/gpt-5': 3,
       'google/gemini-2.5-pro': 1.5,
     };
 
