@@ -19,14 +19,25 @@ import ChatInput from "@/components/ChatInput";
 import TypingIndicator from "@/components/TypingIndicator";
 import ModelSelector, { type AIModel } from "@/components/ModelSelector";
 import CreditsDisplay from "@/components/CreditsDisplay";
+import ConversationsList from "@/components/ConversationsList";
 import { useChat } from "@/hooks/useChat";
 import { useCredits } from "@/hooks/useCredits";
+import { useConversations } from "@/hooks/useConversations";
 
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { messages, isLoading, sendMessage, newCredits, clearMessages } = useChat();
+  const {
+    conversations,
+    currentConversationId,
+    setCurrentConversationId,
+    createConversation,
+    deleteConversation,
+    renameConversation,
+    loading: conversationsLoading,
+  } = useConversations();
+  const { messages, isLoading, sendMessage, newCredits, clearMessages } = useChat(currentConversationId);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -68,11 +79,22 @@ const Index = () => {
     }
   }, [newCredits, updateCredits]);
 
+  // Create initial conversation if none exists
+  useEffect(() => {
+    if (!conversationsLoading && conversations.length === 0 && user) {
+      createConversation();
+    }
+  }, [conversationsLoading, conversations.length, user]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
 
-  if (loading || creditsLoading || !user) {
+  const handleCreateConversation = async () => {
+    await createConversation();
+  };
+
+  if (loading || creditsLoading || conversationsLoading || !user) {
     return null;
   }
 
@@ -82,7 +104,15 @@ const Index = () => {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
         <div className="container max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <ConversationsList
+                conversations={conversations}
+                currentConversationId={currentConversationId}
+                onSelectConversation={setCurrentConversationId}
+                onCreateConversation={handleCreateConversation}
+                onDeleteConversation={deleteConversation}
+                onRenameConversation={renameConversation}
+              />
               <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
                 <Bot className="w-6 h-6 text-primary-foreground" />
               </div>
