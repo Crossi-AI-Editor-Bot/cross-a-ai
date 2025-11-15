@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export const useCredits = () => {
-  const [credits, setCredits] = useState<number>(20);
+  const [credits, setCredits] = useState<number>(15);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -45,7 +45,7 @@ export const useCredits = () => {
       if (!result.error && result.data) {
         setCredits(result.data.credits);
       } else {
-        setCredits(20);
+        setCredits(15);
       }
     } catch (error) {
       console.error('Error fetching credits:', error);

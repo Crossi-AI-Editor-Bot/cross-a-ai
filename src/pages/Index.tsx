@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Bot, LogOut } from "lucide-react";
+import { Bot, LogOut, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import TypingIndicator from "@/components/TypingIndicator";
@@ -15,7 +26,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { messages, isLoading, sendMessage, newCredits } = useChat();
+  const { messages, isLoading, sendMessage, newCredits, clearMessages } = useChat();
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -83,6 +94,32 @@ const Index = () => {
             <div className="flex items-center gap-3">
               <ModelSelector value={selectedModel} onChange={setSelectedModel} />
               <CreditsDisplay credits={credits} />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Clear chat history"
+                    disabled={messages.length === 0}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear chat history?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all your chat messages. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearMessages}>
+                      Clear History
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Button
                 variant="ghost"
                 size="icon"

@@ -201,5 +201,10 @@ export const useChat = () => {
     }
   };
 
-  return { messages, isLoading, sendMessage, newCredits };
+  const clearMessages = () => {
+    setMessages([]);
+    localStorage.removeItem(MESSAGES_KEY);
+  };
+
+  return { messages, isLoading, sendMessage, newCredits, clearMessages };
 };
