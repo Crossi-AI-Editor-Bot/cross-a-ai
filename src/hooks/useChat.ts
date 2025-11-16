@@ -8,6 +8,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   image?: string;
+  files?: Array<{ name: string; type: string; url: string }>;
 }
 
 export const useChat = (conversationId: string | null) => {
@@ -60,7 +61,9 @@ export const useChat = (conversationId: string | null) => {
     }
   };
 
-  const sendMessage = async (content: string, model: AIModel) => {
+  const sendMessage = async (content: string, model: AIModel, files?: File[]) => {
+    if ((!content.trim() && !files?.length)) return;
+    
     if (!conversationId) {
       toast({
         title: "No conversation",
@@ -70,10 +73,31 @@ export const useChat = (conversationId: string | null) => {
       return;
     }
 
-    const userMessage: Message = { role: "user", content };
-    setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
     setNewCredits(null);
+
+    // Convert files to base64
+    const fileData = files ? await Promise.all(
+      files.map(async (file) => {
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        return {
+          name: file.name,
+          type: file.type,
+          data: base64
+        };
+      })
+    ) : [];
+
+    const userMessage: Message = { 
+      role: "user", 
+      content,
+      files: fileData.map(f => ({ name: f.name, type: f.type, url: f.data }))
+    };
+    setMessages((prev) => [...prev, userMessage]);
 
     let assistantContent = "";
     let assistantImage: string | undefined = undefined;
@@ -121,7 +145,14 @@ export const useChat = (conversationId: string | null) => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ messages: [...messages, userMessage], model }),
+          body: JSON.stringify({
+            messages: [...messages, userMessage].map((msg) => ({
+              role: msg.role,
+              content: msg.content,
+              files: msg.files,
+            })),
+            model,
+          }),
         }
       );
 
