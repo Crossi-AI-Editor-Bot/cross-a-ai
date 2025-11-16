@@ -7,6 +7,7 @@ import { models } from "@/components/ModelSelector";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  image?: string;
 }
 
 export const useChat = (conversationId: string | null) => {
@@ -30,12 +31,30 @@ export const useChat = (conversationId: string | null) => {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .select('role, content')
+        .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages((data || []) as Message[]);
+      
+      // Parse messages, handling image data if stored as JSON
+      const parsedMessages = (data || []).map(msg => {
+        try {
+          const parsed = JSON.parse(msg.content);
+          return {
+            role: msg.role,
+            content: parsed.text || parsed.content || msg.content,
+            image: parsed.image
+          };
+        } catch {
+          return {
+            role: msg.role,
+            content: msg.content
+          };
+        }
+      });
+      
+      setMessages(parsedMessages as Message[]);
     } catch (error) {
       console.error('Error loading messages:', error);
     }
@@ -57,17 +76,22 @@ export const useChat = (conversationId: string | null) => {
     setNewCredits(null);
 
     let assistantContent = "";
+    let assistantImage: string | undefined = undefined;
 
-    const updateAssistantMessage = (chunk: string) => {
+    const updateAssistantMessage = (chunk: string, imageData?: string) => {
       assistantContent += chunk;
+      if (imageData) assistantImage = imageData;
+      
       setMessages((prev) => {
         const lastMessage = prev[prev.length - 1];
         if (lastMessage?.role === "assistant") {
           return prev.map((msg, i) =>
-            i === prev.length - 1 ? { ...msg, content: assistantContent } : msg
+            i === prev.length - 1 
+              ? { ...msg, content: assistantContent, image: assistantImage } 
+              : msg
           );
         }
-        return [...prev, { role: "assistant", content: assistantContent }];
+        return [...prev, { role: "assistant", content: assistantContent, image: assistantImage }];
       });
     };
 
@@ -86,6 +110,9 @@ export const useChat = (conversationId: string | null) => {
         return;
       }
 
+      // Check if this is an image generation model
+      const isImageGen = model === 'google/gemini-2.5-flash-image';
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
         {
@@ -97,6 +124,55 @@ export const useChat = (conversationId: string | null) => {
           body: JSON.stringify({ messages: [...messages, userMessage], model }),
         }
       );
+
+      // Handle image generation response differently
+      if (isImageGen) {
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          
+          if (response.status === 429) {
+            toast({
+              title: "Rate Limit",
+              description: errorData.error || "Too many requests. Please try again later.",
+              variant: "destructive",
+            });
+            setMessages((prev) => prev.slice(0, -1));
+            return;
+          }
+          
+          if (response.status === 402) {
+            toast({
+              title: "Insufficient Credits",
+              description: "You don't have enough credits. You'll get 15 credits tomorrow.",
+              variant: "destructive",
+            });
+            setMessages((prev) => prev.slice(0, -1));
+            window.location.reload();
+            return;
+          }
+
+          throw new Error(errorData.error || "Failed to generate image");
+        }
+
+        const data = await response.json();
+        const imageUrl = data.image;
+        const textResponse = data.text || "Here's your generated image:";
+        
+        updateAssistantMessage(textResponse, imageUrl);
+        setNewCredits(data.credits);
+        
+        // Save to database with image
+        await saveMessagesToDatabase([
+          userMessage, 
+          { 
+            role: "assistant", 
+            content: JSON.stringify({ text: textResponse, image: imageUrl })
+          }
+        ]);
+        
+        setIsLoading(false);
+        return;
+      }
 
       if (!response.ok || !response.body) {
         const errorData = await response.json().catch(() => ({}));
@@ -114,7 +190,7 @@ export const useChat = (conversationId: string | null) => {
         if (response.status === 402) {
           toast({
             title: "Insufficient Credits",
-            description: "You don't have enough credits. You'll get 20 credits tomorrow.",
+            description: "You don't have enough credits. You'll get 15 credits tomorrow.",
             variant: "destructive",
           });
           setMessages((prev) => prev.slice(0, -1));

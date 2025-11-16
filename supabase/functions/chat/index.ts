@@ -16,6 +16,7 @@ const chatRequestSchema = z.object({
     'google/gemini-2.5-flash',
     'google/gemini-2.5-pro', 
     'google/gemini-2.5-flash-lite',
+    'google/gemini-2.5-flash-image',
     'openai/gpt-5',
     'openai/gpt-5-mini',
     'openai/gpt-5-nano'
@@ -95,6 +96,7 @@ Deno.serve(async (req) => {
       'openai/gpt-5-mini': 0.5,
       'google/gemini-2.5-flash-lite': 0.1,
       'google/gemini-2.5-flash': 0.5,
+      'google/gemini-2.5-flash-image': 1.5,
       'openai/gpt-5': 3,
       'google/gemini-2.5-pro': 1.5,
     };
@@ -118,23 +120,33 @@ Deno.serve(async (req) => {
 
     console.log('Processing chat request - User:', user.id, 'Messages:', messages.length, 'Model:', model);
 
+    // Check if this is an image generation request
+    const isImageGen = model === 'google/gemini-2.5-flash-image';
+
+    const requestBody: any = {
+      model,
+      messages: isImageGen ? messages : [
+        { 
+          role: "system", 
+          content: "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging." 
+        },
+        ...messages,
+      ],
+    };
+
+    if (isImageGen) {
+      requestBody.modalities = ["image", "text"];
+    } else {
+      requestBody.stream = true;
+    }
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { 
-            role: "system", 
-            content: "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging." 
-          },
-          ...messages,
-        ],
-        stream: true,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -170,6 +182,24 @@ Deno.serve(async (req) => {
 
     if (deductError) {
       console.error('Failed to deduct credits:', deductError);
+    }
+
+    // Handle image generation response
+    if (isImageGen) {
+      const jsonResponse = await response.json();
+      const imageData = jsonResponse.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      const textContent = jsonResponse.choices?.[0]?.message?.content || "Image generated successfully.";
+      
+      return new Response(
+        JSON.stringify({ 
+          image: imageData,
+          text: textContent,
+          credits: newCredits 
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
     }
 
     console.log('Streaming response from AI gateway');
