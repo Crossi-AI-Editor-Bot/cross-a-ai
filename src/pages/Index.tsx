@@ -182,7 +182,12 @@ const Index = () => {
             )}
 
             {messages.map((message, index) => (
-              <ChatMessage key={index} role={message.role} content={message.content} />
+              <ChatMessage 
+                key={index} 
+                role={message.role} 
+                content={message.content}
+                image={message.image}
+              />
             ))}
 
             {isLoading && <TypingIndicator />}

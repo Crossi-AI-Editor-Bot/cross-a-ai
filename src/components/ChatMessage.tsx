@@ -3,9 +3,10 @@ import { Bot, User } from "lucide-react";
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  image?: string;
 }
 
-const ChatMessage = ({ role, content }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image }: ChatMessageProps) => {
   const isUser = role === "user";
 
   return (
@@ -27,6 +28,13 @@ const ChatMessage = ({ role, content }: ChatMessageProps) => {
             : "bg-card text-card-foreground shadow-sm border border-border"
         }`}
       >
+        {image && (
+          <img 
+            src={image} 
+            alt="Generated image" 
+            className="rounded-lg mb-2 max-w-full h-auto"
+          />
+        )}
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
       </div>
 
