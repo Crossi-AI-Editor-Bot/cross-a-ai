@@ -6,9 +6,10 @@ interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   image?: string;
+  files?: Array<{ name: string; type: string; url: string }>;
 }
 
-const ChatMessage = ({ role, content, image }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, files }: ChatMessageProps) => {
   const isUser = role === "user";
 
   const handleDownload = () => {
@@ -40,6 +41,20 @@ const ChatMessage = ({ role, content, image }: ChatMessageProps) => {
             : "bg-card text-card-foreground shadow-sm border border-border"
         }`}
       >
+        {files && files.length > 0 && (
+          <div className="mb-2 space-y-1">
+            {files.map((file, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs opacity-70">
+                {file.type.startsWith('image/') ? (
+                  <img src={file.url} alt={file.name} className="w-20 h-20 object-cover rounded" />
+                ) : (
+                  <span className="bg-secondary/50 px-2 py-1 rounded">{file.name}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
         
         {image && (

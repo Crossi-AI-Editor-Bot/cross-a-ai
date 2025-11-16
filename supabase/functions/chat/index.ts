@@ -10,7 +10,12 @@ const corsHeaders = {
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(['user', 'assistant', 'system']),
-    content: z.string().min(1).max(10000)
+    content: z.string().min(1).max(10000),
+    files: z.array(z.object({
+      name: z.string(),
+      type: z.string(),
+      data: z.string()
+    })).optional()
   })).min(1).max(100),
   model: z.enum([
     'google/gemini-2.5-flash',
@@ -125,19 +130,49 @@ Deno.serve(async (req) => {
 
     const requestBody: any = {
       model,
-      messages: isImageGen ? messages : [
+      messages: messages.map(msg => {
+        // Handle files (images) in the message
+        if (msg.files && msg.files.length > 0) {
+          const content: any[] = [];
+          
+          if (msg.content) {
+            content.push({ type: "text", text: msg.content });
+          }
+          
+          msg.files.forEach((file: any) => {
+            if (file.type.startsWith('image/')) {
+              content.push({
+                type: "image_url",
+                image_url: { url: file.data }
+              });
+            }
+          });
+          
+          return {
+            role: msg.role,
+            content
+          };
+        }
+        
+        return {
+          role: msg.role,
+          content: msg.content
+        };
+      })
+    };
+
+    // Add system message for non-image generation
+    if (!isImageGen) {
+      requestBody.messages = [
         { 
           role: "system", 
           content: "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging." 
         },
-        ...messages,
-      ],
-    };
-
-    if (isImageGen) {
-      requestBody.modalities = ["image", "text"];
-    } else {
+        ...requestBody.messages,
+      ];
       requestBody.stream = true;
+    } else {
+      requestBody.modalities = ["image", "text"];
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

@@ -182,11 +182,12 @@ const Index = () => {
             )}
 
             {messages.map((message, index) => (
-              <ChatMessage 
-                key={index} 
-                role={message.role} 
+              <ChatMessage
+                key={index}
+                role={message.role}
                 content={message.content}
                 image={message.image}
+                files={message.files}
               />
             ))}
 
@@ -201,7 +202,7 @@ const Index = () => {
       <footer className="border-t border-border bg-card/50 backdrop-blur-sm sticky bottom-0 shadow-lg">
         <div className="container max-w-4xl mx-auto px-4 py-4">
           <ChatInput 
-            onSend={(content) => sendMessage(content, selectedModel)} 
+            onSend={(content, files) => sendMessage(content, selectedModel, files)} 
             disabled={isLoading} 
           />
         </div>
