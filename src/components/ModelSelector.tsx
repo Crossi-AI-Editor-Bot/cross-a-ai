@@ -16,7 +16,7 @@ interface ModelSelectorProps {
 }
 
 const models = [
-  { value: "openai/gpt-5", label: "Cross 1.0 Pro (High Detail)", cost: 4 },
+  { value: "openai/gpt-5", label: "Cross 1.0 Pro (Not Aviable for this Month) (High Detail)", cost: 1/0 },
   { value: "google/gemini-2.5-pro", label: "Crossi 1.0 Pro Lite (High Detail)", cost: 3 },
   { value: "google/gemini-2.5-flash-image", label: "Crossi 1.0 Image Gen", cost: 1.5 },
   { value: "openai/gpt-5-mini", label: "Crossi 1.0", cost: 1 },
