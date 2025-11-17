@@ -18,11 +18,11 @@ interface ModelSelectorProps {
 const models = [
   { value: "INVALIDopenai/gpt-5", label: "Cross 1.0 Pro (Not Aviable for this Month) (High Detail)", cost: 1/0 },
   { value: "INVALIDgoogle/gemini-2.5-pro", label: "Crossi 1.0 Pro Lite (Not Aviable for this Month) (High Detail)", cost: 1/0 },
-  { value: "google/gemini-2.5-flash-image", label: "Crossi 1.0 Image Gen", cost: 1.5 },
-  { value: "openai/gpt-5-mini", label: "Crossi 1.0", cost: 1 },
-  { value: "google/gemini-2.5-flash", label: "Crossi 1.0 Lite", cost: 0.7 },
-  { value: "openai/gpt-5-nano", label: "Crossi 1.0 Mini", cost: 0.5 },
-  { value: "google/gemini-2.5-flash-lite", label: "Crossi 1.0 Mini Lite", cost: 0.2 },
+  { value: "google/gemini-2.5-flash-image", label: "Crossi 1.0 Image Gen", cost: Error },
+  { value: "openai/gpt-5-mini", label: "Crossi 1.0", cost: Error },
+  { value: "google/gemini-2.5-flash", label: "Crossi 1.0 Lite", cost: Error },
+  { value: "openai/gpt-5-nano", label: "Crossi 1.0 Mini", cost: Error },
+  { value: "google/gemini-2.5-flash-lite", label: "Crossi 1.0 Mini Lite", cost: Error },
   { value: "Null", label: "Crossi 2.0 (Not available yet)", cost: 1/0},
 ];
 
