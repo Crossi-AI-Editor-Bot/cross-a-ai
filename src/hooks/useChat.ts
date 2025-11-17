@@ -8,7 +8,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   image?: string;
-  files?: Array<{ name: string; type: string; url: string }>;
+  files?: Array<{ name: string; type: string; data: string }>;
 }
 
 export const useChat = (conversationId: string | null) => {
@@ -95,7 +95,7 @@ export const useChat = (conversationId: string | null) => {
     const userMessage: Message = { 
       role: "user", 
       content,
-      files: fileData.map(f => ({ name: f.name, type: f.type, url: f.data }))
+      files: fileData
     };
     setMessages((prev) => [...prev, userMessage]);
 

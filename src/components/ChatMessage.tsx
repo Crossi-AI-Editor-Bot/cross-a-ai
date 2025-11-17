@@ -6,7 +6,7 @@ interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   image?: string;
-  files?: Array<{ name: string; type: string; url: string }>;
+  files?: Array<{ name: string; type: string; data: string }>;
 }
 
 const ChatMessage = ({ role, content, image, files }: ChatMessageProps) => {
@@ -46,7 +46,7 @@ const ChatMessage = ({ role, content, image, files }: ChatMessageProps) => {
             {files.map((file, idx) => (
               <div key={idx} className="flex items-center gap-2 text-xs opacity-70">
                 {file.type.startsWith('image/') ? (
-                  <img src={file.url} alt={file.name} className="w-20 h-20 object-cover rounded" />
+                  <img src={file.data} alt={file.name} className="w-20 h-20 object-cover rounded" />
                 ) : (
                   <span className="bg-secondary/50 px-2 py-1 rounded">{file.name}</span>
                 )}
