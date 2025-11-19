@@ -24,7 +24,7 @@ const models = [
  // { value: "openai/gpt-5-nano", label: "Crossi 1.0 Mini", cost: 4 },
   ///{ value: "google/gemini-2.5-flash-lite", label: "Crossi 1.0 Mini Lite", cost: 3 },
  // { value: "Null", label: "Crossi 2.0 (Not available yet)", cost: 1/0},
-  { value: "Null", label: "Server Error" cost: 1/0},
+  { value: "Null", label: "Server Error", cost: 1/0},
 ];
 
 const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
