@@ -16,15 +16,14 @@ interface ModelSelectorProps {
 }
 
 const models = [
-  //{ value: "INVALIDopenai/gpt-5", label: "Cross 1.0 Pro (Not Aviable for this Month) (High Detail)", cost: 1/0 },
- // { value: "INVALIDgoogle/gemini-2.5-pro", label: "Crossi 1.0 Pro Lite (Not Aviable for this Month) (High Detail)", cost: 1/0 },
- // { value: "INVALIDgoogle/gemini-2.5-flash-image", label: "Crossi 1.0 Image Gen", cost: 1.5 },
- // { value: "INVALIDopenai/gpt-5-mini", label: "Crossi 1.0", cost: 1 },
- // { value: "INVALIDgoogle/gemini-2.5-flash", label: "Crossi 1.0 Lite", cost:  },
-  { value: "openai/gpt-5-nano", label: "Crossi 1.0 Mini", cost: 4 },
-  { value: "google/gemini-2.5-flash-lite", label: "Crossi 1.0 Mini Lite", cost: 3 },
- // { value: "Null", label: "Crossi 2.0 (Not available yet)", cost: 1/0},
- // { value: "Null", label: "Server Error", cost: 1/0},
+  //{ value: "openai/gpt-5", label: "Cross 1.0 Pro (Not Aviable for this Month) (High Detail)", cost: 1/0 },
+ // { value: "google/gemini-2.5-pro", label: "Crossi 1.0 Pro Lite (Not Aviable for this Month) (High Detail)", cost: 1/0 },
+ // { value: "google/gemini-2.5-flash-image", label: "Crossi 1.0 Image Gen", cost: 1.5 },
+ // { value: "openai/gpt-5-mini", label: "Crossi 1.0", cost: 1 },
+  { value: "openai/gpt-5-nano", label: "Crossi 1.0", cost: 4 },
+  { value: "google/gemini-2.5-flash-lite", label: "Crossi 1.0 Mini", cost: 3 },
+  { value: "google/gemini-2.5-flash", label: "Crossi 2.0 Lite (Release Date: 1st Dec.)", cost: 1/0  },
+  { value: "openai/gpt-5", label: "Crossi 2.0 (Release Date: 1st Dec.)", cost: 1/0},
 ];
 
 const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
