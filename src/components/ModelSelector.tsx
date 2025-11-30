@@ -16,10 +16,10 @@ interface ModelSelectorProps {
 }
 
 const models = [
-  { value: "openai/gpt-5", label: "Crossi 2.0 Pro", cost: 3.5 },
-  { value: "google/gemini-2.5-pro", label: "Crossi 2.0 Pro Lite", cost: 3},
-  { value: "openai/gpt-5-mini", label: "Crossi 2.0", cost: 1.5 },
-  { value: "google/gemini-2.5-flash", label: "Crossi 2.0 Lite", cost: 1 },
+  { value: "openai/gpt-5", label: "Crossi 2.0", cost: 3.5 },
+  { value: "google/gemini-2.5-pro", label: "Crossi 2.0 Lite", cost: 3},
+  { value: "openai/gpt-5-mini", label: "Crossi 2.0 Mini", cost: 1.5 },
+  { value: "google/gemini-2.5-flash", label: "Crossi 2.0 Mini Lite", cost: 1 },
   { value: "google/gemini-2.5-flash-image", label: "Crossi 1.5 Image Gen", cost: 5 },
   { value: "openai/gpt-5-nano", label: "Crossi 1.0 Pro", cost: 1 },
   { value: "google/gemini-2.5-flash-lite", label: "Crossi 1.0 Pro Lite", cost: 0.5 },
