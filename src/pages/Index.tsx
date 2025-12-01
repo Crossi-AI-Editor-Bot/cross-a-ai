@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Bot, LogOut, Trash2 } from "lucide-react";
+import { Bot, LogOut, Trash2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -23,6 +23,7 @@ import ConversationsList from "@/components/ConversationsList";
 import { useChat } from "@/hooks/useChat";
 import { useCredits } from "@/hooks/useCredits";
 import { useConversations } from "@/hooks/useConversations";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ const Index = () => {
   } = useConversations();
   const { messages, isLoading, sendMessage, newCredits, clearMessages } = useChat(currentConversationId);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
+  const { isAdmin } = useIsAdmin();
   const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -124,6 +126,16 @@ const Index = () => {
             <div className="flex items-center gap-3">
               <ModelSelector value={selectedModel} onChange={setSelectedModel} />
               <CreditsDisplay credits={credits} selectedModel={selectedModel} />
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigate("/admin")}
+                  title="Admin Panel"
+                >
+                  <Settings className="w-4 h-4" />
+                </Button>
+              )}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button

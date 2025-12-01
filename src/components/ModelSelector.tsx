@@ -1,5 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Brain } from "lucide-react";
+import { useModelCosts } from "@/hooks/useModelCosts";
 
 export type AIModel = 
   | "openai/gpt-5-nano"
@@ -15,18 +16,14 @@ interface ModelSelectorProps {
   onChange: (value: AIModel) => void;
 }
 
-const models = [
-  { value: "openai/gpt-5", label: "Crossi 2.0", cost: 4 },
-  { value: "google/gemini-2.5-pro", label: "Crossi 2.0 Lite", cost: 3.5 },
-  { value: "openai/gpt-5-mini", label: "Crossi 2.0 Mini", cost: 2 },
-  { value: "google/gemini-2.5-flash", label: "Crossi 2.0 Mini Lite", cost: 1.5 },
-  { value: "google/gemini-2.5-flash-image", label: "Crossi 1.5 Image Gen", cost: 5 },
-  { value: "openai/gpt-5-nano", label: "Crossi 1.0 Pro", cost: 1 },
-  { value: "google/gemini-2.5-flash-lite", label: "Crossi 1.0 Pro Lite", cost: 0.5 },
-];
-
 const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
-  const selectedModel = models.find(m => m.value === value);
+  const { modelCosts, loading } = useModelCosts();
+  
+  const selectedModel = modelCosts.find(m => m.model_id === value);
+
+  if (loading) {
+    return null;
+  }
 
   return (
     <Select value={value} onValueChange={(v) => onChange(v as AIModel)}>
@@ -46,8 +43,8 @@ const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {models.map((model) => (
-          <SelectItem key={model.value} value={model.value}>
+        {modelCosts.map((model) => (
+          <SelectItem key={model.model_id} value={model.model_id}>
             {model.label} ({model.cost} credits)
           </SelectItem>
         ))}
@@ -57,4 +54,3 @@ const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
 };
 
 export default ModelSelector;
-export { models };

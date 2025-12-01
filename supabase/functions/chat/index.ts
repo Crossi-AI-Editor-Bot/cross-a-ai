@@ -95,18 +95,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Model cost mapping
-    const modelCosts: Record<string, number> = {
-      'openai/gpt-5-nano': 0.2,
-      'openai/gpt-5-mini': 0.5,
-      'google/gemini-2.5-flash-lite': 0.1,
-      'google/gemini-2.5-flash': 0.5,
-      'google/gemini-2.5-flash-image': 1,
-      'openai/gpt-5': 3,
-      'google/gemini-2.5-pro': 1.5,
-    };
+    // Fetch model cost from database
+    const { data: modelCostData, error: costError } = await supabase
+      .from('model_costs')
+      .select('cost')
+      .eq('model_id', model)
+      .single();
 
-    const creditCost = modelCosts[model] || 0.5;
+    if (costError) {
+      console.error('Error fetching model cost:', costError);
+      return new Response(
+        JSON.stringify({ error: 'Unable to fetch model cost' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const creditCost = modelCostData.cost;
     const initialCredits = userCredits.credits;
 
     // Validate sufficient credits
