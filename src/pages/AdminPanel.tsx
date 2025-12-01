@@ -17,6 +17,7 @@ const AdminPanel = () => {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { modelCosts, loading: costsLoading } = useModelCosts();
   const [costs, setCosts] = useState<Record<string, number>>({});
+  const [labels, setLabels] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -27,10 +28,13 @@ const AdminPanel = () => {
 
   useEffect(() => {
     const initialCosts: Record<string, number> = {};
+    const initialLabels: Record<string, string> = {};
     modelCosts.forEach((model) => {
       initialCosts[model.model_id] = model.cost;
+      initialLabels[model.model_id] = model.label;
     });
     setCosts(initialCosts);
+    setLabels(initialLabels);
   }, [modelCosts]);
 
   const handleSave = async () => {
@@ -39,12 +43,13 @@ const AdminPanel = () => {
       const updates = Object.entries(costs).map(([model_id, cost]) => ({
         model_id,
         cost,
+        label: labels[model_id],
       }));
 
       for (const update of updates) {
         const { error } = await supabase
           .from("model_costs")
-          .update({ cost: update.cost })
+          .update({ cost: update.cost, label: update.label })
           .eq("model_id", update.model_id);
 
         if (error) throw error;
@@ -95,27 +100,46 @@ const AdminPanel = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {modelCosts.map((model) => (
-              <div key={model.id} className="flex items-center gap-4">
-                <div className="flex-1">
-                  <Label htmlFor={model.model_id}>{model.label}</Label>
-                  <p className="text-sm text-muted-foreground">{model.model_id}</p>
+              <div key={model.id} className="space-y-2 pb-4 border-b last:border-0">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor={`label-${model.model_id}`}>Display Name</Label>
+                    <Input
+                      id={`label-${model.model_id}`}
+                      type="text"
+                      value={labels[model.model_id] || ""}
+                      onChange={(e) =>
+                        setLabels((prev) => ({
+                          ...prev,
+                          [model.model_id]: e.target.value,
+                        }))
+                      }
+                      placeholder="Model display name"
+                    />
+                  </div>
                 </div>
-                <div className="w-32">
-                  <Input
-                    id={model.model_id}
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={costs[model.model_id] || 0}
-                    onChange={(e) =>
-                      setCosts((prev) => ({
-                        ...prev,
-                        [model.model_id]: parseFloat(e.target.value) || 0,
-                      }))
-                    }
-                  />
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor={`cost-${model.model_id}`}>Cost</Label>
+                    <p className="text-sm text-muted-foreground">{model.model_id}</p>
+                  </div>
+                  <div className="w-32">
+                    <Input
+                      id={`cost-${model.model_id}`}
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={costs[model.model_id] || 0}
+                      onChange={(e) =>
+                        setCosts((prev) => ({
+                          ...prev,
+                          [model.model_id]: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                    />
+                  </div>
+                  <span className="text-sm text-muted-foreground">credits</span>
                 </div>
-                <span className="text-sm text-muted-foreground">credits</span>
               </div>
             ))}
 
