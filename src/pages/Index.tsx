@@ -123,7 +123,7 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-3">
               <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-              <CreditsDisplay credits={credits} />
+              <CreditsDisplay credits={credits} selectedModel={selectedModel} />
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
