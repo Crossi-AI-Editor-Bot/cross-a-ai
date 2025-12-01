@@ -1,5 +1,6 @@
 import { Coins } from "lucide-react";
-import { models, type AIModel } from "@/components/ModelSelector";
+import { type AIModel } from "@/components/ModelSelector";
+import { useModelCosts } from "@/hooks/useModelCosts";
 
 interface CreditsDisplayProps {
   credits: number;
@@ -7,8 +8,10 @@ interface CreditsDisplayProps {
 }
 
 const CreditsDisplay = ({ credits, selectedModel }: CreditsDisplayProps) => {
+  const { modelCosts } = useModelCosts();
+  
   const modelCost = selectedModel 
-    ? models.find(m => m.value === selectedModel)?.cost || 0 
+    ? modelCosts.find(m => m.model_id === selectedModel)?.cost || 0 
     : 0;
 
   return (
