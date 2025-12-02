@@ -83,7 +83,7 @@ const AdventCalendar = ({ onCreditsUpdate }: AdventCalendarProps) => {
                   disabled={!claimable || isOpening}
                   className={cn(
                     "aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-bold transition-all relative overflow-hidden",
-                    claimed && "bg-primary/20 border-2 border-primary text-primary",
+                    claimed && "bg-green-500/20 border-2 border-green-500 text-green-600 dark:text-green-400",
                     claimable && "bg-accent hover:bg-accent/80 border-2 border-dashed border-primary cursor-pointer hover:scale-105",
                     isLocked && "bg-muted border border-border text-muted-foreground",
                     isOpening && "animate-pulse"
@@ -98,7 +98,8 @@ const AdventCalendar = ({ onCreditsUpdate }: AdventCalendarProps) => {
                   {claimed ? (
                     <>
                       <Check className="h-4 w-4 mb-1" />
-                      <span className="text-xs">+{claimData?.credits_awarded}</span>
+                      <span className="text-xs font-semibold">+{claimData?.credits_awarded}</span>
+                      <span className="text-[10px] text-green-600/70 dark:text-green-400/70">opened</span>
                     </>
                   ) : isLocked ? (
                     <>
