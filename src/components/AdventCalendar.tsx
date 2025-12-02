@@ -56,7 +56,7 @@ const AdventCalendar = ({ onCreditsUpdate }: AdventCalendarProps) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Advent Calendar 2024
+            Advent Calendar 2025
           </DialogTitle>
         </DialogHeader>
         
