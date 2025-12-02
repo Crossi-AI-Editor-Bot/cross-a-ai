@@ -8,8 +8,13 @@ interface AdventClaim {
   claimed_at: string;
 }
 
+interface VipStatus {
+  expires_at: string;
+}
+
 export const useAdventCalendar = () => {
   const [claims, setClaims] = useState<AdventClaim[]>([]);
+  const [vipStatus, setVipStatus] = useState<VipStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -19,6 +24,7 @@ export const useAdventCalendar = () => {
 
   useEffect(() => {
     fetchClaims();
+    fetchVipStatus();
   }, []);
 
   const fetchClaims = async () => {
@@ -39,6 +45,30 @@ export const useAdventCalendar = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchVipStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('vip_status')
+        .select('expires_at')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setVipStatus(data);
+    } catch (error) {
+      console.error('Error fetching VIP status:', error);
+    }
+  };
+
+  const isVip = (): boolean => {
+    if (!vipStatus) return false;
+    return new Date(vipStatus.expires_at) > new Date();
   };
 
   const claimDay = async (day: number): Promise<number | null> => {
@@ -83,8 +113,14 @@ export const useAdventCalendar = () => {
         return null;
       }
 
+      // Check if user is already VIP
+      const userIsVip = isVip();
+      
+      // 10% chance to get VIP if not already VIP
+      const getsVip = !userIsVip && Math.random() < 0.1;
+      
       // Generate random credits (1-15)
-      const creditsAwarded = Math.floor(Math.random() * 15) + 1;
+      const creditsAwarded = getsVip ? 0 : Math.floor(Math.random() * 15) + 1;
 
       // Insert claim
       const { error: claimError } = await supabase
@@ -97,6 +133,36 @@ export const useAdventCalendar = () => {
         });
 
       if (claimError) throw claimError;
+
+      // If user gets VIP, create VIP status
+      if (getsVip) {
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 15);
+        
+        const { error: vipError } = await supabase
+          .from('vip_status')
+          .upsert({
+            user_id: user.id,
+            expires_at: expiresAt.toISOString(),
+          });
+        
+        if (vipError) throw vipError;
+        setVipStatus({ expires_at: expiresAt.toISOString() });
+        
+        toast({
+          title: "🌟 VIP Reward!",
+          description: "You received 15 days of VIP status! (20 credits/day)",
+        });
+        
+        // Update local state
+        setClaims(prev => [...prev, {
+          day_number: day,
+          credits_awarded: 0,
+          claimed_at: new Date().toISOString(),
+        }]);
+        
+        return -1; // Special return value for VIP
+      }
 
       // Update user credits
       const { data: currentCredits } = await supabase
@@ -155,5 +221,7 @@ export const useAdventCalendar = () => {
     isClaimed,
     currentDay,
     currentMonth,
+    isVip: isVip(),
+    vipExpiresAt: vipStatus?.expires_at,
   };
 };

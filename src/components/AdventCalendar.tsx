@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Gift, Lock, Check, Sparkles } from "lucide-react";
+import { Gift, Lock, Check, Sparkles, Crown, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,15 +16,21 @@ interface AdventCalendarProps {
 }
 
 const AdventCalendar = ({ onCreditsUpdate }: AdventCalendarProps) => {
-  const { claims, loading, claimDay, isClaimable, isClaimed, currentDay, currentMonth } = useAdventCalendar();
+  const { claims, loading, claimDay, isClaimable, isClaimed, currentDay, currentMonth, isVip, vipExpiresAt } = useAdventCalendar();
   const [openingDay, setOpeningDay] = useState<number | null>(null);
   const [reward, setReward] = useState<number | null>(null);
   const [showReward, setShowReward] = useState(false);
 
+  const [gotVip, setGotVip] = useState(false);
+
   const handleClaimDay = async (day: number) => {
     setOpeningDay(day);
     const credits = await claimDay(day);
-    if (credits) {
+    if (credits === -1) {
+      // Got VIP
+      setGotVip(true);
+      setTimeout(() => setGotVip(false), 3000);
+    } else if (credits && credits > 0) {
       setReward(credits);
       setShowReward(true);
       onCreditsUpdate(credits);
@@ -34,6 +40,14 @@ const AdventCalendar = ({ onCreditsUpdate }: AdventCalendarProps) => {
       }, 2000);
     }
     setOpeningDay(null);
+  };
+
+  const getVipDaysRemaining = () => {
+    if (!vipExpiresAt) return 0;
+    const now = new Date();
+    const expires = new Date(vipExpiresAt);
+    const diff = expires.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
 
   const days = Array.from({ length: 24 }, (_, i) => i + 1);
@@ -60,6 +74,26 @@ const AdventCalendar = ({ onCreditsUpdate }: AdventCalendarProps) => {
           </DialogTitle>
         </DialogHeader>
         
+        {gotVip && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/95 z-50 animate-pulse">
+            <div className="text-center">
+              <Crown className="h-16 w-16 mx-auto mb-4 text-yellow-500" />
+              <p className="text-xl font-bold text-yellow-500">VIP Status!</p>
+              <p className="text-muted-foreground">20 credits/day for 15 days</p>
+            </div>
+          </div>
+        )}
+
+        {isVip && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-4">
+            <Crown className="h-5 w-5 text-yellow-500" />
+            <div>
+              <p className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">VIP Active</p>
+              <p className="text-xs text-muted-foreground">{getVipDaysRemaining()} days remaining • 20 credits/day</p>
+            </div>
+          </div>
+        )}
+
         {currentMonth !== 12 ? (
           <div className="text-center py-8">
             <Gift className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -97,8 +131,17 @@ const AdventCalendar = ({ onCreditsUpdate }: AdventCalendarProps) => {
                   
                   {claimed ? (
                     <>
-                      <Check className="h-4 w-4 mb-1" />
-                      <span className="text-xs font-semibold">+{claimData?.credits_awarded}</span>
+                      {claimData?.credits_awarded === 0 ? (
+                        <>
+                          <Star className="h-4 w-4 mb-1 text-yellow-500" />
+                          <span className="text-xs font-semibold text-yellow-500">VIP</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-4 w-4 mb-1" />
+                          <span className="text-xs font-semibold">+{claimData?.credits_awarded}</span>
+                        </>
+                      )}
                       <span className="text-[10px] text-green-600/70 dark:text-green-400/70">opened</span>
                     </>
                   ) : isLocked ? (
