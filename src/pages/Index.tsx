@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Bot, LogOut, Trash2, Settings } from "lucide-react";
+import AdventCalendar from "@/components/AdventCalendar";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -126,6 +127,7 @@ const Index = () => {
             <div className="flex items-center gap-3">
               <ModelSelector value={selectedModel} onChange={setSelectedModel} />
               <CreditsDisplay credits={credits} selectedModel={selectedModel} />
+              <AdventCalendar onCreditsUpdate={(bonus) => updateCredits(credits + bonus)} />
               {isAdmin && (
                 <Button
                   variant="outline"
