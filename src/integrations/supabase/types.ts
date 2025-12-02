@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      advent_claims: {
+        Row: {
+          claimed_at: string
+          credits_awarded: number
+          day_number: number
+          id: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          claimed_at?: string
+          credits_awarded: number
+          day_number: number
+          id?: string
+          user_id: string
+          year?: number
+        }
+        Update: {
+          claimed_at?: string
+          credits_awarded?: number
+          day_number?: number
+          id?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
