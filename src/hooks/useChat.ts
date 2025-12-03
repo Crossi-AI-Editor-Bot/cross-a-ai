@@ -10,7 +10,7 @@ interface Message {
   files?: Array<{ name: string; type: string; data: string }>;
 }
 
-export const useChat = (conversationId: string | null) => {
+export const useChat = (conversationId: string | null, onTitleGenerated?: () => void) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [newCredits, setNewCredits] = useState<number | null>(null);
@@ -314,6 +314,11 @@ export const useChat = (conversationId: string | null) => {
 
       // Save messages to database after successful response
       await saveMessagesToDatabase([userMessage, { role: "assistant", content: assistantContent }]);
+      
+      // Generate title after first exchange (2 messages total: 1 user + 1 assistant)
+      if (messages.length === 0) {
+        generateConversationTitle([userMessage, { role: "assistant", content: assistantContent }]);
+      }
     } catch (error) {
       console.error("Chat error:", error);
       toast({
@@ -350,6 +355,39 @@ export const useChat = (conversationId: string | null) => {
         .eq('id', conversationId);
     } catch (error) {
       console.error('Error saving messages:', error);
+    }
+  };
+
+  const generateConversationTitle = async (firstMessages: Message[]) => {
+    if (!conversationId) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+      if (!authToken) return;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-title`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            messages: firstMessages,
+            conversationId,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        onTitleGenerated?.();
+      } else {
+        console.error('Failed to generate title');
+      }
+    } catch (error) {
+      console.error('Error generating title:', error);
     }
   };
 
