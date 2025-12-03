@@ -38,8 +38,9 @@ const Index = () => {
     deleteConversation,
     renameConversation,
     loading: conversationsLoading,
+    refetch: refetchConversations,
   } = useConversations();
-  const { messages, isLoading, sendMessage, newCredits, clearMessages } = useChat(currentConversationId);
+  const { messages, isLoading, sendMessage, newCredits, clearMessages } = useChat(currentConversationId, refetchConversations);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const { isAdmin } = useIsAdmin();
   const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
