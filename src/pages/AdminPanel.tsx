@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Power, PowerOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useModelCosts } from "@/hooks/useModelCosts";
+import { useSiteStatus } from "@/hooks/useSiteStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { useState } from "react";
 
@@ -16,9 +17,11 @@ const AdminPanel = () => {
   const { toast } = useToast();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { modelCosts, loading: costsLoading } = useModelCosts();
+  const { isDisabled, disabledUntil, disableSite, enableSite, loading: siteLoading } = useSiteStatus();
   const [costs, setCosts] = useState<Record<string, number>>({});
   const [labels, setLabels] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [togglingSite, setTogglingSite] = useState(false);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -71,7 +74,28 @@ const AdminPanel = () => {
     }
   };
 
-  if (adminLoading || costsLoading) {
+  const handleToggleSite = async () => {
+    setTogglingSite(true);
+    try {
+      if (isDisabled) {
+        const success = await enableSite();
+        if (success) {
+          toast({ title: "Site enabled", description: "The site is now accessible to all users." });
+        }
+      } else {
+        const success = await disableSite(1);
+        if (success) {
+          toast({ title: "Site disabled", description: "The site is now disabled for 1 day." });
+        }
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to toggle site status", variant: "destructive" });
+    } finally {
+      setTogglingSite(false);
+    }
+  };
+
+  if (adminLoading || costsLoading || siteLoading) {
     return null;
   }
 
@@ -90,6 +114,44 @@ const AdminPanel = () => {
           <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
           <p className="text-muted-foreground">Manage AI model costs</p>
         </div>
+
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Site Control</CardTitle>
+            <CardDescription>
+              Enable or disable the site for all users. When disabled, users will see a maintenance page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Site Status</p>
+                <p className="text-sm text-muted-foreground">
+                  {isDisabled 
+                    ? `Disabled until ${disabledUntil?.toLocaleString()}`
+                    : "Site is currently online"}
+                </p>
+              </div>
+              <Button 
+                onClick={handleToggleSite} 
+                disabled={togglingSite}
+                variant={isDisabled ? "default" : "destructive"}
+              >
+                {isDisabled ? (
+                  <>
+                    <Power className="w-4 h-4 mr-2" />
+                    Enable Site
+                  </>
+                ) : (
+                  <>
+                    <PowerOff className="w-4 h-4 mr-2" />
+                    Disable for 1 Day
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

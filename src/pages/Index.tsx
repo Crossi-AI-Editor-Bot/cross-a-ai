@@ -21,10 +21,12 @@ import TypingIndicator from "@/components/TypingIndicator";
 import ModelSelector, { type AIModel } from "@/components/ModelSelector";
 import CreditsDisplay from "@/components/CreditsDisplay";
 import ConversationsList from "@/components/ConversationsList";
+import MaintenancePage from "@/components/MaintenancePage";
 import { useChat } from "@/hooks/useChat";
 import { useCredits } from "@/hooks/useCredits";
 import { useConversations } from "@/hooks/useConversations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useSiteStatus } from "@/hooks/useSiteStatus";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -42,7 +44,8 @@ const Index = () => {
   } = useConversations();
   const { messages, isLoading, sendMessage, newCredits, clearMessages } = useChat(currentConversationId, refetchConversations);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
+  const { isDisabled, disabledUntil, loading: siteLoading } = useSiteStatus();
   const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -98,8 +101,13 @@ const Index = () => {
     await createConversation();
   };
 
-  if (loading || creditsLoading || conversationsLoading || !user) {
+  if (loading || creditsLoading || conversationsLoading || siteLoading || adminLoading || !user) {
     return null;
+  }
+
+  // Show maintenance page if site is disabled (admins can bypass)
+  if (isDisabled && !isAdmin) {
+    return <MaintenancePage disabledUntil={disabledUntil} />;
   }
 
   return (
