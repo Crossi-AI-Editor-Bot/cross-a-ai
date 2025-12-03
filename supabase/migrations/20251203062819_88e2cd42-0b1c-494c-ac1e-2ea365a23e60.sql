@@ -21,7 +21,7 @@ BEGIN
   
   -- Set base credits based on VIP status
   IF is_vip THEN
-    base_credits := 20;
+    base_credits := 25;
   ELSE
     base_credits := 15;
   END IF;
