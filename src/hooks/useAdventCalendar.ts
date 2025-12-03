@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 interface AdventClaim {
   day_number: number;
@@ -17,6 +18,7 @@ export const useAdventCalendar = () => {
   const [vipStatus, setVipStatus] = useState<VipStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { isAdmin } = useIsAdmin();
 
   const currentYear = new Date().getFullYear();
   const currentDay = new Date().getDate();
@@ -67,6 +69,7 @@ export const useAdventCalendar = () => {
   };
 
   const isVip = (): boolean => {
+    if (isAdmin) return true;
     if (!vipStatus) return false;
     return new Date(vipStatus.expires_at) > new Date();
   };
