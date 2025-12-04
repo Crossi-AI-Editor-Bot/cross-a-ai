@@ -122,8 +122,15 @@ Deno.serve(async (req) => {
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
     
-    if (!LOVABLE_API_KEY) {
+    const isGoogleModel = model.startsWith('google/');
+    
+    if (isGoogleModel && !GOOGLE_AI_API_KEY) {
+      throw new Error("GOOGLE_AI_API_KEY is not configured");
+    }
+    
+    if (!isGoogleModel && !LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
@@ -132,41 +139,102 @@ Deno.serve(async (req) => {
     // Check if this is an image generation request
     const isImageGen = model === 'google/gemini-2.5-flash-image';
 
-    const requestBody: any = {
-      model,
-      messages: messages.map(msg => {
-        // Handle files (images) in the message
+    let response: Response;
+
+    if (isGoogleModel) {
+      // Use Google's Generative Language API directly
+      const geminiModel = model.replace('google/', '');
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:${isImageGen ? 'generateContent' : 'streamGenerateContent'}?key=${GOOGLE_AI_API_KEY}`;
+      
+      // Convert messages to Google's format
+      const contents = messages.map(msg => {
+        const parts: any[] = [];
+        
+        if (msg.content) {
+          parts.push({ text: msg.content });
+        }
+        
         if (msg.files && msg.files.length > 0) {
-          const content: any[] = [];
-          
-          if (msg.content) {
-            content.push({ type: "text", text: msg.content });
-          }
-          
           msg.files.forEach((file: any) => {
             if (file.type.startsWith('image/')) {
-              content.push({
-                type: "image_url",
-                image_url: { url: file.data }
+              // Extract base64 data from data URL
+              const base64Data = file.data.split(',')[1];
+              parts.push({
+                inline_data: {
+                  mime_type: file.type,
+                  data: base64Data
+                }
               });
             }
           });
-          
-          return {
-            role: msg.role,
-            content
-          };
         }
         
         return {
-          role: msg.role,
-          content: msg.content
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts
         };
-      })
-    };
+      });
 
-    // Add system message for non-image generation
-    if (!isImageGen) {
+      // Add system instruction
+      const systemInstruction = {
+        parts: [{ text: "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging." }]
+      };
+
+      const googleRequestBody: any = {
+        contents,
+        systemInstruction,
+        generationConfig: {
+          temperature: 1.0,
+          maxOutputTokens: 8192,
+        }
+      };
+
+      if (isImageGen) {
+        googleRequestBody.generationConfig.responseModalities = ["TEXT", "IMAGE"];
+      }
+
+      response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(googleRequestBody),
+      });
+    } else {
+      // Use Lovable AI gateway for OpenAI models
+      const requestBody: any = {
+        model,
+        messages: messages.map(msg => {
+          if (msg.files && msg.files.length > 0) {
+            const content: any[] = [];
+            
+            if (msg.content) {
+              content.push({ type: "text", text: msg.content });
+            }
+            
+            msg.files.forEach((file: any) => {
+              if (file.type.startsWith('image/')) {
+                content.push({
+                  type: "image_url",
+                  image_url: { url: file.data }
+                });
+              }
+            });
+            
+            return {
+              role: msg.role,
+              content
+            };
+          }
+          
+          return {
+            role: msg.role,
+            content: msg.content
+          };
+        }),
+        stream: true
+      };
+
       requestBody.messages = [
         { 
           role: "system", 
@@ -174,23 +242,20 @@ Deno.serve(async (req) => {
         },
         ...requestBody.messages,
       ];
-      requestBody.stream = true;
-    } else {
-      requestBody.modalities = ["image", "text"];
-    }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("AI API error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
@@ -206,7 +271,7 @@ Deno.serve(async (req) => {
         });
       }
       
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+      return new Response(JSON.stringify({ error: "AI API error", details: errorText }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -223,11 +288,21 @@ Deno.serve(async (req) => {
       console.error('Failed to deduct credits:', deductError);
     }
 
-    // Handle image generation response
-    if (isImageGen) {
+    // Handle Google image generation response
+    if (isImageGen && isGoogleModel) {
       const jsonResponse = await response.json();
-      const imageData = jsonResponse.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-      const textContent = jsonResponse.choices?.[0]?.message?.content || "Image generated successfully.";
+      const candidates = jsonResponse.candidates?.[0]?.content?.parts || [];
+      let imageData = null;
+      let textContent = "Image generated successfully.";
+      
+      for (const part of candidates) {
+        if (part.inlineData) {
+          imageData = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        }
+        if (part.text) {
+          textContent = part.text;
+        }
+      }
       
       return new Response(
         JSON.stringify({ 
@@ -241,9 +316,66 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Streaming response from AI gateway');
+    console.log('Streaming response from AI');
 
-    // Create a stream that includes the credits update
+    // Handle Google streaming response
+    if (isGoogleModel) {
+      const reader = response.body?.getReader();
+      const stream = new ReadableStream({
+        async start(controller) {
+          const decoder = new TextDecoder();
+          let buffer = '';
+          
+          try {
+            while (true) {
+              const { done, value } = await reader!.read();
+              if (done) {
+                // Send credits update before closing
+                const creditsEvent = `data: ${JSON.stringify({ type: 'credits', credits: newCredits })}\n\n`;
+                controller.enqueue(new TextEncoder().encode(creditsEvent));
+                controller.close();
+                break;
+              }
+              
+              buffer += decoder.decode(value, { stream: true });
+              
+              // Parse Google's streaming format (JSON objects separated by newlines)
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              
+              for (const line of lines) {
+                if (line.trim()) {
+                  try {
+                    const parsed = JSON.parse(line);
+                    const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                      // Convert to OpenAI-compatible SSE format
+                      const sseData = {
+                        choices: [{
+                          delta: { content: text }
+                        }]
+                      };
+                      const sseEvent = `data: ${JSON.stringify(sseData)}\n\n`;
+                      controller.enqueue(new TextEncoder().encode(sseEvent));
+                    }
+                  } catch (e) {
+                    // Skip malformed JSON
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            controller.error(error);
+          }
+        }
+      });
+
+      return new Response(stream, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      });
+    }
+
+    // Handle OpenAI streaming response (via Lovable gateway)
     const reader = response.body?.getReader();
     const stream = new ReadableStream({
       async start(controller) {
