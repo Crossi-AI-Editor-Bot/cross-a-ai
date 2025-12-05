@@ -23,6 +23,8 @@ const chatRequestSchema = z.object({
     'google/gemini-2.5-pro', 
     'google/gemini-2.5-flash-lite',
     'google/gemini-2.5-flash-image',
+    'google/gemini-2.0-flash-live',
+    'google/gemini-2.5-flash-live',
     'openai/gpt-5',
     'openai/gpt-5-mini',
     'openai/gpt-5-nano'
