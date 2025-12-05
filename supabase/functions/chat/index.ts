@@ -2,6 +2,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { GoogleGenAI } from "https://esm.sh/@google/genai@0.14.1";
 
+// Image generation uses Lovable API with this model
+const LOVABLE_IMAGE_MODEL = "google/gemini-2.5-flash-image-preview";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -165,20 +168,20 @@ Deno.serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GOOGLE_API_KEY = Deno.env.get("Google_API");
     
-    const isGoogleModel = model.startsWith('google/');
+    // Check if this is an image generation request - uses Lovable API
+    const isImageGen = model === 'google/gemini-2.5-flash-image';
+    
+    const isGoogleModel = model.startsWith('google/') && !isImageGen;
     
     if (isGoogleModel && !GOOGLE_API_KEY) {
       throw new Error("Google_API is not configured");
     }
     
-    if (!isGoogleModel && !LOVABLE_API_KEY) {
+    if ((!isGoogleModel || isImageGen) && !LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     console.log('Processing chat request - User:', user.id, 'Messages:', messages.length, 'Model:', model);
-
-    // Check if this is an image generation request
-    const isImageGen = model === 'google/gemini-2.5-flash-image';
 
     // Deduct credits before API call
     const newCredits = initialCredits - creditCost;
@@ -189,6 +192,87 @@ Deno.serve(async (req) => {
 
     if (deductError) {
       console.error('Failed to deduct credits:', deductError);
+    }
+
+    // Handle image generation via Lovable API
+    if (isImageGen) {
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+      const prompt = lastUserMessage?.content || 'Generate an image';
+      
+      // Build content array for multimodal request
+      const content: any[] = [{ type: "text", text: prompt }];
+      
+      // Include any images from the last message for editing
+      if (lastUserMessage?.files && lastUserMessage.files.length > 0) {
+        for (const file of lastUserMessage.files) {
+          if (file.type.startsWith('image/')) {
+            content.push({
+              type: "image_url",
+              image_url: { url: file.data }
+            });
+          }
+        }
+      }
+      
+      try {
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: LOVABLE_IMAGE_MODEL,
+            messages: [{ role: "user", content }],
+            modalities: ["image", "text"]
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Lovable Image API error:", response.status, errorText);
+          
+          if (response.status === 429) {
+            return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+              status: 429,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          
+          if (response.status === 402) {
+            return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue." }), {
+              status: 402,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          
+          return new Response(JSON.stringify({ error: "Image generation failed", details: errorText }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const data = await response.json();
+        const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+        const textContent = data.choices?.[0]?.message?.content || "Image generated successfully.";
+        
+        return new Response(
+          JSON.stringify({ 
+            image: imageUrl,
+            text: textContent,
+            credits: newCredits 
+          }),
+          { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      } catch (error) {
+        console.error('Lovable Image API error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Image generation error', details: error instanceof Error ? error.message : 'Unknown error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     if (isGoogleModel) {
@@ -229,44 +313,9 @@ Deno.serve(async (req) => {
       }
 
       try {
-        if (isImageGen) {
-          // Non-streaming for image generation
-          const response = await ai.models.generateContent({
-            model: geminiModel,
-            contents: contents,
-            config: {
-              responseModalities: ["TEXT", "IMAGE"],
-            }
-          });
-          
-          let imageData = null;
-          let textContent = "Image generated successfully.";
-          
-          if (response.candidates && response.candidates[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-              if (part.inlineData) {
-                imageData = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-              }
-              if (part.text) {
-                textContent = part.text;
-              }
-            }
-          }
-          
-          return new Response(
-            JSON.stringify({ 
-              image: imageData,
-              text: textContent,
-              credits: newCredits 
-            }),
-            { 
-              headers: { ...corsHeaders, "Content-Type": "application/json" } 
-            }
-          );
-        } else {
-          // Streaming for text generation
-          const stream = new ReadableStream({
-            async start(controller) {
+        // Streaming for text generation
+        const stream = new ReadableStream({
+          async start(controller) {
               try {
                 const response = await ai.models.generateContentStream({
                   model: geminiModel,
@@ -305,7 +354,6 @@ Deno.serve(async (req) => {
           return new Response(stream, {
             headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
           });
-        }
       } catch (error) {
         console.error('Google AI SDK error:', error);
         return new Response(
