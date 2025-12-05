@@ -96,10 +96,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch model cost from database
+    // Fetch model cost and access settings from database
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('cost')
+      .select('cost, enabled, vip_only')
       .eq('model_id', model)
       .single();
 
@@ -109,6 +109,44 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Unable to fetch model cost' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check if model is enabled
+    if (!modelCostData.enabled) {
+      return new Response(
+        JSON.stringify({ error: 'This model is currently disabled' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check VIP-only access
+    if (modelCostData.vip_only) {
+      // Check if user is admin
+      const { data: adminData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      const isAdmin = !!adminData;
+
+      // Check if user has active VIP status
+      const { data: vipData } = await supabase
+        .from('vip_status')
+        .select('expires_at')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+
+      const isVip = isAdmin || !!vipData;
+
+      if (!isVip) {
+        return new Response(
+          JSON.stringify({ error: 'This model requires VIP status' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const creditCost = modelCostData.cost;

@@ -100,27 +100,33 @@ export type Database = {
       model_costs: {
         Row: {
           cost: number
+          enabled: boolean
           id: string
           label: string
           model_id: string
           updated_at: string
           updated_by: string | null
+          vip_only: boolean
         }
         Insert: {
           cost: number
+          enabled?: boolean
           id?: string
           label: string
           model_id: string
           updated_at?: string
           updated_by?: string | null
+          vip_only?: boolean
         }
         Update: {
           cost?: number
+          enabled?: boolean
           id?: string
           label?: string
           model_id?: string
           updated_at?: string
           updated_by?: string | null
+          vip_only?: boolean
         }
         Relationships: []
       }

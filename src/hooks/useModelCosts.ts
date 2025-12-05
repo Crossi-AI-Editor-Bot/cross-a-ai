@@ -7,6 +7,8 @@ export interface ModelCost {
   model_id: string;
   label: string;
   cost: number;
+  enabled: boolean;
+  vip_only: boolean;
 }
 
 export const useModelCosts = () => {
