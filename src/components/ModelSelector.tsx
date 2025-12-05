@@ -1,6 +1,8 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Brain } from "lucide-react";
+import { Brain, Crown } from "lucide-react";
 import { useModelCosts } from "@/hooks/useModelCosts";
+import { useVipStatus } from "@/hooks/useVipStatus";
+import { useEffect } from "react";
 
 export type AIModel = 
   | "openai/gpt-5-nano"
@@ -18,10 +20,28 @@ interface ModelSelectorProps {
 
 const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
   const { modelCosts, loading } = useModelCosts();
+  const { isVip, loading: vipLoading } = useVipStatus();
+  
+  // Filter models based on enabled status and VIP access
+  const availableModels = modelCosts.filter(m => {
+    if (!m.enabled) return false;
+    if (m.vip_only && !isVip) return false;
+    return true;
+  });
   
   const selectedModel = modelCosts.find(m => m.model_id === value);
+  
+  // Auto-select first available model if current selection is unavailable
+  useEffect(() => {
+    if (!loading && !vipLoading && availableModels.length > 0) {
+      const isCurrentAvailable = availableModels.some(m => m.model_id === value);
+      if (!isCurrentAvailable) {
+        onChange(availableModels[0].model_id as AIModel);
+      }
+    }
+  }, [availableModels, value, loading, vipLoading, onChange]);
 
-  if (loading) {
+  if (loading || vipLoading) {
     return null;
   }
 
@@ -43,9 +63,12 @@ const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        {modelCosts.map((model) => (
+        {availableModels.map((model) => (
           <SelectItem key={model.model_id} value={model.model_id}>
-            {model.label} ({model.cost} credits)
+            <div className="flex items-center gap-2">
+              {model.vip_only && <Crown className="w-3 h-3 text-yellow-500" />}
+              <span>{model.label} ({model.cost} credits)</span>
+            </div>
           </SelectItem>
         ))}
       </SelectContent>

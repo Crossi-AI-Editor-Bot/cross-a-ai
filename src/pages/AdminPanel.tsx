@@ -1,10 +1,11 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Power, PowerOff } from "lucide-react";
+import { ArrowLeft, Save, Power, PowerOff, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useModelCosts } from "@/hooks/useModelCosts";
@@ -20,6 +21,8 @@ const AdminPanel = () => {
   const { isDisabled, disabledUntil, disableSite, enableSite, loading: siteLoading } = useSiteStatus();
   const [costs, setCosts] = useState<Record<string, number>>({});
   const [labels, setLabels] = useState<Record<string, string>>({});
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
+  const [vipOnly, setVipOnly] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [togglingSite, setTogglingSite] = useState(false);
 
@@ -32,12 +35,18 @@ const AdminPanel = () => {
   useEffect(() => {
     const initialCosts: Record<string, number> = {};
     const initialLabels: Record<string, string> = {};
+    const initialEnabled: Record<string, boolean> = {};
+    const initialVipOnly: Record<string, boolean> = {};
     modelCosts.forEach((model) => {
       initialCosts[model.model_id] = model.cost;
       initialLabels[model.model_id] = model.label;
+      initialEnabled[model.model_id] = model.enabled;
+      initialVipOnly[model.model_id] = model.vip_only;
     });
     setCosts(initialCosts);
     setLabels(initialLabels);
+    setEnabled(initialEnabled);
+    setVipOnly(initialVipOnly);
   }, [modelCosts]);
 
   const handleSave = async () => {
@@ -47,12 +56,19 @@ const AdminPanel = () => {
         model_id,
         cost,
         label: labels[model_id],
+        enabled: enabled[model_id],
+        vip_only: vipOnly[model_id],
       }));
 
       for (const update of updates) {
         const { error } = await supabase
           .from("model_costs")
-          .update({ cost: update.cost, label: update.label })
+          .update({ 
+            cost: update.cost, 
+            label: update.label,
+            enabled: update.enabled,
+            vip_only: update.vip_only
+          })
           .eq("model_id", update.model_id);
 
         if (error) throw error;
@@ -60,13 +76,13 @@ const AdminPanel = () => {
 
       toast({
         title: "Success",
-        description: "Model costs updated successfully",
+        description: "Model settings updated successfully",
       });
     } catch (error) {
-      console.error("Error updating costs:", error);
+      console.error("Error updating model settings:", error);
       toast({
         title: "Error",
-        description: "Failed to update model costs",
+        description: "Failed to update model settings",
         variant: "destructive",
       });
     } finally {
@@ -162,10 +178,48 @@ const AdminPanel = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {modelCosts.map((model) => (
-              <div key={model.id} className="space-y-2 pb-4 border-b last:border-0">
-                <div className="flex items-center gap-4">
+              <div key={model.id} className="space-y-3 pb-4 border-b last:border-0">
+                <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <Label htmlFor={`label-${model.model_id}`}>Display Name</Label>
+                    <p className="text-sm text-muted-foreground">{model.model_id}</p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`enabled-${model.model_id}`}
+                        checked={enabled[model.model_id] ?? true}
+                        onCheckedChange={(checked) =>
+                          setEnabled((prev) => ({
+                            ...prev,
+                            [model.model_id]: checked,
+                          }))
+                        }
+                      />
+                      <Label htmlFor={`enabled-${model.model_id}`} className="text-sm">
+                        Enabled
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`vip-${model.model_id}`}
+                        checked={vipOnly[model.model_id] ?? false}
+                        onCheckedChange={(checked) =>
+                          setVipOnly((prev) => ({
+                            ...prev,
+                            [model.model_id]: checked,
+                          }))
+                        }
+                      />
+                      <Label htmlFor={`vip-${model.model_id}`} className="text-sm flex items-center gap-1">
+                        <Crown className="w-3 h-3 text-yellow-500" />
+                        VIP Only
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
                     <Input
                       id={`label-${model.model_id}`}
                       type="text"
@@ -178,12 +232,6 @@ const AdminPanel = () => {
                       }
                       placeholder="Model display name"
                     />
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <Label htmlFor={`cost-${model.model_id}`}>Cost</Label>
-                    <p className="text-sm text-muted-foreground">{model.model_id}</p>
                   </div>
                   <div className="w-32">
                     <Input
