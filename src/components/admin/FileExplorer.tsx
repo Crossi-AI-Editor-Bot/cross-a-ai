@@ -8,7 +8,8 @@ import {
   ChevronRight, 
   ChevronDown,
   Save,
-  X
+  X,
+  GripVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,10 +44,11 @@ export const FileExplorer = ({
   onCreateFolder,
   onDeleteFolder,
 }: FileExplorerProps) => {
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["root"]));
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(folders));
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [draggedModel, setDraggedModel] = useState<string | null>(null);
+  const [dragOverFolder, setDragOverFolder] = useState<string | null | "unsorted">(null);
 
   const toggleFolder = (folder: string) => {
     setExpandedFolders((prev) => {
@@ -63,16 +65,41 @@ export const FileExplorer = ({
   const handleCreateFolder = () => {
     if (newFolderName.trim()) {
       onCreateFolder(newFolderName.trim());
+      setExpandedFolders((prev) => new Set([...prev, newFolderName.trim()]));
       setNewFolderName("");
       setCreatingFolder(false);
     }
   };
 
-  const handleDrop = (folder: string | null) => {
-    if (draggedModel) {
-      onUpdateFolder(draggedModel, folder);
-      setDraggedModel(null);
+  const handleDragStart = (e: React.DragEvent, modelId: string) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", modelId);
+    setDraggedModel(modelId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, folder: string | null | "unsorted") => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverFolder(folder);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverFolder(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, folder: string | null) => {
+    e.preventDefault();
+    const modelId = e.dataTransfer.getData("text/plain") || draggedModel;
+    if (modelId) {
+      onUpdateFolder(modelId, folder);
     }
+    setDraggedModel(null);
+    setDragOverFolder(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedModel(null);
+    setDragOverFolder(null);
   };
 
   const rootModels = models.filter((m) => !m.folder);
@@ -88,6 +115,7 @@ export const FileExplorer = ({
           size="sm"
           className="h-7 w-7 p-0"
           onClick={() => setCreatingFolder(true)}
+          title="Create folder"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -97,7 +125,7 @@ export const FileExplorer = ({
       <div className="flex-1 overflow-auto p-2 space-y-0.5">
         {/* New folder input */}
         {creatingFolder && (
-          <div className="flex items-center gap-1 px-2 py-1">
+          <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-md">
             <Folder className="h-4 w-4 text-yellow-500 shrink-0" />
             <Input
               autoFocus
@@ -124,12 +152,15 @@ export const FileExplorer = ({
           <div key={folder}>
             <div
               className={cn(
-                "flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted group",
-                expandedFolders.has(folder) && "bg-muted/50"
+                "flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer group transition-all",
+                expandedFolders.has(folder) && "bg-muted/50",
+                dragOverFolder === folder && "bg-primary/20 ring-2 ring-primary ring-inset",
+                !dragOverFolder && "hover:bg-muted"
               )}
               onClick={() => toggleFolder(folder)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(folder)}
+              onDragOver={(e) => handleDragOver(e, folder)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, folder)}
             >
               {expandedFolders.has(folder) ? (
                 <>
@@ -143,6 +174,9 @@ export const FileExplorer = ({
                 </>
               )}
               <span className="text-sm text-foreground truncate flex-1">{folder}</span>
+              <span className="text-xs text-muted-foreground mr-1">
+                {getModelsInFolder(folder).length}
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -156,14 +190,26 @@ export const FileExplorer = ({
               </Button>
             </div>
             {expandedFolders.has(folder) && (
-              <div className="ml-4 pl-2 border-l border-border/50">
+              <div 
+                className="ml-4 pl-2 border-l border-border/50 min-h-[8px]"
+                onDragOver={(e) => handleDragOver(e, folder)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, folder)}
+              >
+                {getModelsInFolder(folder).length === 0 && (
+                  <div className="px-2 py-2 text-xs text-muted-foreground italic">
+                    Drop models here
+                  </div>
+                )}
                 {getModelsInFolder(folder).map((model) => (
                   <FileItem
                     key={model.model_id}
                     model={model}
                     isSelected={selectedFile === model.model_id}
                     onSelect={() => onSelectFile(model.model_id)}
-                    onDragStart={() => setDraggedModel(model.model_id)}
+                    onDragStart={(e) => handleDragStart(e, model.model_id)}
+                    onDragEnd={handleDragEnd}
+                    isDragging={draggedModel === model.model_id}
                   />
                 ))}
               </div>
@@ -173,12 +219,17 @@ export const FileExplorer = ({
 
         {/* Root files (no folder) */}
         <div
-          className="pt-2 border-t border-border/50 mt-2"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={() => handleDrop(null)}
+          className={cn(
+            "pt-2 border-t border-border/50 mt-2 rounded-md transition-all",
+            dragOverFolder === "unsorted" && "bg-primary/20 ring-2 ring-primary ring-inset"
+          )}
+          onDragOver={(e) => handleDragOver(e, "unsorted")}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, null)}
         >
-          <div className="px-2 py-1 text-xs text-muted-foreground uppercase tracking-wider">
-            Unsorted
+          <div className="px-2 py-1 text-xs text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+            <span>Unsorted</span>
+            <span>{rootModels.length}</span>
           </div>
           {rootModels.map((model) => (
             <FileItem
@@ -186,7 +237,9 @@ export const FileExplorer = ({
               model={model}
               isSelected={selectedFile === model.model_id}
               onSelect={() => onSelectFile(model.model_id)}
-              onDragStart={() => setDraggedModel(model.model_id)}
+              onDragStart={(e) => handleDragStart(e, model.model_id)}
+              onDragEnd={handleDragEnd}
+              isDragging={draggedModel === model.model_id}
             />
           ))}
         </div>
@@ -199,23 +252,28 @@ interface FileItemProps {
   model: ModelFile;
   isSelected: boolean;
   onSelect: () => void;
-  onDragStart: () => void;
+  onDragStart: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  isDragging: boolean;
 }
 
-const FileItem = ({ model, isSelected, onSelect, onDragStart }: FileItemProps) => {
+const FileItem = ({ model, isSelected, onSelect, onDragStart, onDragEnd, isDragging }: FileItemProps) => {
   return (
     <div
       draggable
       onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
       onClick={onSelect}
       className={cn(
-        "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors",
+        "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-grab transition-all group",
         isSelected
           ? "bg-primary/20 text-primary"
           : "hover:bg-muted text-foreground",
-        !model.enabled && "opacity-50"
+        !model.enabled && "opacity-50",
+        isDragging && "opacity-30 ring-2 ring-primary"
       )}
     >
+      <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-grab" />
       <FileText className="h-4 w-4 shrink-0 text-blue-400" />
       <span className="text-sm truncate">{model.label}.txt</span>
     </div>
