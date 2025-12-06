@@ -27,6 +27,7 @@ const AdminPanel = () => {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { modelCosts, loading: costsLoading } = useModelCosts();
   const { isDisabled, disabledUntil, disableSite, enableSite, loading: siteLoading } = useSiteStatus();
+  const [customFolders, setCustomFolders] = useState<string[]>([]);
   
   const [models, setModels] = useState<ModelState[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
@@ -53,12 +54,12 @@ const AdminPanel = () => {
   }, [modelCosts]);
 
   const folders = useMemo(() => {
-    const folderSet = new Set<string>();
+    const folderSet = new Set<string>(customFolders);
     models.forEach((m) => {
       if (m.folder) folderSet.add(m.folder);
     });
     return Array.from(folderSet).sort();
-  }, [models]);
+  }, [models, customFolders]);
 
   const selectedModel = useMemo(
     () => models.find((m) => m.model_id === selectedModelId),
@@ -73,6 +74,7 @@ const AdminPanel = () => {
 
   const handleCreateFolder = (name: string) => {
     if (!folders.includes(name)) {
+      setCustomFolders((prev) => [...prev, name]);
       toast({
         title: "Folder created",
         description: `Drag models into "${name}" to organize them.`,
@@ -81,6 +83,7 @@ const AdminPanel = () => {
   };
 
   const handleDeleteFolder = (name: string) => {
+    setCustomFolders((prev) => prev.filter((f) => f !== name));
     setModels((prev) =>
       prev.map((m) => (m.folder === name ? { ...m, folder: null } : m))
     );
