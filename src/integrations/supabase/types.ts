@@ -101,6 +101,7 @@ export type Database = {
         Row: {
           cost: number
           enabled: boolean
+          folder: string | null
           id: string
           label: string
           model_id: string
@@ -111,6 +112,7 @@ export type Database = {
         Insert: {
           cost: number
           enabled?: boolean
+          folder?: string | null
           id?: string
           label: string
           model_id: string
@@ -121,6 +123,7 @@ export type Database = {
         Update: {
           cost?: number
           enabled?: boolean
+          folder?: string | null
           id?: string
           label?: string
           model_id?: string
