@@ -1,17 +1,25 @@
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Power, PowerOff, Crown } from "lucide-react";
+import { ArrowLeft, Save, Power, PowerOff, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useModelCosts } from "@/hooks/useModelCosts";
 import { useSiteStatus } from "@/hooks/useSiteStatus";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { FileExplorer } from "@/components/admin/FileExplorer";
+import { FileEditor } from "@/components/admin/FileEditor";
+
+interface ModelState {
+  id: string;
+  model_id: string;
+  label: string;
+  cost: number;
+  enabled: boolean;
+  vip_only: boolean;
+  folder: string | null;
+}
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -19,10 +27,9 @@ const AdminPanel = () => {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { modelCosts, loading: costsLoading } = useModelCosts();
   const { isDisabled, disabledUntil, disableSite, enableSite, loading: siteLoading } = useSiteStatus();
-  const [costs, setCosts] = useState<Record<string, number>>({});
-  const [labels, setLabels] = useState<Record<string, string>>({});
-  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
-  const [vipOnly, setVipOnly] = useState<Record<string, boolean>>({});
+  
+  const [models, setModels] = useState<ModelState[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [togglingSite, setTogglingSite] = useState(false);
 
@@ -33,50 +40,77 @@ const AdminPanel = () => {
   }, [isAdmin, adminLoading, navigate]);
 
   useEffect(() => {
-    const initialCosts: Record<string, number> = {};
-    const initialLabels: Record<string, string> = {};
-    const initialEnabled: Record<string, boolean> = {};
-    const initialVipOnly: Record<string, boolean> = {};
-    modelCosts.forEach((model) => {
-      initialCosts[model.model_id] = model.cost;
-      initialLabels[model.model_id] = model.label;
-      initialEnabled[model.model_id] = model.enabled;
-      initialVipOnly[model.model_id] = model.vip_only;
-    });
-    setCosts(initialCosts);
-    setLabels(initialLabels);
-    setEnabled(initialEnabled);
-    setVipOnly(initialVipOnly);
+    const initialModels: ModelState[] = modelCosts.map((model) => ({
+      id: model.id,
+      model_id: model.model_id,
+      label: model.label,
+      cost: model.cost,
+      enabled: model.enabled,
+      vip_only: model.vip_only,
+      folder: (model as any).folder || null,
+    }));
+    setModels(initialModels);
   }, [modelCosts]);
+
+  const folders = useMemo(() => {
+    const folderSet = new Set<string>();
+    models.forEach((m) => {
+      if (m.folder) folderSet.add(m.folder);
+    });
+    return Array.from(folderSet).sort();
+  }, [models]);
+
+  const selectedModel = useMemo(
+    () => models.find((m) => m.model_id === selectedModelId),
+    [models, selectedModelId]
+  );
+
+  const updateModel = (modelId: string, updates: Partial<ModelState>) => {
+    setModels((prev) =>
+      prev.map((m) => (m.model_id === modelId ? { ...m, ...updates } : m))
+    );
+  };
+
+  const handleCreateFolder = (name: string) => {
+    if (!folders.includes(name)) {
+      toast({
+        title: "Folder created",
+        description: `Drag models into "${name}" to organize them.`,
+      });
+    }
+  };
+
+  const handleDeleteFolder = (name: string) => {
+    setModels((prev) =>
+      prev.map((m) => (m.folder === name ? { ...m, folder: null } : m))
+    );
+    toast({
+      title: "Folder deleted",
+      description: "Models have been moved to Unsorted.",
+    });
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updates = Object.entries(costs).map(([model_id, cost]) => ({
-        model_id,
-        cost,
-        label: labels[model_id],
-        enabled: enabled[model_id],
-        vip_only: vipOnly[model_id],
-      }));
-
-      for (const update of updates) {
+      for (const model of models) {
         const { error } = await supabase
           .from("model_costs")
-          .update({ 
-            cost: update.cost, 
-            label: update.label,
-            enabled: update.enabled,
-            vip_only: update.vip_only
+          .update({
+            cost: model.cost,
+            label: model.label,
+            enabled: model.enabled,
+            vip_only: model.vip_only,
+            folder: model.folder,
           })
-          .eq("model_id", update.model_id);
+          .eq("model_id", model.model_id);
 
         if (error) throw error;
       }
 
       toast({
         title: "Success",
-        description: "Model settings updated successfully",
+        description: "Model settings saved successfully",
       });
     } catch (error) {
       console.error("Error updating model settings:", error);
@@ -120,147 +154,93 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="container max-w-4xl mx-auto">
-        <div className="mb-6">
-          <Button variant="ghost" onClick={() => navigate("/")} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Chat
-          </Button>
-          <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
-          <p className="text-muted-foreground">Manage AI model costs</p>
+    <div className="min-h-screen bg-gradient-subtle p-4 md:p-6">
+      <div className="container max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <Button variant="ghost" onClick={() => navigate("/")} className="mb-2">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Chat
+            </Button>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+              <Monitor className="h-6 w-6 md:h-8 md:w-8" />
+              Admin Control Panel
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleToggleSite}
+              disabled={togglingSite}
+              variant={isDisabled ? "default" : "destructive"}
+              size="sm"
+            >
+              {isDisabled ? (
+                <>
+                  <Power className="w-4 h-4 mr-2" />
+                  Enable Site
+                </>
+              ) : (
+                <>
+                  <PowerOff className="w-4 h-4 mr-2" />
+                  Disable Site
+                </>
+              )}
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="gap-2">
+              <Save className="w-4 h-4" />
+              {saving ? "Saving..." : "Save All"}
+            </Button>
+          </div>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Site Control</CardTitle>
-            <CardDescription>
-              Enable or disable the site for all users. When disabled, users will see a maintenance page.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Site Status</p>
-                <p className="text-sm text-muted-foreground">
-                  {isDisabled 
-                    ? `Disabled until ${disabledUntil?.toLocaleString()}`
-                    : "Site is currently online"}
-                </p>
-              </div>
-              <Button 
-                onClick={handleToggleSite} 
-                disabled={togglingSite}
-                variant={isDisabled ? "default" : "destructive"}
-              >
-                {isDisabled ? (
-                  <>
-                    <Power className="w-4 h-4 mr-2" />
-                    Enable Site
-                  </>
-                ) : (
-                  <>
-                    <PowerOff className="w-4 h-4 mr-2" />
-                    Disable for 1 Day
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Site status banner */}
+        {isDisabled && (
+          <Card className="mb-4 border-destructive/50 bg-destructive/10">
+            <CardContent className="py-3">
+              <p className="text-sm text-destructive font-medium">
+                Site is disabled until {disabledUntil?.toLocaleString()}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Model Costs Configuration</CardTitle>
-            <CardDescription>
-              Adjust the credit cost for each AI model. Changes will apply immediately to all users.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {modelCosts.map((model) => (
-              <div key={model.id} className="space-y-3 pb-4 border-b last:border-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <Label htmlFor={`label-${model.model_id}`}>Display Name</Label>
-                    <p className="text-sm text-muted-foreground">{model.model_id}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={`enabled-${model.model_id}`}
-                        checked={enabled[model.model_id] ?? true}
-                        onCheckedChange={(checked) =>
-                          setEnabled((prev) => ({
-                            ...prev,
-                            [model.model_id]: checked,
-                          }))
-                        }
-                      />
-                      <Label htmlFor={`enabled-${model.model_id}`} className="text-sm">
-                        Enabled
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={`vip-${model.model_id}`}
-                        checked={vipOnly[model.model_id] ?? false}
-                        onCheckedChange={(checked) =>
-                          setVipOnly((prev) => ({
-                            ...prev,
-                            [model.model_id]: checked,
-                          }))
-                        }
-                      />
-                      <Label htmlFor={`vip-${model.model_id}`} className="text-sm flex items-center gap-1">
-                        <Crown className="w-3 h-3 text-yellow-500" />
-                        VIP Only
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <Input
-                      id={`label-${model.model_id}`}
-                      type="text"
-                      value={labels[model.model_id] || ""}
-                      onChange={(e) =>
-                        setLabels((prev) => ({
-                          ...prev,
-                          [model.model_id]: e.target.value,
-                        }))
-                      }
-                      placeholder="Model display name"
-                    />
-                  </div>
-                  <div className="w-32">
-                    <Input
-                      id={`cost-${model.model_id}`}
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={costs[model.model_id] || 0}
-                      onChange={(e) =>
-                        setCosts((prev) => ({
-                          ...prev,
-                          [model.model_id]: parseFloat(e.target.value) || 0,
-                        }))
-                      }
-                    />
-                  </div>
-                  <span className="text-sm text-muted-foreground">credits</span>
-                </div>
-              </div>
-            ))}
+        {/* File Explorer Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[calc(100vh-220px)] min-h-[500px]">
+          {/* Sidebar - File Explorer */}
+          <div className="lg:col-span-4 xl:col-span-3 h-full">
+            <FileExplorer
+              models={models}
+              selectedFile={selectedModelId}
+              onSelectFile={setSelectedModelId}
+              onUpdateFolder={(modelId, folder) => updateModel(modelId, { folder })}
+              folders={folders}
+              onCreateFolder={handleCreateFolder}
+              onDeleteFolder={handleDeleteFolder}
+            />
+          </div>
 
-            <div className="pt-4">
-              <Button onClick={handleSave} disabled={saving} className="w-full">
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Main - File Editor */}
+          <div className="lg:col-span-8 xl:col-span-9 h-full">
+            {selectedModel ? (
+              <FileEditor
+                model={selectedModel}
+                onUpdateLabel={(value) => updateModel(selectedModel.model_id, { label: value })}
+                onUpdateCost={(value) => updateModel(selectedModel.model_id, { cost: value })}
+                onUpdateEnabled={(value) => updateModel(selectedModel.model_id, { enabled: value })}
+                onUpdateVipOnly={(value) => updateModel(selectedModel.model_id, { vip_only: value })}
+              />
+            ) : (
+              <Card className="h-full flex items-center justify-center">
+                <CardContent className="text-center">
+                  <CardDescription className="text-lg">
+                    Select a model file to edit its configuration
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
