@@ -1,8 +1,9 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
-import { Brain, Crown, Folder } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Brain, Crown, Folder, ChevronRight } from "lucide-react";
 import { useModelCosts } from "@/hooks/useModelCosts";
 import { useVipStatus } from "@/hooks/useVipStatus";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export type AIModel = 
   | "openai/gpt-5-nano"
@@ -21,6 +22,7 @@ interface ModelSelectorProps {
 const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
   const { modelCosts, loading } = useModelCosts();
   const { isVip, loading: vipLoading } = useVipStatus();
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
   
   // Filter models based on enabled status and VIP access
   const availableModels = modelCosts.filter(m => {
@@ -52,6 +54,20 @@ const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
     
     return { groups, unsorted };
   }, [availableModels]);
+
+  const folderNames = Object.keys(groupedModels.groups).sort();
+
+  // Initialize open folders - open the folder containing selected model
+  useEffect(() => {
+    if (folderNames.length > 0 && Object.keys(openFolders).length === 0) {
+      const initialState: Record<string, boolean> = {};
+      folderNames.forEach(name => {
+        const hasSelected = groupedModels.groups[name].some(m => m.model_id === value);
+        initialState[name] = hasSelected;
+      });
+      setOpenFolders(initialState);
+    }
+  }, [folderNames, groupedModels.groups, value]);
   
   // Auto-select first available model if current selection is unavailable
   useEffect(() => {
@@ -63,11 +79,17 @@ const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
     }
   }, [availableModels, value, loading, vipLoading, onChange]);
 
+  const toggleFolder = (folderName: string) => {
+    setOpenFolders(prev => ({
+      ...prev,
+      [folderName]: !prev[folderName]
+    }));
+  };
+
   if (loading || vipLoading) {
     return null;
   }
 
-  const folderNames = Object.keys(groupedModels.groups).sort();
   const hasGroups = folderNames.length > 0;
 
   return (
@@ -90,37 +112,48 @@ const ModelSelector = ({ value, onChange }: ModelSelectorProps) => {
       <SelectContent>
         {/* Render grouped models by folder */}
         {folderNames.map((folderName) => (
-          <SelectGroup key={folderName}>
-            <SelectLabel className="flex items-center gap-2 text-muted-foreground">
+          <Collapsible
+            key={folderName}
+            open={openFolders[folderName]}
+            onOpenChange={() => toggleFolder(folderName)}
+          >
+            <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer">
+              <ChevronRight 
+                className={`w-3 h-3 transition-transform ${openFolders[folderName] ? 'rotate-90' : ''}`} 
+              />
               <Folder className="w-3 h-3" />
               {folderName}
-            </SelectLabel>
-            {groupedModels.groups[folderName].map((model) => (
-              <SelectItem key={model.model_id} value={model.model_id} className="pl-6">
-                <div className="flex items-center gap-2">
-                  {model.vip_only && <Crown className="w-3 h-3 text-yellow-500" />}
-                  <span>{model.label} ({model.cost} credits)</span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectGroup>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {groupedModels.groups[folderName].map((model) => (
+                <SelectItem key={model.model_id} value={model.model_id} className="pl-8">
+                  <div className="flex items-center gap-2">
+                    {model.vip_only && <Crown className="w-3 h-3 text-yellow-500" />}
+                    <span>{model.label} ({model.cost} credits)</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
         ))}
         
         {/* Render unsorted models */}
         {groupedModels.unsorted.length > 0 && (
-          <SelectGroup>
+          <>
             {hasGroups && (
-              <SelectLabel className="text-muted-foreground">Other</SelectLabel>
+              <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
+                Other
+              </div>
             )}
             {groupedModels.unsorted.map((model) => (
-              <SelectItem key={model.model_id} value={model.model_id} className={hasGroups ? "pl-6" : ""}>
+              <SelectItem key={model.model_id} value={model.model_id} className={hasGroups ? "pl-8" : ""}>
                 <div className="flex items-center gap-2">
                   {model.vip_only && <Crown className="w-3 h-3 text-yellow-500" />}
                   <span>{model.label} ({model.cost} credits)</span>
                 </div>
               </SelectItem>
             ))}
-          </SelectGroup>
+          </>
         )}
       </SelectContent>
     </Select>
