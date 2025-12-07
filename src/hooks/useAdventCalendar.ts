@@ -76,8 +76,8 @@ export const useAdventCalendar = () => {
 
   const claimDay = async (day: number): Promise<number | null> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
         toast({
           title: "Please log in",
           description: "You need to be logged in to claim advent rewards.",
@@ -86,114 +86,52 @@ export const useAdventCalendar = () => {
         return null;
       }
 
-      // Check if it's December
-      if (currentMonth !== 12) {
+      // Call the secure edge function
+      const { data, error } = await supabase.functions.invoke('claim-advent', {
+        body: { day },
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
         toast({
-          title: "Not December yet!",
-          description: "The advent calendar is only available in December.",
+          title: "Error",
+          description: "Failed to claim reward. Please try again.",
           variant: "destructive",
         });
         return null;
       }
 
-      // Check if day is available (can only open current day or past days)
-      if (day > currentDay) {
+      if (data.error) {
         toast({
-          title: "Too early!",
-          description: "You can only open this door on December " + day + ".",
+          title: "Cannot claim",
+          description: data.error,
           variant: "destructive",
         });
         return null;
       }
 
-      // Check if already claimed
-      if (claims.some(c => c.day_number === day)) {
-        toast({
-          title: "Already claimed",
-          description: "You've already opened this door!",
-          variant: "destructive",
-        });
-        return null;
-      }
+      // Update local state with server response
+      setClaims(prev => [...prev, {
+        day_number: day,
+        credits_awarded: data.creditsAwarded,
+        claimed_at: new Date().toISOString(),
+      }]);
 
-      // Check if user is already VIP
-      const userIsVip = isVip();
-      
-      // 10% chance to get VIP if not already VIP
-      const getsVip = !userIsVip && Math.random() < 0.1;
-      
-      // Generate random credits (1-15)
-      const creditsAwarded = getsVip ? 0 : Math.floor(Math.random() * 15) + 1;
-
-      // Insert claim
-      const { error: claimError } = await supabase
-        .from('advent_claims')
-        .insert({
-          user_id: user.id,
-          day_number: day,
-          credits_awarded: creditsAwarded,
-          year: currentYear,
-        });
-
-      if (claimError) throw claimError;
-
-      // If user gets VIP, create VIP status
-      if (getsVip) {
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 15);
-        
-        const { error: vipError } = await supabase
-          .from('vip_status')
-          .upsert({
-            user_id: user.id,
-            expires_at: expiresAt.toISOString(),
-          });
-        
-        if (vipError) throw vipError;
-        setVipStatus({ expires_at: expiresAt.toISOString() });
-        
+      if (data.getsVip) {
+        setVipStatus({ expires_at: data.vipExpiresAt });
         toast({
           title: "🌟 VIP Reward!",
           description: "You received 15 days of VIP status! (20 credits/day)",
         });
-        
-        // Update local state
-        setClaims(prev => [...prev, {
-          day_number: day,
-          credits_awarded: 0,
-          claimed_at: new Date().toISOString(),
-        }]);
-        
         return -1; // Special return value for VIP
       }
 
-      // Update user credits
-      const { data: currentCredits } = await supabase
-        .from('user_credits')
-        .select('credits')
-        .eq('user_id', user.id)
-        .single();
-
-      if (currentCredits) {
-        await supabase
-          .from('user_credits')
-          .update({ credits: currentCredits.credits + creditsAwarded })
-          .eq('user_id', user.id);
-      }
-
-      // Update local state
-      setClaims(prev => [...prev, {
-        day_number: day,
-        credits_awarded: creditsAwarded,
-        claimed_at: new Date().toISOString(),
-      }]);
-
       toast({
         title: "🎄 Advent Reward!",
-        description: `You received ${creditsAwarded} credits!`,
+        description: `You received ${data.creditsAwarded} credits!`,
       });
 
-      return creditsAwarded;
+      return data.creditsAwarded;
     } catch (error) {
       console.error('Error claiming advent day:', error);
       toast({
