@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          path: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          path?: string
+        }
+        Relationships: []
+      }
       advent_claims: {
         Row: {
           claimed_at: string
