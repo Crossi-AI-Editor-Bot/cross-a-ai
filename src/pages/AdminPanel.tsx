@@ -28,11 +28,37 @@ const AdminPanel = () => {
   const { modelCosts, loading: costsLoading } = useModelCosts();
   const { isDisabled, disabledUntil, disableSite, enableSite, loading: siteLoading } = useSiteStatus();
   const [customFolders, setCustomFolders] = useState<string[]>([]);
+  const [foldersLoading, setFoldersLoading] = useState(true);
   
   const [models, setModels] = useState<ModelState[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [togglingSite, setTogglingSite] = useState(false);
+
+  // Load folders from database
+  useEffect(() => {
+    const loadFolders = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("admin_folders")
+          .select("path");
+        
+        if (error) throw error;
+        
+        if (data) {
+          setCustomFolders(data.map((f) => f.path));
+        }
+      } catch (error) {
+        console.error("Error loading folders:", error);
+      } finally {
+        setFoldersLoading(false);
+      }
+    };
+
+    if (isAdmin) {
+      loadFolders();
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!adminLoading && !isAdmin) {
@@ -72,25 +98,62 @@ const AdminPanel = () => {
     );
   };
 
-  const handleCreateFolder = (name: string) => {
+  const handleCreateFolder = async (name: string) => {
     if (!folders.includes(name)) {
-      setCustomFolders((prev) => [...prev, name]);
-      toast({
-        title: "Folder created",
-        description: `Drag models into "${name}" to organize them.`,
-      });
+      try {
+        const { error } = await supabase
+          .from("admin_folders")
+          .insert({ path: name });
+        
+        if (error) throw error;
+        
+        setCustomFolders((prev) => [...prev, name]);
+        toast({
+          title: "Folder created",
+          description: `Drag models into "${name}" to organize them.`,
+        });
+      } catch (error) {
+        console.error("Error creating folder:", error);
+        toast({
+          title: "Error",
+          description: "Failed to create folder",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleDeleteFolder = (name: string) => {
-    setCustomFolders((prev) => prev.filter((f) => f !== name));
-    setModels((prev) =>
-      prev.map((m) => (m.folder === name ? { ...m, folder: null } : m))
-    );
-    toast({
-      title: "Folder deleted",
-      description: "Models have been moved to Unsorted.",
-    });
+  const handleDeleteFolder = async (name: string) => {
+    try {
+      // Delete the folder and all child folders
+      const { error } = await supabase
+        .from("admin_folders")
+        .delete()
+        .or(`path.eq.${name},path.like.${name}/%`);
+      
+      if (error) throw error;
+      
+      // Update local state - remove this folder and all children
+      setCustomFolders((prev) => prev.filter((f) => f !== name && !f.startsWith(name + "/")));
+      setModels((prev) =>
+        prev.map((m) => 
+          m.folder === name || m.folder?.startsWith(name + "/") 
+            ? { ...m, folder: null } 
+            : m
+        )
+      );
+      toast({
+        title: "Folder deleted",
+        description: "Models have been moved to Unsorted.",
+      });
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete folder",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -148,7 +211,7 @@ const AdminPanel = () => {
     }
   };
 
-  if (adminLoading || costsLoading || siteLoading) {
+  if (adminLoading || costsLoading || siteLoading || foldersLoading) {
     return null;
   }
 
