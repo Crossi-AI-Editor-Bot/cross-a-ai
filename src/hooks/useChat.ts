@@ -7,6 +7,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   image?: string;
+  video?: string;
   files?: Array<{ name: string; type: string; data: string }>;
 }
 
@@ -37,14 +38,15 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
 
       if (error) throw error;
       
-      // Parse messages, handling image data if stored as JSON
+      // Parse messages, handling image/video data if stored as JSON
       const parsedMessages = (data || []).map(msg => {
         try {
           const parsed = JSON.parse(msg.content);
           return {
             role: msg.role,
             content: parsed.text || parsed.content || msg.content,
-            image: parsed.image
+            image: parsed.image,
+            video: parsed.video
           };
         } catch {
           return {
@@ -100,21 +102,23 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
 
     let assistantContent = "";
     let assistantImage: string | undefined = undefined;
+    let assistantVideo: string | undefined = undefined;
 
-    const updateAssistantMessage = (chunk: string, imageData?: string) => {
+    const updateAssistantMessage = (chunk: string, imageData?: string, videoData?: string) => {
       assistantContent += chunk;
       if (imageData) assistantImage = imageData;
+      if (videoData) assistantVideo = videoData;
       
       setMessages((prev) => {
         const lastMessage = prev[prev.length - 1];
         if (lastMessage?.role === "assistant") {
           return prev.map((msg, i) =>
             i === prev.length - 1 
-              ? { ...msg, content: assistantContent, image: assistantImage } 
+              ? { ...msg, content: assistantContent, image: assistantImage, video: assistantVideo } 
               : msg
           );
         }
-        return [...prev, { role: "assistant", content: assistantContent, image: assistantImage }];
+        return [...prev, { role: "assistant", content: assistantContent, image: assistantImage, video: assistantVideo }];
       });
     };
 
@@ -133,8 +137,9 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         return;
       }
 
-      // Check if this is an image generation model
+      // Check if this is an image or video generation model
       const isImageGen = model === 'google/gemini-2.5-flash-image';
+      const isVideoGen = model === 'google/veo-3.1-fast';
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -197,6 +202,55 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           { 
             role: "assistant", 
             content: JSON.stringify({ text: textResponse, image: imageUrl })
+          }
+        ]);
+        
+        setIsLoading(false);
+        return;
+      }
+
+      // Handle video generation response
+      if (isVideoGen) {
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          
+          if (response.status === 429) {
+            toast({
+              title: "Rate Limit",
+              description: errorData.error || "Too many requests. Please try again later.",
+              variant: "destructive",
+            });
+            setMessages((prev) => prev.slice(0, -1));
+            return;
+          }
+          
+          if (response.status === 402) {
+            toast({
+              title: "Insufficient Credits",
+              description: "You don't have enough credits. You'll get 15 credits tomorrow.",
+              variant: "destructive",
+            });
+            setMessages((prev) => prev.slice(0, -1));
+            window.location.reload();
+            return;
+          }
+
+          throw new Error(errorData.error || "Failed to generate video");
+        }
+
+        const data = await response.json();
+        const videoUrl = data.video;
+        const textResponse = data.text || "Here's your generated video:";
+        
+        updateAssistantMessage(textResponse, undefined, videoUrl);
+        setNewCredits(data.credits);
+        
+        // Save to database with video
+        await saveMessagesToDatabase([
+          userMessage, 
+          { 
+            role: "assistant", 
+            content: JSON.stringify({ text: textResponse, video: videoUrl })
           }
         ]);
         

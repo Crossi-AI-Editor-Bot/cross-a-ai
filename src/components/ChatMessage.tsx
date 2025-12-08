@@ -6,10 +6,11 @@ interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   image?: string;
+  video?: string;
   files?: Array<{ name: string; type: string; data: string }>;
 }
 
-const ChatMessage = ({ role, content, image, files }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, video, files }: ChatMessageProps) => {
   const isUser = role === "user";
 
   const handleDownload = () => {
@@ -92,6 +93,61 @@ const ChatMessage = ({ role, content, image, files }: ChatMessageProps) => {
                   onClick={handleDownload}
                 >
                   <Download className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {video && (
+          <div className="mt-3 space-y-2">
+            <div className="relative group rounded-lg overflow-hidden border border-border">
+              <video 
+                src={video} 
+                controls
+                className="w-full h-auto rounded-lg"
+              >
+                Your browser does not support the video tag.
+              </video>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="rounded-full"
+                    >
+                      <Maximize2 className="w-4 h-4 mr-2" />
+                      Full Screen
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl w-full">
+                    <video 
+                      src={video} 
+                      controls
+                      autoPlay
+                      className="w-full h-auto rounded-lg"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </DialogContent>
+                </Dialog>
+                
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = video;
+                    link.download = `ai-generated-video-${Date.now()}.mp4`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download
                 </Button>
               </div>
             </div>
