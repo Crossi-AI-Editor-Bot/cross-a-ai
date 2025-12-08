@@ -206,6 +206,7 @@ const Index = () => {
                 role={message.role}
                 content={message.content}
                 image={message.image}
+                video={message.video}
                 files={message.files}
               />
             ))}

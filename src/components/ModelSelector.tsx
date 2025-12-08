@@ -12,7 +12,8 @@ export type AIModel =
   | "google/gemini-2.5-flash"
   | "google/gemini-2.5-flash-image"
   | "openai/gpt-5"
-  | "google/gemini-2.5-pro";
+  | "google/gemini-2.5-pro"
+  | "google/veo-3.1-fast";
 
 interface ModelSelectorProps {
   value: AIModel;

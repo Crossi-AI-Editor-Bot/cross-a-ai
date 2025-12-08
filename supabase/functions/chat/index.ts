@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { GoogleGenAI } from "https://esm.sh/@google/genai@0.14.1";
+import Replicate from "https://esm.sh/replicate@0.25.2";
 
 // Image generation uses Lovable API with this model
 const LOVABLE_IMAGE_MODEL = "google/gemini-2.5-flash-image-preview";
@@ -28,7 +29,8 @@ const chatRequestSchema = z.object({
     'google/gemini-2.5-flash-image',
     'openai/gpt-5',
     'openai/gpt-5-mini',
-    'openai/gpt-5-nano'
+    'openai/gpt-5-nano',
+    'google/veo-3.1-fast'
   ]).default('google/gemini-2.5-flash')
 });
 
@@ -165,18 +167,26 @@ Deno.serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GOOGLE_API_KEY = Deno.env.get("Google_API");
+    const REPLICATE_API_KEY = Deno.env.get("REPLICATE_API_KEY");
     
     // Check if this is an image generation request - uses Lovable API
     const isImageGen = model === 'google/gemini-2.5-flash-image';
     
-    const isGoogleModel = model.startsWith('google/') && !isImageGen;
+    // Check if this is a video generation request - uses Replicate API
+    const isVideoGen = model === 'google/veo-3.1-fast';
+    
+    const isGoogleModel = model.startsWith('google/') && !isImageGen && !isVideoGen;
     
     if (isGoogleModel && !GOOGLE_API_KEY) {
       throw new Error("Google_API is not configured");
     }
     
-    if ((!isGoogleModel || isImageGen) && !LOVABLE_API_KEY) {
+    if ((!isGoogleModel || isImageGen) && !isVideoGen && !LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+    
+    if (isVideoGen && !REPLICATE_API_KEY) {
+      throw new Error("REPLICATE_API_KEY is not configured");
     }
 
     console.log('Processing chat request - User:', user.id, 'Messages:', messages.length, 'Model:', model);
@@ -268,6 +278,83 @@ Deno.serve(async (req) => {
         console.error('Lovable Image API error:', error);
         return new Response(
           JSON.stringify({ error: 'Image generation error', details: error instanceof Error ? error.message : 'Unknown error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Handle video generation via Replicate API (VEO 3.1 Fast)
+    if (isVideoGen) {
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+      const prompt = lastUserMessage?.content || 'Generate a video';
+      
+      // Extract image URL if provided in files
+      let imageUrl: string | undefined;
+      let lastFrameUrl: string | undefined;
+      
+      if (lastUserMessage?.files && lastUserMessage.files.length > 0) {
+        for (const file of lastUserMessage.files) {
+          if (file.type.startsWith('image/')) {
+            // Use the base64 data URL directly or first image as the input
+            if (!imageUrl) {
+              imageUrl = file.data;
+            } else if (!lastFrameUrl) {
+              lastFrameUrl = file.data;
+            }
+          }
+        }
+      }
+      
+      try {
+        const replicate = new Replicate({
+          auth: REPLICATE_API_KEY,
+        });
+
+        console.log('Starting VEO 3.1 Fast video generation with prompt:', prompt);
+        
+        const input: any = {
+          prompt: prompt,
+          resolution: "720p"
+        };
+        
+        // Add image if provided
+        if (imageUrl) {
+          input.image = imageUrl;
+        }
+        if (lastFrameUrl) {
+          input.last_frame = lastFrameUrl;
+        }
+
+        const output = await replicate.run("google/veo-3.1-fast", { input });
+        
+        console.log('VEO 3.1 Fast generation response:', output);
+        
+        // Get the video URL from the output
+        let videoUrl: string;
+        if (typeof output === 'object' && output !== null && 'url' in output && typeof (output as any).url === 'function') {
+          videoUrl = (output as any).url();
+        } else if (typeof output === 'string') {
+          videoUrl = output;
+        } else if (Array.isArray(output) && output.length > 0) {
+          videoUrl = output[0];
+        } else {
+          videoUrl = String(output);
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            video: videoUrl,
+            text: "Video generated successfully! Here's your video:",
+            credits: newCredits 
+          }),
+          { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      } catch (error) {
+        console.error('Replicate API error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Video generation error', details: error instanceof Error ? error.message : 'Unknown error' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
