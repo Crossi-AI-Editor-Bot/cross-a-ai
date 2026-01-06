@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
-import { GoogleGenAI } from "https://esm.sh/@google/genai@0.14.1";
 import Replicate from "https://esm.sh/replicate@0.25.2";
 
 // Image generation uses Lovable API with this model
@@ -166,22 +165,15 @@ Deno.serve(async (req) => {
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const GOOGLE_API_KEY = Deno.env.get("Google_API");
     const REPLICATE_API_KEY = Deno.env.get("REPLICATE_API_KEY");
     
-    // Check if this is an image generation request - uses Lovable API
+    // Check if this is an image generation request
     const isImageGen = model === 'google/gemini-2.5-flash-image';
     
     // Check if this is a video generation request - uses Replicate API
     const isVideoGen = model === 'google/veo-3.1-fast';
     
-    const isGoogleModel = model.startsWith('google/') && !isImageGen && !isVideoGen;
-    
-    if (isGoogleModel && !GOOGLE_API_KEY) {
-      throw new Error("Google_API is not configured");
-    }
-    
-    if ((!isGoogleModel || isImageGen) && !isVideoGen && !LOVABLE_API_KEY) {
+    if (!isVideoGen && !LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
     
@@ -360,194 +352,106 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (isGoogleModel) {
-      // Use the official Google GenAI SDK
-      const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
-      const geminiModel = model.replace('google/', '');
-      
-      // Build the contents for Google API
-      const contents: any[] = [];
-      
-      for (const msg of messages) {
-        const parts: any[] = [];
-        
-        if (msg.content) {
-          parts.push({ text: msg.content });
-        }
-        
+    // Use Lovable AI gateway for all text models (Google and OpenAI)
+    const requestBody: any = {
+      model,
+      messages: messages.map(msg => {
         if (msg.files && msg.files.length > 0) {
-          for (const file of msg.files) {
+          const content: any[] = [];
+          
+          if (msg.content) {
+            content.push({ type: "text", text: msg.content });
+          }
+          
+          msg.files.forEach((file: any) => {
             if (file.type.startsWith('image/')) {
-              const base64Data = file.data.split(',')[1];
-              parts.push({
-                inlineData: {
-                  mimeType: file.type,
-                  data: base64Data
-                }
+              content.push({
+                type: "image_url",
+                image_url: { url: file.data }
               });
             }
-          }
-        }
-        
-        if (parts.length > 0) {
-          contents.push({
-            role: msg.role === 'assistant' ? 'model' : 'user',
-            parts
           });
-        }
-      }
-
-      try {
-        // Streaming for text generation
-        const stream = new ReadableStream({
-          async start(controller) {
-              try {
-                const response = await ai.models.generateContentStream({
-                  model: geminiModel,
-                  contents: contents,
-                  config: {
-                    systemInstruction: "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging.",
-                    temperature: 1.0,
-                    maxOutputTokens: 8192,
-                  }
-                });
-                
-                for await (const chunk of response) {
-                  const text = chunk.text;
-                  if (text) {
-                    const sseData = {
-                      choices: [{
-                        delta: { content: text }
-                      }]
-                    };
-                    const sseEvent = `data: ${JSON.stringify(sseData)}\n\n`;
-                    controller.enqueue(new TextEncoder().encode(sseEvent));
-                  }
-                }
-                
-                // Send credits update before closing
-                const creditsEvent = `data: ${JSON.stringify({ type: 'credits', credits: newCredits })}\n\n`;
-                controller.enqueue(new TextEncoder().encode(creditsEvent));
-                controller.close();
-              } catch (error) {
-                console.error('Streaming error:', error);
-                controller.error(error);
-              }
-            }
-          });
-
-          return new Response(stream, {
-            headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-          });
-      } catch (error) {
-        console.error('Google AI SDK error:', error);
-        return new Response(
-          JSON.stringify({ error: 'AI API error', details: error instanceof Error ? error.message : 'Unknown error' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else {
-      // Use Lovable AI gateway for OpenAI models
-      const requestBody: any = {
-        model,
-        messages: messages.map(msg => {
-          if (msg.files && msg.files.length > 0) {
-            const content: any[] = [];
-            
-            if (msg.content) {
-              content.push({ type: "text", text: msg.content });
-            }
-            
-            msg.files.forEach((file: any) => {
-              if (file.type.startsWith('image/')) {
-                content.push({
-                  type: "image_url",
-                  image_url: { url: file.data }
-                });
-              }
-            });
-            
-            return {
-              role: msg.role,
-              content
-            };
-          }
           
           return {
             role: msg.role,
-            content: msg.content
+            content
           };
-        }),
-        stream: true
-      };
-
-      requestBody.messages = [
-        { 
-          role: "system", 
-          content: "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging." 
-        },
-        ...requestBody.messages,
-      ];
-
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("AI API error:", response.status, errorText);
-        
-        if (response.status === 429) {
-          return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
         }
         
-        if (response.status === 402) {
-          return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue." }), {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        
-        return new Response(JSON.stringify({ error: "AI API error", details: errorText }), {
-          status: 500,
+        return {
+          role: msg.role,
+          content: msg.content
+        };
+      }),
+      stream: true
+    };
+
+    requestBody.messages = [
+      { 
+        role: "system", 
+        content: "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging." 
+      },
+      ...requestBody.messages,
+    ];
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI API error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+          status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      // Handle OpenAI streaming response (via Lovable gateway)
-      const reader = response.body?.getReader();
-      const stream = new ReadableStream({
-        async start(controller) {
-          try {
-            while (true) {
-              const { done, value } = await reader!.read();
-              if (done) {
-                // Send credits update before closing
-                const creditsEvent = `data: ${JSON.stringify({ type: 'credits', credits: newCredits })}\n\n`;
-                controller.enqueue(new TextEncoder().encode(creditsEvent));
-                controller.close();
-                break;
-              }
-              controller.enqueue(value);
-            }
-          } catch (error) {
-            controller.error(error);
-          }
-        }
-      });
-
-      return new Response(stream, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      return new Response(JSON.stringify({ error: "AI API error", details: errorText }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Handle streaming response via Lovable gateway
+    const reader = response.body?.getReader();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          while (true) {
+            const { done, value } = await reader!.read();
+            if (done) {
+              // Send credits update before closing
+              const creditsEvent = `data: ${JSON.stringify({ type: 'credits', credits: newCredits })}\n\n`;
+              controller.enqueue(new TextEncoder().encode(creditsEvent));
+              controller.close();
+              break;
+            }
+            controller.enqueue(value);
+          }
+        } catch (error) {
+          controller.error(error);
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
   } catch (e) {
     console.error("Chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
