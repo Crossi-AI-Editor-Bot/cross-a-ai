@@ -20,8 +20,12 @@ const AdventCalendar = ({ onCreditsUpdate }: AdventCalendarProps) => {
   const [openingDay, setOpeningDay] = useState<number | null>(null);
   const [reward, setReward] = useState<number | null>(null);
   const [showReward, setShowReward] = useState(false);
-
   const [gotVip, setGotVip] = useState(false);
+
+  // Don't render the calendar button outside of December
+  if (currentMonth !== 12) {
+    return null;
+  }
 
   const handleClaimDay = async (day: number) => {
     setOpeningDay(day);
