@@ -19,6 +19,7 @@ interface ModelState {
   enabled: boolean;
   vip_only: boolean;
   folder: string | null;
+  image_cost: number;
 }
 
 const AdminPanel = () => {
@@ -75,6 +76,7 @@ const AdminPanel = () => {
       enabled: model.enabled,
       vip_only: model.vip_only,
       folder: (model as any).folder || null,
+      image_cost: model.image_cost || 0,
     }));
     setModels(initialModels);
   }, [modelCosts]);
@@ -168,6 +170,7 @@ const AdminPanel = () => {
             enabled: model.enabled,
             vip_only: model.vip_only,
             folder: model.folder,
+            image_cost: model.image_cost,
           })
           .eq("model_id", model.model_id);
 
@@ -295,6 +298,7 @@ const AdminPanel = () => {
                 onUpdateCost={(value) => updateModel(selectedModel.model_id, { cost: value })}
                 onUpdateEnabled={(value) => updateModel(selectedModel.model_id, { enabled: value })}
                 onUpdateVipOnly={(value) => updateModel(selectedModel.model_id, { vip_only: value })}
+                onUpdateImageCost={(value) => updateModel(selectedModel.model_id, { image_cost: value })}
               />
             ) : (
               <Card className="h-full flex items-center justify-center">

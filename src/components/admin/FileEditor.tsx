@@ -1,7 +1,9 @@
-import { Crown, Power, PowerOff } from "lucide-react";
+import { Crown, ImageIcon, Power, PowerOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+
+const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-2.5-flash-image-preview'];
 
 interface ModelData {
   id: string;
@@ -11,6 +13,7 @@ interface ModelData {
   enabled: boolean;
   vip_only: boolean;
   folder: string | null;
+  image_cost: number;
 }
 
 interface FileEditorProps {
@@ -19,6 +22,7 @@ interface FileEditorProps {
   onUpdateCost: (value: number) => void;
   onUpdateEnabled: (value: boolean) => void;
   onUpdateVipOnly: (value: boolean) => void;
+  onUpdateImageCost?: (value: number) => void;
 }
 
 export const FileEditor = ({
@@ -27,7 +31,10 @@ export const FileEditor = ({
   onUpdateCost,
   onUpdateEnabled,
   onUpdateVipOnly,
+  onUpdateImageCost,
 }: FileEditorProps) => {
+  const isImageModel = IMAGE_MODELS.includes(model.model_id);
+  
   return (
     <div className="h-full flex flex-col bg-card border border-border rounded-lg overflow-hidden">
       {/* Tab bar */}
@@ -82,6 +89,23 @@ export const FileEditor = ({
               className="h-7 w-24 text-sm font-mono bg-background text-orange-400"
             />
           </div>
+
+          {/* Image Cost - only show for image models */}
+          {isImageModel && onUpdateImageCost && (
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-purple-400" />
+              <span className="text-purple-400">image_credit_cost</span>
+              <span className="text-muted-foreground">=</span>
+              <Input
+                type="number"
+                step="1"
+                min="0"
+                value={model.image_cost}
+                onChange={(e) => onUpdateImageCost(parseFloat(e.target.value) || 0)}
+                className="h-7 w-24 text-sm font-mono bg-background text-purple-400"
+              />
+            </div>
+          )}
 
           <div className="h-px bg-border my-4" />
 

@@ -24,6 +24,7 @@ import ConversationsList from "@/components/ConversationsList";
 import MaintenancePage from "@/components/MaintenancePage";
 import { useChat } from "@/hooks/useChat";
 import { useCredits } from "@/hooks/useCredits";
+import { useImageCredits } from "@/hooks/useImageCredits";
 import { useConversations } from "@/hooks/useConversations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSiteStatus } from "@/hooks/useSiteStatus";
@@ -42,8 +43,9 @@ const Index = () => {
     loading: conversationsLoading,
     refetch: refetchConversations,
   } = useConversations();
-  const { messages, isLoading, sendMessage, newCredits, clearMessages } = useChat(currentConversationId, refetchConversations);
+  const { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages } = useChat(currentConversationId, refetchConversations);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
+  const { imageCredits, updateImageCredits, loading: imageCreditsLoading } = useImageCredits();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { isDisabled, disabledUntil, loading: siteLoading } = useSiteStatus();
   const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
@@ -86,6 +88,12 @@ const Index = () => {
     }
   }, [newCredits, updateCredits]);
 
+  useEffect(() => {
+    if (newImageCredits !== null) {
+      updateImageCredits(newImageCredits);
+    }
+  }, [newImageCredits, updateImageCredits]);
+
   // Create initial conversation if none exists
   useEffect(() => {
     if (!conversationsLoading && conversations.length === 0 && user) {
@@ -101,7 +109,7 @@ const Index = () => {
     await createConversation();
   };
 
-  if (loading || creditsLoading || conversationsLoading || siteLoading || adminLoading || !user) {
+  if (loading || creditsLoading || imageCreditsLoading || conversationsLoading || siteLoading || adminLoading || !user) {
     return null;
   }
 
@@ -131,7 +139,7 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-3">
               <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-              <CreditsDisplay credits={credits} selectedModel={selectedModel} />
+              <CreditsDisplay credits={credits} imageCredits={imageCredits} selectedModel={selectedModel} />
               <AdventCalendar onCreditsUpdate={(bonus) => updateCredits(credits + bonus)} />
               {isAdmin && (
                 <Button
