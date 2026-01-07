@@ -11,6 +11,7 @@ export type AIModel =
   | "google/gemini-2.5-flash-lite"
   | "google/gemini-2.5-flash"
   | "google/gemini-2.5-flash-image"
+  | "google/gemini-2.5-flash-image-preview"
   | "openai/gpt-5"
   | "google/gemini-2.5-pro"
   | "google/veo-3.1-fast";

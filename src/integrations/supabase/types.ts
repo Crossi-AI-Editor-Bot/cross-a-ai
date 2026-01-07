@@ -124,6 +124,7 @@ export type Database = {
           enabled: boolean
           folder: string | null
           id: string
+          image_cost: number | null
           label: string
           model_id: string
           updated_at: string
@@ -135,6 +136,7 @@ export type Database = {
           enabled?: boolean
           folder?: string | null
           id?: string
+          image_cost?: number | null
           label: string
           model_id: string
           updated_at?: string
@@ -146,6 +148,7 @@ export type Database = {
           enabled?: boolean
           folder?: string | null
           id?: string
+          image_cost?: number | null
           label?: string
           model_id?: string
           updated_at?: string
@@ -229,6 +232,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_image_credits: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          last_reset_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -284,6 +314,10 @@ export type Database = {
         Returns: boolean
       }
       reset_daily_credits: { Args: { p_user_id: string }; Returns: undefined }
+      reset_weekly_image_credits: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"

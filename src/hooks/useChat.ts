@@ -15,6 +15,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [newCredits, setNewCredits] = useState<number | null>(null);
+  const [newImageCredits, setNewImageCredits] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Load messages from database when conversation changes
@@ -76,6 +77,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
 
     setIsLoading(true);
     setNewCredits(null);
+    setNewImageCredits(null);
 
     // Convert files to base64
     const fileData = files ? await Promise.all(
@@ -138,7 +140,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       }
 
       // Check if this is an image or video generation model
-      const isImageGen = model === 'google/gemini-2.5-flash-image';
+      const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-2.5-flash-image-preview';
       const isVideoGen = model === 'google/veo-3.1-fast';
 
       const response = await fetch(
@@ -177,8 +179,8 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           
           if (response.status === 402) {
             toast({
-              title: "Insufficient Credits",
-              description: "You don't have enough credits. You'll get 15 credits tomorrow.",
+              title: "Insufficient Image Credits",
+              description: "You don't have enough image credits. Credits reset weekly.",
               variant: "destructive",
             });
             setMessages((prev) => prev.slice(0, -1));
@@ -194,7 +196,12 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         const textResponse = data.text || "Here's your generated image:";
         
         updateAssistantMessage(textResponse, imageUrl);
-        setNewCredits(data.credits);
+        // Update image credits for image models
+        if (data.imageCredits !== undefined) {
+          setNewImageCredits(data.imageCredits);
+        } else if (data.credits !== undefined) {
+          setNewImageCredits(data.credits);
+        }
         
         // Save to database with image
         await saveMessagesToDatabase([
@@ -466,5 +473,5 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     }
   };
 
-  return { messages, isLoading, sendMessage, newCredits, clearMessages };
+  return { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages };
 };

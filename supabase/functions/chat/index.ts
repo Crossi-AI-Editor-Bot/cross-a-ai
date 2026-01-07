@@ -80,6 +80,9 @@ Deno.serve(async (req) => {
 
     const { messages, model } = validatedData;
 
+    // Check if this is an image generation request
+    const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-2.5-flash-image-preview';
+
     // Check and deduct credits server-side
     const { data: userCredits, error: creditsError } = await supabase
       .from('user_credits')
@@ -94,7 +97,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (userCredits.credits < 0.1) {
+    // For image models, check image credits
+    let userImageCredits = null;
+    if (isImageGen) {
+      const { data: imgCredits, error: imgCreditsError } = await supabase
+        .from('user_image_credits')
+        .select('credits')
+        .eq('user_id', user.id)
+        .single();
+
+      if (imgCreditsError || !imgCredits) {
+        return new Response(
+          JSON.stringify({ error: 'Unable to verify image credits' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      userImageCredits = imgCredits;
+    }
+
+    if (!isImageGen && userCredits.credits < 0.1) {
       return new Response(
         JSON.stringify({ error: 'Insufficient credits' }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -104,7 +125,7 @@ Deno.serve(async (req) => {
     // Fetch model cost and access settings from database
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('cost, enabled, vip_only')
+      .select('cost, enabled, vip_only, image_cost')
       .eq('model_id', model)
       .single();
 
@@ -155,21 +176,29 @@ Deno.serve(async (req) => {
     }
 
     const creditCost = modelCostData.cost;
+    const imageCreditCost = modelCostData.image_cost || 0;
     const initialCredits = userCredits.credits;
+    const initialImageCredits = userImageCredits?.credits || 0;
 
-    // Validate sufficient credits
-    if (initialCredits < creditCost) {
-      return new Response(
-        JSON.stringify({ error: 'Insufficient credits' }),
-        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Validate sufficient credits based on model type
+    if (isImageGen) {
+      if (initialImageCredits < imageCreditCost) {
+        return new Response(
+          JSON.stringify({ error: 'Insufficient image credits' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      if (initialCredits < creditCost) {
+        return new Response(
+          JSON.stringify({ error: 'Insufficient credits' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const REPLICATE_API_KEY = Deno.env.get("REPLICATE_API_KEY");
-    
-    // Check if this is an image generation request
-    const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-2.5-flash-image-preview';
     
     // Check if this is a video generation request - uses Replicate API
     const isVideoGen = model === 'google/veo-3.1-fast';
@@ -185,14 +214,31 @@ Deno.serve(async (req) => {
     console.log('Processing chat request - User:', user.id, 'Messages:', messages.length, 'Model:', model);
 
     // Deduct credits before API call
-    const newCredits = initialCredits - creditCost;
-    const { error: deductError } = await supabase
-      .from('user_credits')
-      .update({ credits: newCredits })
-      .eq('user_id', user.id);
+    let newCredits = initialCredits;
+    let newImageCredits = initialImageCredits;
+    
+    if (isImageGen) {
+      // Deduct from image credits
+      newImageCredits = initialImageCredits - imageCreditCost;
+      const { error: deductError } = await supabase
+        .from('user_image_credits')
+        .update({ credits: newImageCredits })
+        .eq('user_id', user.id);
 
-    if (deductError) {
-      console.error('Failed to deduct credits:', deductError);
+      if (deductError) {
+        console.error('Failed to deduct image credits:', deductError);
+      }
+    } else {
+      // Deduct from regular credits
+      newCredits = initialCredits - creditCost;
+      const { error: deductError } = await supabase
+        .from('user_credits')
+        .update({ credits: newCredits })
+        .eq('user_id', user.id);
+
+      if (deductError) {
+        console.error('Failed to deduct credits:', deductError);
+      }
     }
 
     // Handle image generation via Lovable API
@@ -261,7 +307,7 @@ Deno.serve(async (req) => {
           JSON.stringify({ 
             image: imageUrl,
             text: textContent,
-            credits: newCredits 
+            credits: newImageCredits 
           }),
           { 
             headers: { ...corsHeaders, "Content-Type": "application/json" } 

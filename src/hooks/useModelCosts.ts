@@ -9,6 +9,7 @@ export interface ModelCost {
   cost: number;
   enabled: boolean;
   vip_only: boolean;
+  image_cost: number;
 }
 
 export const useModelCosts = () => {
