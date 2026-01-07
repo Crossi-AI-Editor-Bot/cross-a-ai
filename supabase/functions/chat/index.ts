@@ -26,6 +26,7 @@ const chatRequestSchema = z.object({
     'google/gemini-2.5-pro', 
     'google/gemini-2.5-flash-lite',
     'google/gemini-2.5-flash-image',
+    'google/gemini-2.5-flash-image-preview',
     'openai/gpt-5',
     'openai/gpt-5-mini',
     'openai/gpt-5-nano',
@@ -168,7 +169,7 @@ Deno.serve(async (req) => {
     const REPLICATE_API_KEY = Deno.env.get("REPLICATE_API_KEY");
     
     // Check if this is an image generation request
-    const isImageGen = model === 'google/gemini-2.5-flash-image';
+    const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-2.5-flash-image-preview';
     
     // Check if this is a video generation request - uses Replicate API
     const isVideoGen = model === 'google/veo-3.1-fast';
