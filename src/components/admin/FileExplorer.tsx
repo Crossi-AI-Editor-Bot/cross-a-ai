@@ -9,11 +9,14 @@ import {
   ChevronDown,
   Save,
   X,
-  GripVertical
+  GripVertical,
+  ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+
+const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
 
 interface ModelFile {
   id: string;
@@ -23,6 +26,7 @@ interface ModelFile {
   enabled: boolean;
   vip_only: boolean;
   folder: string | null;
+  image_cost?: number;
 }
 
 interface FileExplorerProps {
@@ -409,6 +413,9 @@ interface FileItemProps {
 }
 
 const FileItem = ({ model, isSelected, onSelect, onDragStart, onDragEnd, isDragging, depth }: FileItemProps) => {
+  const isImageModel = IMAGE_MODELS.includes(model.model_id);
+  const displayCost = isImageModel ? (model.image_cost || 0) : model.cost;
+  
   return (
     <div
       draggable
@@ -425,8 +432,18 @@ const FileItem = ({ model, isSelected, onSelect, onDragStart, onDragEnd, isDragg
       )}
     >
       <GripVertical className="h-3 w-3 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 cursor-grab" />
-      <FileText className="h-4 w-4 shrink-0 text-blue-400" />
-      <span className="text-sm truncate">{model.label}.txt</span>
+      {isImageModel ? (
+        <ImageIcon className="h-4 w-4 shrink-0 text-purple-400" />
+      ) : (
+        <FileText className="h-4 w-4 shrink-0 text-blue-400" />
+      )}
+      <span className="text-sm truncate flex-1">{model.label}.txt</span>
+      <span className={cn(
+        "text-xs font-mono",
+        isImageModel ? "text-purple-400" : "text-orange-400"
+      )}>
+        {displayCost}
+      </span>
     </div>
   );
 };
