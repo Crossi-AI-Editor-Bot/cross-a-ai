@@ -2,8 +2,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import Replicate from "https://esm.sh/replicate@0.25.2";
 
-// Image generation uses Lovable API with this model
-const LOVABLE_IMAGE_MODEL = "google/gemini-2.5-flash-image-preview";
+// Image generation models
+const IMAGE_MODEL_FAST = "google/gemini-2.5-flash-image";
+const IMAGE_MODEL_PRO = "google/gemini-3-pro-image-preview";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,7 +27,7 @@ const chatRequestSchema = z.object({
     'google/gemini-2.5-pro', 
     'google/gemini-2.5-flash-lite',
     'google/gemini-2.5-flash-image',
-    'google/gemini-2.5-flash-image-preview',
+    'google/gemini-3-pro-image-preview',
     'openai/gpt-5',
     'openai/gpt-5-mini',
     'openai/gpt-5-nano',
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
     const { messages, model } = validatedData;
 
     // Check if this is an image generation request
-    const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-2.5-flash-image-preview';
+    const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview';
 
     // Check and deduct credits server-side
     const { data: userCredits, error: creditsError } = await supabase
@@ -269,7 +270,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: LOVABLE_IMAGE_MODEL,
+            model: model === 'google/gemini-3-pro-image-preview' ? IMAGE_MODEL_PRO : IMAGE_MODEL_FAST,
             messages: [{ role: "user", content }],
             modalities: ["image", "text"]
           }),
