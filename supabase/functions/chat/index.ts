@@ -15,7 +15,7 @@ const corsHeaders = {
 const chatRequestSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(['user', 'assistant', 'system']),
-    content: z.string().min(1).max(10000),
+    content: z.string().max(10000),
     files: z.array(z.object({
       name: z.string(),
       type: z.string(),
