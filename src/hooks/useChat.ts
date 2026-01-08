@@ -140,7 +140,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       }
 
       // Check if this is an image or video generation model
-      const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-2.5-flash-image-preview';
+      const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview';
       const isVideoGen = model === 'google/veo-3.1-fast';
 
       const response = await fetch(
