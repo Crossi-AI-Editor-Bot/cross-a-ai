@@ -9,7 +9,7 @@ interface CreditsDisplayProps {
   selectedModel?: AIModel;
 }
 
-const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-2.5-flash-image-preview'];
+const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
 
 const CreditsDisplay = ({ credits, imageCredits, selectedModel }: CreditsDisplayProps) => {
   const { modelCosts } = useModelCosts();
@@ -45,13 +45,15 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModel }: CreditsDisplay
         </div>
       )}
       
-      {/* Regular credits - hide cost display for image models */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg">
-        <Coins className="w-4 h-4 text-primary" />
-        <span className="text-sm font-medium text-foreground">
-          {credits.toFixed(1)} / {maxCredits} {!isImageModel && selectedModel && `(-${modelCost})`}
-        </span>
-      </div>
+      {/* Regular credits - only show when NOT an image model */}
+      {!isImageModel && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg">
+          <Coins className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">
+            {credits.toFixed(1)} / {maxCredits} {selectedModel && `(-${modelCost})`}
+          </span>
+        </div>
+      )}
     </div>
   );
 };
