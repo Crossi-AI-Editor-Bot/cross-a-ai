@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Bot, LogOut, Trash2, Settings } from "lucide-react";
@@ -20,6 +20,7 @@ import ChatInput from "@/components/ChatInput";
 import TypingIndicator from "@/components/TypingIndicator";
 import ModelSelector, { type AIModel } from "@/components/ModelSelector";
 import CreditsDisplay from "@/components/CreditsDisplay";
+import { useModelCosts } from "@/hooks/useModelCosts";
 import ConversationsList from "@/components/ConversationsList";
 import MaintenancePage from "@/components/MaintenancePage";
 import { useChat } from "@/hooks/useChat";
@@ -46,10 +47,26 @@ const Index = () => {
   const { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages } = useChat(currentConversationId, refetchConversations);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const { imageCredits, updateImageCredits, loading: imageCreditsLoading } = useImageCredits();
+  const { modelCosts, loading: modelCostsLoading } = useModelCosts();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { isDisabled, disabledUntil, loading: siteLoading } = useSiteStatus();
-  const [selectedModel, setSelectedModel] = useState<AIModel>("google/gemini-2.5-flash");
+  const [selectedModelCostId, setSelectedModelCostId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const selectedModelRow = useMemo(
+    () => (selectedModelCostId ? modelCosts.find((m) => m.id === selectedModelCostId) : undefined),
+    [modelCosts, selectedModelCostId]
+  );
+
+  const selectedModelForChat = (selectedModelRow?.model_id as AIModel) ?? "google/gemini-2.5-flash";
+
+  useEffect(() => {
+    if (selectedModelCostId) return;
+    const preferred =
+      modelCosts.find((m) => m.enabled && m.model_id === "google/gemini-2.5-flash") ??
+      modelCosts.find((m) => m.enabled);
+    if (preferred) setSelectedModelCostId(preferred.id);
+  }, [modelCosts, selectedModelCostId]);
 
   // Check authentication
   useEffect(() => {
@@ -109,7 +126,7 @@ const Index = () => {
     await createConversation();
   };
 
-  if (loading || creditsLoading || imageCreditsLoading || conversationsLoading || siteLoading || adminLoading || !user) {
+  if (loading || creditsLoading || imageCreditsLoading || modelCostsLoading || conversationsLoading || siteLoading || adminLoading || !user) {
     return null;
   }
 
@@ -138,8 +155,13 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-              <CreditsDisplay credits={credits} imageCredits={imageCredits} selectedModel={selectedModel} />
+              <ModelSelector models={modelCosts} value={selectedModelCostId} onChange={setSelectedModelCostId} />
+              <CreditsDisplay
+                credits={credits}
+                imageCredits={imageCredits}
+                selectedModelCostId={selectedModelCostId}
+                models={modelCosts}
+              />
               <AdventCalendar onCreditsUpdate={(bonus) => updateCredits(credits + bonus)} />
               {isAdmin && (
                 <Button
@@ -230,7 +252,7 @@ const Index = () => {
       <footer className="border-t border-border bg-card/50 backdrop-blur-sm sticky bottom-0 shadow-lg">
         <div className="container max-w-4xl mx-auto px-4 py-4">
           <ChatInput 
-            onSend={(content, files) => sendMessage(content, selectedModel, files)} 
+            onSend={(content, files) => sendMessage(content, selectedModelForChat, files)} 
             disabled={isLoading} 
           />
         </div>
