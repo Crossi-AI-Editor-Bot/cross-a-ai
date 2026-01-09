@@ -158,6 +158,52 @@ const AdminPanel = () => {
     }
   };
 
+  const handleAddModel = async (modelId: string, label: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("model_costs")
+        .insert({
+          model_id: modelId,
+          label: label,
+          cost: 5,
+          enabled: true,
+          vip_only: true,
+          folder: "Beta",
+          image_cost: 0,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const newModel: ModelState = {
+          id: data.id,
+          model_id: data.model_id,
+          label: data.label,
+          cost: data.cost,
+          enabled: data.enabled,
+          vip_only: data.vip_only,
+          folder: data.folder,
+          image_cost: data.image_cost || 0,
+        };
+        setModels((prev) => [...prev, newModel]);
+        setSelectedModelId(data.model_id);
+        toast({
+          title: "Model added",
+          description: `${label} has been added to the Beta folder.`,
+        });
+      }
+    } catch (error) {
+      console.error("Error adding model:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add model",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -286,6 +332,7 @@ const AdminPanel = () => {
               folders={folders}
               onCreateFolder={handleCreateFolder}
               onDeleteFolder={handleDeleteFolder}
+              onAddModel={handleAddModel}
             />
           </div>
 
