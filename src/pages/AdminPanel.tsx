@@ -188,7 +188,7 @@ const AdminPanel = () => {
           image_cost: data.image_cost || 0,
         };
         setModels((prev) => [...prev, newModel]);
-        setSelectedModelId(data.model_id);
+        setSelectedModelId(data.id);
         toast({
           title: "Model added",
           description: `${label} has been added to the Beta folder.`,
