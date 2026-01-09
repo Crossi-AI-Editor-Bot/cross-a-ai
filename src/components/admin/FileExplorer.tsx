@@ -32,8 +32,8 @@ interface ModelFile {
 interface FileExplorerProps {
   models: ModelFile[];
   selectedFile: string | null;
-  onSelectFile: (modelId: string | null) => void;
-  onUpdateFolder: (modelId: string, folder: string | null) => void;
+  onSelectFile: (id: string | null) => void;
+  onUpdateFolder: (id: string, folder: string | null) => void;
   folders: string[];
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (name: string) => void;
@@ -178,10 +178,10 @@ export const FileExplorer = ({
       // Update all models in this folder and subfolders
       models.forEach((model) => {
         if (model.folder === sourceFolder) {
-          onUpdateFolder(model.model_id, newPath);
+          onUpdateFolder(model.id, newPath);
         } else if (model.folder?.startsWith(sourceFolder + "/")) {
           const newModelPath = model.folder.replace(sourceFolder, newPath);
-          onUpdateFolder(model.model_id, newModelPath);
+          onUpdateFolder(model.id, newModelPath);
         }
       });
       
@@ -321,13 +321,13 @@ export const FileExplorer = ({
             )}
             {modelsInFolder.map((model) => (
               <FileItem
-                key={model.model_id}
+                key={model.id}
                 model={model}
-                isSelected={selectedFile === model.model_id}
-                onSelect={() => onSelectFile(model.model_id)}
-                onDragStart={(e) => handleDragStart(e, "model", model.model_id)}
+                isSelected={selectedFile === model.id}
+                onSelect={() => onSelectFile(model.id)}
+                onDragStart={(e) => handleDragStart(e, "model", model.id)}
                 onDragEnd={handleDragEnd}
-                isDragging={draggedItem?.type === "model" && draggedItem.id === model.model_id}
+                isDragging={draggedItem?.type === "model" && draggedItem.id === model.id}
                 depth={depth + 1}
               />
             ))}
@@ -437,13 +437,13 @@ export const FileExplorer = ({
           </div>
           {rootModels.map((model) => (
             <FileItem
-              key={model.model_id}
+              key={model.id}
               model={model}
-              isSelected={selectedFile === model.model_id}
-              onSelect={() => onSelectFile(model.model_id)}
-              onDragStart={(e) => handleDragStart(e, "model", model.model_id)}
+              isSelected={selectedFile === model.id}
+              onSelect={() => onSelectFile(model.id)}
+              onDragStart={(e) => handleDragStart(e, "model", model.id)}
               onDragEnd={handleDragEnd}
-              isDragging={draggedItem?.type === "model" && draggedItem.id === model.model_id}
+              isDragging={draggedItem?.type === "model" && draggedItem.id === model.id}
               depth={0}
             />
           ))}
