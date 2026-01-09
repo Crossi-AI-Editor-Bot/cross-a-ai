@@ -90,13 +90,13 @@ const AdminPanel = () => {
   }, [models, customFolders]);
 
   const selectedModel = useMemo(
-    () => models.find((m) => m.model_id === selectedModelId),
+    () => models.find((m) => m.id === selectedModelId),
     [models, selectedModelId]
   );
 
-  const updateModel = (modelId: string, updates: Partial<ModelState>) => {
+  const updateModel = (id: string, updates: Partial<ModelState>) => {
     setModels((prev) =>
-      prev.map((m) => (m.model_id === modelId ? { ...m, ...updates } : m))
+      prev.map((m) => (m.id === id ? { ...m, ...updates } : m))
     );
   };
 
@@ -218,7 +218,7 @@ const AdminPanel = () => {
             folder: model.folder,
             image_cost: model.image_cost,
           })
-          .eq("model_id", model.model_id);
+          .eq("id", model.id);
 
         if (error) throw error;
       }
@@ -328,7 +328,7 @@ const AdminPanel = () => {
               models={models}
               selectedFile={selectedModelId}
               onSelectFile={setSelectedModelId}
-              onUpdateFolder={(modelId, folder) => updateModel(modelId, { folder })}
+              onUpdateFolder={(id, folder) => updateModel(id, { folder })}
               folders={folders}
               onCreateFolder={handleCreateFolder}
               onDeleteFolder={handleDeleteFolder}
@@ -341,11 +341,11 @@ const AdminPanel = () => {
             {selectedModel ? (
               <FileEditor
                 model={selectedModel}
-                onUpdateLabel={(value) => updateModel(selectedModel.model_id, { label: value })}
-                onUpdateCost={(value) => updateModel(selectedModel.model_id, { cost: value })}
-                onUpdateEnabled={(value) => updateModel(selectedModel.model_id, { enabled: value })}
-                onUpdateVipOnly={(value) => updateModel(selectedModel.model_id, { vip_only: value })}
-                onUpdateImageCost={(value) => updateModel(selectedModel.model_id, { image_cost: value })}
+                onUpdateLabel={(value) => updateModel(selectedModel.id, { label: value })}
+                onUpdateCost={(value) => updateModel(selectedModel.id, { cost: value })}
+                onUpdateEnabled={(value) => updateModel(selectedModel.id, { enabled: value })}
+                onUpdateVipOnly={(value) => updateModel(selectedModel.id, { vip_only: value })}
+                onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
               />
             ) : (
               <Card className="h-full flex items-center justify-center">
