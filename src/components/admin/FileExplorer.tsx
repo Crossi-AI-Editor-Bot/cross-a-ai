@@ -37,6 +37,7 @@ interface FileExplorerProps {
   folders: string[];
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (name: string) => void;
+  onAddModel?: (modelId: string, label: string) => void;
 }
 
 interface FolderNode {
@@ -75,14 +76,25 @@ export const FileExplorer = ({
   folders,
   onCreateFolder,
   onDeleteFolder,
+  onAddModel,
 }: FileExplorerProps) => {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(folders));
   const [creatingFolderIn, setCreatingFolderIn] = useState<string | null>(null); // null = root, string = parent path
   const [newFolderName, setNewFolderName] = useState("");
   const [draggedItem, setDraggedItem] = useState<{ type: "model" | "folder"; id: string } | null>(null);
   const [dragOverFolder, setDragOverFolder] = useState<string | null | "unsorted">(null);
+  const [showAddModel, setShowAddModel] = useState(false);
+  const [newModelLabel, setNewModelLabel] = useState("");
 
   const folderTree = buildFolderTree(folders);
+
+  const handleAddModel = () => {
+    if (newModelLabel.trim() && onAddModel) {
+      onAddModel("openai/gpt-5-nano", newModelLabel.trim());
+      setNewModelLabel("");
+      setShowAddModel(false);
+    }
+  };
 
   const toggleFolder = (folder: string) => {
     setExpandedFolders((prev) => {
@@ -330,19 +342,58 @@ export const FileExplorer = ({
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/50">
         <span className="text-sm font-medium text-foreground">Models</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 p-0"
-          onClick={() => setCreatingFolderIn("__root__")}
-          title="Create folder"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onAddModel && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setShowAddModel(true)}
+              title="Add GPT-5 Nano"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Nano
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => setCreatingFolderIn("__root__")}
+            title="Create folder"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Tree */}
       <div className="flex-1 overflow-auto p-2 space-y-0.5">
+        {/* Add new model input */}
+        {showAddModel && (
+          <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-md mb-2">
+            <FileText className="h-4 w-4 text-blue-400 shrink-0" />
+            <Input
+              autoFocus
+              value={newModelLabel}
+              onChange={(e) => setNewModelLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddModel();
+                if (e.key === "Escape") setShowAddModel(false);
+              }}
+              className="h-6 text-xs"
+              placeholder="Model display name..."
+            />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddModel}>
+              <Save className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddModel(false)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
+        {/* New root folder input */}
         {/* New root folder input */}
         {creatingFolderIn === "__root__" && (
           <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-md">
