@@ -1,8 +1,19 @@
+import { useState } from "react";
 import { Crown, ImageIcon, Power, PowerOff, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-2.5-flash-image-preview'];
 const NANO_MODEL_ID = 'openai/gpt-5-nano';
@@ -40,28 +51,55 @@ export const FileEditor = ({
   onUpdateSystemPrompt,
   onDelete,
 }: FileEditorProps) => {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isImageModel = IMAGE_MODELS.includes(model.model_id);
   const isNanoModel = model.model_id === NANO_MODEL_ID;
+
+  const handleConfirmDelete = () => {
+    setShowDeleteDialog(false);
+    onDelete?.();
+  };
   
   return (
-    <div className="h-full flex flex-col bg-card border border-border rounded-lg overflow-hidden">
-      {/* Tab bar */}
-      <div className="flex items-center justify-between border-b border-border bg-muted/50">
-        <div className="flex items-center gap-2 px-4 py-2 bg-card border-b-2 border-primary">
-          <span className="text-sm font-medium text-primary">{model.label}.txt</span>
+    <>
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete "{model.label}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this GPT Nano model configuration.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="h-full flex flex-col bg-card border border-border rounded-lg overflow-hidden">
+        {/* Tab bar */}
+        <div className="flex items-center justify-between border-b border-border bg-muted/50">
+          <div className="flex items-center gap-2 px-4 py-2 bg-card border-b-2 border-primary">
+            <span className="text-sm font-medium text-primary">{model.label}.txt</span>
+          </div>
+          {isNanoModel && onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete
+            </Button>
+          )}
         </div>
-        {isNanoModel && onDelete && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mr-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Delete
-          </Button>
-        )}
-      </div>
 
       {/* Editor content */}
       <div className="flex-1 overflow-auto p-4 font-mono text-sm">
@@ -191,5 +229,6 @@ export const FileEditor = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
