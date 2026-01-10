@@ -20,6 +20,7 @@ interface ModelState {
   vip_only: boolean;
   folder: string | null;
   image_cost: number;
+  system_prompt: string | null;
 }
 
 const AdminPanel = () => {
@@ -77,6 +78,7 @@ const AdminPanel = () => {
       vip_only: model.vip_only,
       folder: (model as any).folder || null,
       image_cost: model.image_cost || 0,
+      system_prompt: (model as any).system_prompt || null,
     }));
     setModels(initialModels);
   }, [modelCosts]);
@@ -186,6 +188,7 @@ const AdminPanel = () => {
           vip_only: data.vip_only,
           folder: data.folder,
           image_cost: data.image_cost || 0,
+          system_prompt: data.system_prompt || null,
         };
         setModels((prev) => [...prev, newModel]);
         setSelectedModelId(data.id);
@@ -204,6 +207,41 @@ const AdminPanel = () => {
     }
   };
 
+  const handleDeleteModel = async (id: string) => {
+    try {
+      const modelToDelete = models.find((m) => m.id === id);
+      if (!modelToDelete || modelToDelete.model_id !== 'openai/gpt-5-nano') {
+        toast({
+          title: "Cannot delete",
+          description: "Only GPT Nano models can be deleted.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("model_costs")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setModels((prev) => prev.filter((m) => m.id !== id));
+      setSelectedModelId(null);
+      toast({
+        title: "Model deleted",
+        description: `${modelToDelete.label} has been deleted.`,
+      });
+    } catch (error) {
+      console.error("Error deleting model:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete model",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -217,6 +255,7 @@ const AdminPanel = () => {
             vip_only: model.vip_only,
             folder: model.folder,
             image_cost: model.image_cost,
+            system_prompt: model.system_prompt,
           })
           .eq("id", model.id);
 
@@ -346,6 +385,8 @@ const AdminPanel = () => {
                 onUpdateEnabled={(value) => updateModel(selectedModel.id, { enabled: value })}
                 onUpdateVipOnly={(value) => updateModel(selectedModel.id, { vip_only: value })}
                 onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
+                onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
+                onDelete={() => handleDeleteModel(selectedModel.id)}
               />
             ) : (
               <Card className="h-full flex items-center justify-center">

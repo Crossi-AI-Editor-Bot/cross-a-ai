@@ -10,6 +10,8 @@ export interface ModelCost {
   enabled: boolean;
   vip_only: boolean;
   image_cost: number;
+  folder: string | null;
+  system_prompt: string | null;
 }
 
 export const useModelCosts = () => {
