@@ -127,6 +127,7 @@ export type Database = {
           image_cost: number | null
           label: string
           model_id: string
+          system_prompt: string | null
           updated_at: string
           updated_by: string | null
           vip_only: boolean
@@ -139,6 +140,7 @@ export type Database = {
           image_cost?: number | null
           label: string
           model_id: string
+          system_prompt?: string | null
           updated_at?: string
           updated_by?: string | null
           vip_only?: boolean
@@ -151,6 +153,7 @@ export type Database = {
           image_cost?: number | null
           label?: string
           model_id?: string
+          system_prompt?: string | null
           updated_at?: string
           updated_by?: string | null
           vip_only?: boolean

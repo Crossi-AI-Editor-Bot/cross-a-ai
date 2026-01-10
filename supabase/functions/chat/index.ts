@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     // Use limit(1) because model_id is no longer unique (e.g., multiple GPT Nano entries)
     const { data: modelCostDataArray, error: costError } = await supabase
       .from('model_costs')
-      .select('cost, enabled, vip_only, image_cost')
+      .select('cost, enabled, vip_only, image_cost, system_prompt')
       .eq('model_id', model)
       .eq('enabled', true)
       .limit(1);
@@ -439,10 +439,14 @@ Deno.serve(async (req) => {
       stream: true
     };
 
+    // Use custom system prompt if set (for Nano models), otherwise use default
+    const systemPrompt = modelCostData.system_prompt || 
+      "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging.";
+    
     requestBody.messages = [
       { 
         role: "system", 
-        content: "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging." 
+        content: systemPrompt
       },
       ...requestBody.messages,
     ];

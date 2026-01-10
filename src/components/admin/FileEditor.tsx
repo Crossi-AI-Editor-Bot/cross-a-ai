@@ -1,9 +1,11 @@
-import { Crown, ImageIcon, Power, PowerOff } from "lucide-react";
+import { Crown, ImageIcon, Power, PowerOff, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-2.5-flash-image-preview'];
+const NANO_MODEL_ID = 'openai/gpt-5-nano';
 
 interface ModelData {
   id: string;
@@ -14,6 +16,7 @@ interface ModelData {
   vip_only: boolean;
   folder: string | null;
   image_cost: number;
+  system_prompt?: string | null;
 }
 
 interface FileEditorProps {
@@ -23,6 +26,8 @@ interface FileEditorProps {
   onUpdateEnabled: (value: boolean) => void;
   onUpdateVipOnly: (value: boolean) => void;
   onUpdateImageCost?: (value: number) => void;
+  onUpdateSystemPrompt?: (value: string) => void;
+  onDelete?: () => void;
 }
 
 export const FileEditor = ({
@@ -32,16 +37,30 @@ export const FileEditor = ({
   onUpdateEnabled,
   onUpdateVipOnly,
   onUpdateImageCost,
+  onUpdateSystemPrompt,
+  onDelete,
 }: FileEditorProps) => {
   const isImageModel = IMAGE_MODELS.includes(model.model_id);
+  const isNanoModel = model.model_id === NANO_MODEL_ID;
   
   return (
     <div className="h-full flex flex-col bg-card border border-border rounded-lg overflow-hidden">
       {/* Tab bar */}
-      <div className="flex items-center border-b border-border bg-muted/50">
+      <div className="flex items-center justify-between border-b border-border bg-muted/50">
         <div className="flex items-center gap-2 px-4 py-2 bg-card border-b-2 border-primary">
           <span className="text-sm font-medium text-primary">{model.label}.txt</span>
         </div>
+        {isNanoModel && onDelete && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mr-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
+        )}
       </div>
 
       {/* Editor content */}
@@ -148,6 +167,27 @@ export const FileEditor = ({
               {model.vip_only && <Crown className="h-4 w-4 text-yellow-500" />}
             </div>
           </div>
+
+          {/* System Prompt - only for Nano models */}
+          {isNanoModel && onUpdateSystemPrompt && (
+            <>
+              <div className="h-px bg-border my-4" />
+              <div className="text-muted-foreground mb-2">
+                <span className="text-green-500">{"// "}</span>
+                <span>Custom System Prompt (GPT Nano only)</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-purple-400">system_prompt</span>
+                <span className="text-muted-foreground">=</span>
+                <Textarea
+                  value={model.system_prompt || ""}
+                  onChange={(e) => onUpdateSystemPrompt(e.target.value)}
+                  placeholder="Enter a custom system prompt for this Nano model..."
+                  className="min-h-[100px] text-sm font-mono bg-background"
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
