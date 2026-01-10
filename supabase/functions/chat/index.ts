@@ -124,11 +124,13 @@ Deno.serve(async (req) => {
     }
 
     // Fetch model cost and access settings from database
-    const { data: modelCostData, error: costError } = await supabase
+    // Use limit(1) because model_id is no longer unique (e.g., multiple GPT Nano entries)
+    const { data: modelCostDataArray, error: costError } = await supabase
       .from('model_costs')
       .select('cost, enabled, vip_only, image_cost')
       .eq('model_id', model)
-      .single();
+      .eq('enabled', true)
+      .limit(1);
 
     if (costError) {
       console.error('Error fetching model cost:', costError);
@@ -138,13 +140,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if model is enabled
-    if (!modelCostData.enabled) {
+    const modelCostData = modelCostDataArray?.[0];
+    
+    if (!modelCostData) {
       return new Response(
-        JSON.stringify({ error: 'This model is currently disabled' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Model not found or disabled' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Model is already confirmed enabled by the query above
 
     // Check VIP-only access
     if (modelCostData.vip_only) {
