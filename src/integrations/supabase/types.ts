@@ -120,43 +120,55 @@ export type Database = {
       }
       model_costs: {
         Row: {
+          bronze_access: boolean
           cost: number
+          diamond_access: boolean
           enabled: boolean
           folder: string | null
+          gold_access: boolean
           id: string
           image_cost: number | null
           label: string
           model_id: string
+          public_access: boolean
+          silver_access: boolean
           system_prompt: string | null
           updated_at: string
           updated_by: string | null
-          vip_only: boolean
         }
         Insert: {
+          bronze_access?: boolean
           cost: number
+          diamond_access?: boolean
           enabled?: boolean
           folder?: string | null
+          gold_access?: boolean
           id?: string
           image_cost?: number | null
           label: string
           model_id: string
+          public_access?: boolean
+          silver_access?: boolean
           system_prompt?: string | null
           updated_at?: string
           updated_by?: string | null
-          vip_only?: boolean
         }
         Update: {
+          bronze_access?: boolean
           cost?: number
+          diamond_access?: boolean
           enabled?: boolean
           folder?: string | null
+          gold_access?: boolean
           id?: string
           image_cost?: number | null
           label?: string
           model_id?: string
+          public_access?: boolean
+          silver_access?: boolean
           system_prompt?: string | null
           updated_at?: string
           updated_by?: string | null
-          vip_only?: boolean
         }
         Relationships: []
       }
@@ -288,18 +300,21 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          tier: Database["public"]["Enums"]["vip_tier"]
           user_id: string
         }
         Insert: {
           created_at?: string
           expires_at: string
           id?: string
+          tier?: Database["public"]["Enums"]["vip_tier"]
           user_id: string
         }
         Update: {
           created_at?: string
           expires_at?: string
           id?: string
+          tier?: Database["public"]["Enums"]["vip_tier"]
           user_id?: string
         }
         Relationships: []
@@ -324,6 +339,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      vip_tier: "bronze" | "silver" | "gold" | "diamond"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -452,6 +468,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      vip_tier: ["bronze", "silver", "gold", "diamond"],
     },
   },
 } as const

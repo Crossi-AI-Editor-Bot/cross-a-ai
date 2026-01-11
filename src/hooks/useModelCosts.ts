@@ -8,7 +8,11 @@ export interface ModelCost {
   label: string;
   cost: number;
   enabled: boolean;
-  vip_only: boolean;
+  public_access: boolean;
+  bronze_access: boolean;
+  silver_access: boolean;
+  gold_access: boolean;
+  diamond_access: boolean;
   image_cost: number;
   folder: string | null;
   system_prompt: string | null;

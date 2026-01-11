@@ -17,7 +17,11 @@ interface ModelState {
   label: string;
   cost: number;
   enabled: boolean;
-  vip_only: boolean;
+  public_access: boolean;
+  bronze_access: boolean;
+  silver_access: boolean;
+  gold_access: boolean;
+  diamond_access: boolean;
   folder: string | null;
   image_cost: number;
   system_prompt: string | null;
@@ -75,10 +79,14 @@ const AdminPanel = () => {
       label: model.label,
       cost: model.cost,
       enabled: model.enabled,
-      vip_only: model.vip_only,
-      folder: (model as any).folder || null,
+      public_access: model.public_access,
+      bronze_access: model.bronze_access,
+      silver_access: model.silver_access,
+      gold_access: model.gold_access,
+      diamond_access: model.diamond_access,
+      folder: model.folder || null,
       image_cost: model.image_cost || 0,
-      system_prompt: (model as any).system_prompt || null,
+      system_prompt: model.system_prompt || null,
     }));
     setModels(initialModels);
   }, [modelCosts]);
@@ -169,7 +177,11 @@ const AdminPanel = () => {
           label: label,
           cost: 5,
           enabled: true,
-          vip_only: true,
+          public_access: false,
+          bronze_access: true,
+          silver_access: true,
+          gold_access: true,
+          diamond_access: true,
           folder: "Beta",
           image_cost: 0,
         })
@@ -185,7 +197,11 @@ const AdminPanel = () => {
           label: data.label,
           cost: data.cost,
           enabled: data.enabled,
-          vip_only: data.vip_only,
+          public_access: data.public_access,
+          bronze_access: data.bronze_access,
+          silver_access: data.silver_access,
+          gold_access: data.gold_access,
+          diamond_access: data.diamond_access,
           folder: data.folder,
           image_cost: data.image_cost || 0,
           system_prompt: data.system_prompt || null,
@@ -252,7 +268,11 @@ const AdminPanel = () => {
             cost: model.cost,
             label: model.label,
             enabled: model.enabled,
-            vip_only: model.vip_only,
+            public_access: model.public_access,
+            bronze_access: model.bronze_access,
+            silver_access: model.silver_access,
+            gold_access: model.gold_access,
+            diamond_access: model.diamond_access,
             folder: model.folder,
             image_cost: model.image_cost,
             system_prompt: model.system_prompt,
@@ -383,7 +403,11 @@ const AdminPanel = () => {
                 onUpdateLabel={(value) => updateModel(selectedModel.id, { label: value })}
                 onUpdateCost={(value) => updateModel(selectedModel.id, { cost: value })}
                 onUpdateEnabled={(value) => updateModel(selectedModel.id, { enabled: value })}
-                onUpdateVipOnly={(value) => updateModel(selectedModel.id, { vip_only: value })}
+                onUpdatePublicAccess={(value) => updateModel(selectedModel.id, { public_access: value })}
+                onUpdateBronzeAccess={(value) => updateModel(selectedModel.id, { bronze_access: value })}
+                onUpdateSilverAccess={(value) => updateModel(selectedModel.id, { silver_access: value })}
+                onUpdateGoldAccess={(value) => updateModel(selectedModel.id, { gold_access: value })}
+                onUpdateDiamondAccess={(value) => updateModel(selectedModel.id, { diamond_access: value })}
                 onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
                 onDelete={() => handleDeleteModel(selectedModel.id)}

@@ -24,7 +24,11 @@ interface ModelData {
   label: string;
   cost: number;
   enabled: boolean;
-  vip_only: boolean;
+  public_access: boolean;
+  bronze_access: boolean;
+  silver_access: boolean;
+  gold_access: boolean;
+  diamond_access: boolean;
   folder: string | null;
   image_cost: number;
   system_prompt?: string | null;
@@ -35,7 +39,11 @@ interface FileEditorProps {
   onUpdateLabel: (value: string) => void;
   onUpdateCost: (value: number) => void;
   onUpdateEnabled: (value: boolean) => void;
-  onUpdateVipOnly: (value: boolean) => void;
+  onUpdatePublicAccess: (value: boolean) => void;
+  onUpdateBronzeAccess: (value: boolean) => void;
+  onUpdateSilverAccess: (value: boolean) => void;
+  onUpdateGoldAccess: (value: boolean) => void;
+  onUpdateDiamondAccess: (value: boolean) => void;
   onUpdateImageCost?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
   onDelete?: () => void;
@@ -46,7 +54,11 @@ export const FileEditor = ({
   onUpdateLabel,
   onUpdateCost,
   onUpdateEnabled,
-  onUpdateVipOnly,
+  onUpdatePublicAccess,
+  onUpdateBronzeAccess,
+  onUpdateSilverAccess,
+  onUpdateGoldAccess,
+  onUpdateDiamondAccess,
   onUpdateImageCost,
   onUpdateSystemPrompt,
   onDelete,
@@ -191,18 +203,85 @@ export const FileEditor = ({
             </div>
           </div>
 
+          {/* Tier Access Controls */}
+          <div className="h-px bg-border my-4" />
+          <div className="text-muted-foreground mb-2">
+            <span className="text-green-500">{"// "}</span>
+            <span>Access Controls by Tier</span>
+          </div>
+
           <div className="flex items-center gap-4">
-            <span className="text-purple-400">vip_only</span>
+            <span className="text-purple-400">public_access</span>
             <span className="text-muted-foreground">=</span>
             <div className="flex items-center gap-2">
               <Switch
-                checked={model.vip_only}
-                onCheckedChange={onUpdateVipOnly}
+                checked={model.public_access}
+                onCheckedChange={onUpdatePublicAccess}
               />
-              <span className={model.vip_only ? "text-yellow-400" : "text-muted-foreground"}>
-                {model.vip_only ? "true" : "false"}
+              <span className={model.public_access ? "text-green-400" : "text-muted-foreground"}>
+                {model.public_access ? "true" : "false"}
               </span>
-              {model.vip_only && <Crown className="h-4 w-4 text-yellow-500" />}
+              <span className="text-xs text-muted-foreground">(free users)</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-purple-400">bronze_access</span>
+            <span className="text-muted-foreground">=</span>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={model.bronze_access}
+                onCheckedChange={onUpdateBronzeAccess}
+              />
+              <span className={model.bronze_access ? "text-amber-600" : "text-muted-foreground"}>
+                {model.bronze_access ? "true" : "false"}
+              </span>
+              <Crown className="h-4 w-4 text-amber-600" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-purple-400">silver_access</span>
+            <span className="text-muted-foreground">=</span>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={model.silver_access}
+                onCheckedChange={onUpdateSilverAccess}
+              />
+              <span className={model.silver_access ? "text-gray-400" : "text-muted-foreground"}>
+                {model.silver_access ? "true" : "false"}
+              </span>
+              <Crown className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-purple-400">gold_access</span>
+            <span className="text-muted-foreground">=</span>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={model.gold_access}
+                onCheckedChange={onUpdateGoldAccess}
+              />
+              <span className={model.gold_access ? "text-yellow-400" : "text-muted-foreground"}>
+                {model.gold_access ? "true" : "false"}
+              </span>
+              <Crown className="h-4 w-4 text-yellow-500" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-purple-400">diamond_access</span>
+            <span className="text-muted-foreground">=</span>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={model.diamond_access}
+                onCheckedChange={onUpdateDiamondAccess}
+              />
+              <span className={model.diamond_access ? "text-cyan-400" : "text-muted-foreground"}>
+                {model.diamond_access ? "true" : "false"}
+              </span>
+              <Crown className="h-4 w-4 text-cyan-400" />
             </div>
           </div>
 
