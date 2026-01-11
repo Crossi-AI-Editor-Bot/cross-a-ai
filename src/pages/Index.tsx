@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Bot, LogOut, Trash2, Settings } from "lucide-react";
+import { Bot, LogOut, Trash2, Settings, Sparkles } from "lucide-react";
 import AdventCalendar from "@/components/AdventCalendar";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,8 @@ import { useImageCredits } from "@/hooks/useImageCredits";
 import { useConversations } from "@/hooks/useConversations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSiteStatus } from "@/hooks/useSiteStatus";
+import { useVipStatus } from "@/hooks/useVipStatus";
+import { VipTierBadge } from "@/components/VipTierIcon";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -50,6 +52,7 @@ const Index = () => {
   const { modelCosts, loading: modelCostsLoading } = useModelCosts();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { isDisabled, disabledUntil, loading: siteLoading } = useSiteStatus();
+  const { tier: vipTier, loading: vipLoading } = useVipStatus();
   const [selectedModelCostId, setSelectedModelCostId] = useState<string | undefined>(undefined);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +129,7 @@ const Index = () => {
     await createConversation();
   };
 
-  if (loading || creditsLoading || imageCreditsLoading || modelCostsLoading || conversationsLoading || siteLoading || adminLoading || !user) {
+  if (loading || creditsLoading || imageCreditsLoading || modelCostsLoading || conversationsLoading || siteLoading || adminLoading || vipLoading || !user) {
     return null;
   }
 
@@ -156,6 +159,19 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-3">
               <ModelSelector models={modelCosts} value={selectedModelCostId} onChange={setSelectedModelCostId} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/vip")}
+                className="gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                {vipTier ? (
+                  <VipTierBadge tier={vipTier} className="px-1.5 py-0" />
+                ) : (
+                  <span className="hidden sm:inline">VIP</span>
+                )}
+              </Button>
               <CreditsDisplay
                 credits={credits}
                 imageCredits={imageCredits}

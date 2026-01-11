@@ -295,6 +295,39 @@ export type Database = {
         }
         Relationships: []
       }
+      vip_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          requested_tier: Database["public"]["Enums"]["vip_tier"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          requested_tier: Database["public"]["Enums"]["vip_tier"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          requested_tier?: Database["public"]["Enums"]["vip_tier"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vip_status: {
         Row: {
           created_at: string
