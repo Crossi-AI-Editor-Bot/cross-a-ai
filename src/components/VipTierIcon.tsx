@@ -19,28 +19,28 @@ const tierConfig: Record<VipTierType, {
 }> = {
   bronze: {
     icon: Award,
-    label: 'Bronze',
+    label: '',
     gradient: 'from-amber-700 to-amber-500',
     textColor: 'text-amber-700',
     bgColor: 'bg-amber-100',
   },
   silver: {
     icon: Star,
-    label: 'Silver',
+    label: '',
     gradient: 'from-slate-400 to-slate-300',
     textColor: 'text-slate-500',
     bgColor: 'bg-slate-100',
   },
   gold: {
     icon: Crown,
-    label: 'Gold',
+    label: '',
     gradient: 'from-yellow-500 to-yellow-400',
     textColor: 'text-yellow-600',
     bgColor: 'bg-yellow-100',
   },
   diamond: {
     icon: Gem,
-    label: 'Diamond',
+    label: '',
     gradient: 'from-cyan-400 to-blue-500',
     textColor: 'text-cyan-600',
     bgColor: 'bg-cyan-100',
