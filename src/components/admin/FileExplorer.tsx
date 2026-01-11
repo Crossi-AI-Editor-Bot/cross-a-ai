@@ -24,7 +24,11 @@ interface ModelFile {
   label: string;
   cost: number;
   enabled: boolean;
-  vip_only: boolean;
+  public_access: boolean;
+  bronze_access: boolean;
+  silver_access: boolean;
+  gold_access: boolean;
+  diamond_access: boolean;
   folder: string | null;
   image_cost?: number;
 }

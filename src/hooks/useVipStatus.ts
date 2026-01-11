@@ -1,8 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export type VipTier = 'bronze' | 'silver' | 'gold' | 'diamond' | null;
+
+// Tier hierarchy for comparison
+const TIER_LEVELS: Record<string, number> = {
+  bronze: 1,
+  silver: 2,
+  gold: 3,
+  diamond: 4,
+};
+
 export const useVipStatus = () => {
-  const [isVip, setIsVip] = useState(false);
+  const [tier, setTier] = useState<VipTier>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -11,12 +22,13 @@ export const useVipStatus = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-          setIsVip(false);
+          setTier(null);
+          setIsAdmin(false);
           setLoading(false);
           return;
         }
 
-        // Check if user is admin (admins are always VIP)
+        // Check if user is admin (admins get diamond access)
         const { data: adminData } = await supabase
           .from("user_roles")
           .select("role")
@@ -25,23 +37,28 @@ export const useVipStatus = () => {
           .maybeSingle();
 
         if (adminData) {
-          setIsVip(true);
+          setIsAdmin(true);
+          setTier('diamond'); // Admins get highest tier
           setLoading(false);
           return;
         }
 
-        // Check for active VIP status
+        // Check for active VIP status with tier
         const { data: vipData } = await supabase
           .from("vip_status")
-          .select("expires_at")
+          .select("tier, expires_at")
           .eq("user_id", user.id)
           .gt("expires_at", new Date().toISOString())
           .maybeSingle();
 
-        setIsVip(!!vipData);
+        if (vipData) {
+          setTier(vipData.tier as VipTier);
+        } else {
+          setTier(null);
+        }
       } catch (error) {
         console.error("Error checking VIP status:", error);
-        setIsVip(false);
+        setTier(null);
       } finally {
         setLoading(false);
       }
@@ -56,5 +73,15 @@ export const useVipStatus = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  return { isVip, loading };
+  // Helper to check if user has access to a specific tier level
+  const hasTierAccess = (requiredTier: VipTier): boolean => {
+    if (isAdmin) return true;
+    if (!tier || !requiredTier) return false;
+    return TIER_LEVELS[tier] >= TIER_LEVELS[requiredTier];
+  };
+
+  // Legacy compatibility
+  const isVip = tier !== null || isAdmin;
+
+  return { tier, isVip, isAdmin, loading, hasTierAccess };
 };

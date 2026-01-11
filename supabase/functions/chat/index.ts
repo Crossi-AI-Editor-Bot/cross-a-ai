@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     // Use limit(1) because model_id is no longer unique (e.g., multiple GPT Nano entries)
     const { data: modelCostDataArray, error: costError } = await supabase
       .from('model_costs')
-      .select('cost, enabled, vip_only, image_cost, system_prompt')
+      .select('cost, enabled, public_access, bronze_access, silver_access, gold_access, diamond_access, image_cost, system_prompt')
       .eq('model_id', model)
       .eq('enabled', true)
       .limit(1);
@@ -149,33 +149,52 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Model is already confirmed enabled by the query above
+    // Check access based on user tier
+    // First check if user is admin (admins have full access)
+    const { data: adminData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
 
-    // Check VIP-only access
-    if (modelCostData.vip_only) {
-      // Check if user is admin
-      const { data: adminData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+    const isAdmin = !!adminData;
 
-      const isAdmin = !!adminData;
+    if (!isAdmin) {
+      // Check if model has public access (free users)
+      let hasAccess = modelCostData.public_access;
 
-      // Check if user has active VIP status
-      const { data: vipData } = await supabase
-        .from('vip_status')
-        .select('expires_at')
-        .eq('user_id', user.id)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
+      if (!hasAccess) {
+        // Check VIP tier access
+        const { data: vipData } = await supabase
+          .from('vip_status')
+          .select('tier, expires_at')
+          .eq('user_id', user.id)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
 
-      const isVip = isAdmin || !!vipData;
+        if (vipData) {
+          const tier = vipData.tier;
+          switch (tier) {
+            case 'bronze':
+              hasAccess = modelCostData.bronze_access;
+              break;
+            case 'silver':
+              hasAccess = modelCostData.silver_access;
+              break;
+            case 'gold':
+              hasAccess = modelCostData.gold_access;
+              break;
+            case 'diamond':
+              hasAccess = modelCostData.diamond_access;
+              break;
+          }
+        }
+      }
 
-      if (!isVip) {
+      if (!hasAccess) {
         return new Response(
-          JSON.stringify({ error: 'This model requires VIP status' }),
+          JSON.stringify({ error: 'This model requires a higher VIP tier' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

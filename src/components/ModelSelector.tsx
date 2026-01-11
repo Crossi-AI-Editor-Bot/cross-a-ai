@@ -1,7 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Brain, Crown, Folder, ChevronRight } from "lucide-react";
-import { useVipStatus } from "@/hooks/useVipStatus";
+import { useVipStatus, VipTier } from "@/hooks/useVipStatus";
 import { useEffect, useMemo, useState } from "react";
 import type { ModelCost } from "@/hooks/useModelCosts";
 
@@ -22,18 +22,43 @@ interface ModelSelectorProps {
   onChange: (id: string) => void;
 }
 
+// Helper to check if user has access to a model based on tier
+const hasModelAccess = (model: ModelCost, tier: VipTier, isAdmin: boolean): boolean => {
+  if (isAdmin) return true;
+  
+  // Check public access for non-VIP users
+  if (!tier && model.public_access) return true;
+  if (!tier) return false;
+  
+  // Check tier-specific access
+  switch (tier) {
+    case 'bronze':
+      return model.bronze_access;
+    case 'silver':
+      return model.silver_access;
+    case 'gold':
+      return model.gold_access;
+    case 'diamond':
+      return model.diamond_access;
+    default:
+      return model.public_access;
+  }
+};
+
 const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
-  const { isVip, loading: vipLoading } = useVipStatus();
+  const { tier, isAdmin, loading: vipLoading } = useVipStatus();
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
 
-  // Filter models based on enabled status and VIP access
+  // Filter models based on enabled status and tier access
   const availableModels = models.filter((m) => {
     if (!m.enabled) return false;
-    if (m.vip_only && !isVip) return false;
-    return true;
+    return hasModelAccess(m, tier, isAdmin);
   });
 
   const selectedModel = value ? availableModels.find((m) => m.id === value) : undefined;
+
+  // Helper to check if model requires VIP (not public access)
+  const isVipModel = (model: ModelCost): boolean => !model.public_access;
 
   // Group models by folder
   const groupedModels = useMemo(() => {
@@ -41,7 +66,7 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
     const unsorted: ModelCost[] = [];
 
     availableModels.forEach((model) => {
-      const folder = (model as any).folder as string | null;
+      const folder = model.folder;
       if (folder) {
         const topFolder = folder.split("/")[0];
         if (!groups[topFolder]) groups[topFolder] = [];
@@ -129,7 +154,7 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
               {groupedModels.groups[folderName].map((model) => (
                 <SelectItem key={model.id} value={model.id} className="pl-8">
                   <div className="flex items-center gap-2">
-                    {model.vip_only && <Crown className="w-3 h-3 text-yellow-500" />}
+                    {isVipModel(model) && <Crown className="w-3 h-3 text-yellow-500" />}
                     <span>{model.label} ({model.cost} credits)</span>
                   </div>
                 </SelectItem>
@@ -151,7 +176,7 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
                 className={hasGroups ? "pl-8" : ""}
               >
                 <div className="flex items-center gap-2">
-                  {model.vip_only && <Crown className="w-3 h-3 text-yellow-500" />}
+                  {isVipModel(model) && <Crown className="w-3 h-3 text-yellow-500" />}
                   <span>{model.label} ({model.cost} credits)</span>
                 </div>
               </SelectItem>
