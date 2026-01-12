@@ -375,7 +375,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      vip_tier: "copper" | "bronze" | "silver" | "gold" | "platinum" | "diamond"
+      vip_tier: "copper" | "bronze" | "silver" | "gold" | "platinum" | 'emerald' | "diamond"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -504,7 +504,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      vip_tier: ["copper", "bronze", "silver", "gold", "platinum", "diamond"],
+      vip_tier: ["copper", "bronze", "silver", "gold", "platinum", "emerald", "diamond"],
     },
   },
 } as const
