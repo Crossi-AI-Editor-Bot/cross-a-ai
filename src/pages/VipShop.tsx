@@ -50,8 +50,12 @@ const tierBenefits: Record<VipTierType, string[]> = {
     "All Gold benefits",
     "Exclusive Platinum features",
   ],
+  emerald: [
+    "28 daily credits",
+    "All Platinum Benefits"
+  ]
   diamond: [
-    "25 daily credits",
+    "30 daily credits",
     "Access to ALL models",
     "All Platinum benefits",
     "Exclusive Diamond features",
@@ -65,7 +69,8 @@ const tierDescriptions: Record<VipTierType, string> = {
   silver: "Requires Bronze",
   gold: "Requires Silver",
   platinum: "Requires Gold",
-  diamond: "Requires Platinum",
+  emerald: "Requires Platinum"
+  diamond: "Requires Emerald",
 };
 
 const VipShop = () => {
