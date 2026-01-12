@@ -30,7 +30,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSiteStatus } from "@/hooks/useSiteStatus";
 import { useVipStatus } from "@/hooks/useVipStatus";
-import { VipTierBadge } from "@/components/VipTierIcon";
+
 
 const Index = () => {
   const navigate = useNavigate();
@@ -153,9 +153,6 @@ const Index = () => {
                 onDeleteConversation={deleteConversation}
                 onRenameConversation={renameConversation}
               />
-              <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-md">
-                <Bot className="w-6 h-6 text-primary-foreground" />
-              </div>
             </div>
             <div className="flex items-center gap-3">
               <ModelSelector models={modelCosts} value={selectedModelCostId} onChange={setSelectedModelCostId} />
@@ -166,11 +163,7 @@ const Index = () => {
                 className="gap-1.5"
               >
                 <Sparkles className="w-4 h-4" />
-                {vipTier ? (
-                  <VipTierBadge tier={vipTier} className="px-1.5 py-0" />
-                ) : (
-                  <span className="hidden sm:inline">VIP</span>
-                )}
+                <span className="hidden sm:inline">VIP</span>
               </Button>
               <CreditsDisplay
                 credits={credits}
