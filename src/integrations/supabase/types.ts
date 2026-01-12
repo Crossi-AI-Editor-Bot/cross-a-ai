@@ -305,6 +305,7 @@ export type Database = {
           reviewed_by: string | null
           status: string
           user_id: string
+          user_message: string | null
         }
         Insert: {
           admin_notes?: string | null
@@ -315,6 +316,7 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           user_id: string
+          user_message?: string | null
         }
         Update: {
           admin_notes?: string | null
@@ -325,6 +327,7 @@ export type Database = {
           reviewed_by?: string | null
           status?: string
           user_id?: string
+          user_message?: string | null
         }
         Relationships: []
       }
@@ -372,7 +375,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      vip_tier: "bronze" | "silver" | "gold" | "diamond"
+      vip_tier: "copper" | "bronze" | "silver" | "gold" | "platinum" | "diamond"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -501,7 +504,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      vip_tier: ["bronze", "silver", "gold", "diamond"],
+      vip_tier: ["copper", "bronze", "silver", "gold", "platinum", "diamond"],
     },
   },
 } as const

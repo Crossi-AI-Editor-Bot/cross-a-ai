@@ -12,6 +12,7 @@ export interface VipRequest {
   created_at: string;
   reviewed_at: string | null;
   user_email?: string;
+  user_message?: string | null;
 }
 
 export const useVipRequests = (isAdmin: boolean = false) => {
@@ -70,7 +71,7 @@ export const useVipRequests = (isAdmin: boolean = false) => {
     fetchRequests();
   }, [fetchRequests]);
 
-  const createRequest = async (tier: VipTier) => {
+  const createRequest = async (tier: VipTier, message?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !tier) return { error: "Not authenticated" };
@@ -92,6 +93,7 @@ export const useVipRequests = (isAdmin: boolean = false) => {
         .insert({
           user_id: user.id,
           requested_tier: tier,
+          user_message: message || null,
         });
 
       if (error) throw error;
