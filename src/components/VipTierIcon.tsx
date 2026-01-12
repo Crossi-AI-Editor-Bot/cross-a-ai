@@ -1,7 +1,7 @@
 import { Crown, Award, Star, Gem, Coins, Hexagon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type VipTierType = 'copper' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+export type VipTierType = 'copper' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'emerald' | 'diamond';
 
 interface VipTierIconProps {
   tier: VipTierType;
@@ -51,6 +51,13 @@ const tierConfig: Record<VipTierType, {
     gradient: 'from-purple-500 to-purple-400',
     textColor: 'text-purple-600',
     bgColor: 'bg-purple-100',
+  },
+  emerald: {
+    icon: Gem,
+    label: Emerald,
+    gradient: 'from-green-300 to-cyan-400',
+    textColor: 'text-green-300',
+    bgColor: 'bg-green-100',
   },
   diamond: {
     icon: Gem,
