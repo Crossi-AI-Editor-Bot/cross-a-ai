@@ -1,7 +1,7 @@
-import { Crown, Award, Star, Gem } from "lucide-react";
+import { Crown, Award, Star, Gem, Coins, Hexagon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type VipTierType = 'bronze' | 'silver' | 'gold' | 'diamond';
+export type VipTierType = 'copper' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
 
 interface VipTierIconProps {
   tier: VipTierType;
@@ -17,30 +17,44 @@ const tierConfig: Record<VipTierType, {
   textColor: string;
   bgColor: string;
 }> = {
+  copper: {
+    icon: Coins,
+    label: 'Copper',
+    gradient: 'from-orange-700 to-orange-500',
+    textColor: 'text-orange-700',
+    bgColor: 'bg-orange-100',
+  },
   bronze: {
     icon: Award,
-    label: '',
+    label: 'Bronze',
     gradient: 'from-amber-700 to-amber-500',
     textColor: 'text-amber-700',
     bgColor: 'bg-amber-100',
   },
   silver: {
     icon: Star,
-    label: '',
+    label: 'Silver',
     gradient: 'from-slate-400 to-slate-300',
     textColor: 'text-slate-500',
     bgColor: 'bg-slate-100',
   },
   gold: {
     icon: Crown,
-    label: '',
+    label: 'Gold',
     gradient: 'from-yellow-500 to-yellow-400',
     textColor: 'text-yellow-600',
     bgColor: 'bg-yellow-100',
   },
+  platinum: {
+    icon: Hexagon,
+    label: 'Platinum',
+    gradient: 'from-purple-500 to-purple-400',
+    textColor: 'text-purple-600',
+    bgColor: 'bg-purple-100',
+  },
   diamond: {
     icon: Gem,
-    label: '',
+    label: 'Diamond',
     gradient: 'from-cyan-400 to-blue-500',
     textColor: 'text-cyan-600',
     bgColor: 'bg-cyan-100',

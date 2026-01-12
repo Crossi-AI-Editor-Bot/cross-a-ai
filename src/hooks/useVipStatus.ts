@@ -1,14 +1,34 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type VipTier = 'bronze' | 'silver' | 'gold' | 'diamond' | null;
+export type VipTier = 'copper' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | null;
 
-// Tier hierarchy for comparison
+// Tier hierarchy for comparison - upgrade path: copper → bronze → silver → gold → platinum → diamond
 const TIER_LEVELS: Record<string, number> = {
-  bronze: 1,
-  silver: 2,
-  gold: 3,
-  diamond: 4,
+  copper: 1,
+  bronze: 2,
+  silver: 3,
+  gold: 4,
+  platinum: 5,
+  diamond: 6,
+};
+
+// Get the next tier in the upgrade path
+export const getNextTier = (currentTier: VipTier): VipTier => {
+  if (!currentTier) return 'copper';
+  const tierOrder: VipTier[] = ['copper', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
+  const currentIndex = tierOrder.indexOf(currentTier);
+  if (currentIndex === -1 || currentIndex === tierOrder.length - 1) return null;
+  return tierOrder[currentIndex + 1];
+};
+
+// Get the required tier to upgrade from
+export const getRequiredTierFor = (targetTier: VipTier): VipTier => {
+  if (!targetTier) return null;
+  const tierOrder: VipTier[] = ['copper', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
+  const targetIndex = tierOrder.indexOf(targetTier);
+  if (targetIndex <= 0) return null; // copper has no requirement
+  return tierOrder[targetIndex - 1];
 };
 
 export const useVipStatus = () => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, X, MessageSquare } from "lucide-react";
+import { Check, X, MessageSquare, Mail, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,43 +87,61 @@ const VipAdminRequests = () => {
               {requests.map((request) => (
                 <div 
                   key={request.id}
-                  className="flex items-center justify-between p-4 bg-muted/50 rounded-lg"
+                  className="p-4 bg-muted/50 rounded-lg space-y-3"
                 >
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="font-medium">{request.user_email}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Requested {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-                      </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-muted-foreground" />
+                          <p className="font-medium">{request.user_email}</p>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Requested {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <VipTierBadge tier={request.requested_tier as VipTierType} />
                     </div>
-                    <VipTierBadge tier={request.requested_tier as VipTierType} />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setAction('approve');
+                        }}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setAction('decline');
+                        }}
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Decline
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setAction('approve');
-                      }}
-                    >
-                      <Check className="w-4 h-4 mr-1" />
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => {
-                        setSelectedRequest(request);
-                        setAction('decline');
-                      }}
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Decline
-                    </Button>
-                  </div>
+                  
+                  {/* User Message */}
+                  {request.user_message && (
+                    <div className="bg-background rounded-md p-3 border">
+                      <div className="flex items-start gap-2">
+                        <MessageCircle className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">User's message:</p>
+                          <p className="text-sm">{request.user_message}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -149,6 +167,14 @@ const VipAdminRequests = () => {
               }
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Show user's message in dialog if present */}
+          {selectedRequest?.user_message && (
+            <div className="bg-muted rounded-md p-3">
+              <p className="text-xs text-muted-foreground mb-1">User's message:</p>
+              <p className="text-sm">{selectedRequest.user_message}</p>
+            </div>
+          )}
           
           <div className="space-y-4">
             <div>
