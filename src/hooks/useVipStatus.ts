@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type VipTier = 'copper' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | null;
+export type VipTier = 'copper' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'emerald' |'diamond' | null;
 
 // Tier hierarchy for comparison - upgrade path: copper → bronze → silver → gold → platinum → diamond
 const TIER_LEVELS: Record<string, number> = {
@@ -10,7 +10,8 @@ const TIER_LEVELS: Record<string, number> = {
   silver: 3,
   gold: 4,
   platinum: 5,
-  diamond: 6,
+  emerald:6
+  diamond: 7,
 };
 
 // Get the next tier in the upgrade path
