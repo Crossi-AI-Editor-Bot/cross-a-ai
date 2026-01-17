@@ -121,6 +121,7 @@ export type Database = {
       model_costs: {
         Row: {
           bronze_access: boolean
+          copper_access: boolean
           cost: number
           diamond_access: boolean
           enabled: boolean
@@ -130,6 +131,7 @@ export type Database = {
           image_cost: number | null
           label: string
           model_id: string
+          platinum_access: boolean
           public_access: boolean
           silver_access: boolean
           system_prompt: string | null
@@ -138,6 +140,7 @@ export type Database = {
         }
         Insert: {
           bronze_access?: boolean
+          copper_access?: boolean
           cost: number
           diamond_access?: boolean
           enabled?: boolean
@@ -147,6 +150,7 @@ export type Database = {
           image_cost?: number | null
           label: string
           model_id: string
+          platinum_access?: boolean
           public_access?: boolean
           silver_access?: boolean
           system_prompt?: string | null
@@ -155,6 +159,7 @@ export type Database = {
         }
         Update: {
           bronze_access?: boolean
+          copper_access?: boolean
           cost?: number
           diamond_access?: boolean
           enabled?: boolean
@@ -164,6 +169,7 @@ export type Database = {
           image_cost?: number | null
           label?: string
           model_id?: string
+          platinum_access?: boolean
           public_access?: boolean
           silver_access?: boolean
           system_prompt?: string | null
