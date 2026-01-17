@@ -18,9 +18,11 @@ interface ModelState {
   cost: number;
   enabled: boolean;
   public_access: boolean;
+  copper_access: boolean;
   bronze_access: boolean;
   silver_access: boolean;
   gold_access: boolean;
+  platinum_access: boolean;
   diamond_access: boolean;
   folder: string | null;
   image_cost: number;
@@ -80,9 +82,11 @@ const AdminPanel = () => {
       cost: model.cost,
       enabled: model.enabled,
       public_access: model.public_access,
+      copper_access: model.copper_access,
       bronze_access: model.bronze_access,
       silver_access: model.silver_access,
       gold_access: model.gold_access,
+      platinum_access: model.platinum_access,
       diamond_access: model.diamond_access,
       folder: model.folder || null,
       image_cost: model.image_cost || 0,
@@ -178,9 +182,11 @@ const AdminPanel = () => {
           cost: 5,
           enabled: true,
           public_access: false,
+          copper_access: true,
           bronze_access: true,
           silver_access: true,
           gold_access: true,
+          platinum_access: true,
           diamond_access: true,
           folder: "Beta",
           image_cost: 0,
@@ -198,9 +204,11 @@ const AdminPanel = () => {
           cost: data.cost,
           enabled: data.enabled,
           public_access: data.public_access,
+          copper_access: data.copper_access,
           bronze_access: data.bronze_access,
           silver_access: data.silver_access,
           gold_access: data.gold_access,
+          platinum_access: data.platinum_access,
           diamond_access: data.diamond_access,
           folder: data.folder,
           image_cost: data.image_cost || 0,
@@ -269,9 +277,11 @@ const AdminPanel = () => {
             label: model.label,
             enabled: model.enabled,
             public_access: model.public_access,
+            copper_access: model.copper_access,
             bronze_access: model.bronze_access,
             silver_access: model.silver_access,
             gold_access: model.gold_access,
+            platinum_access: model.platinum_access,
             diamond_access: model.diamond_access,
             folder: model.folder,
             image_cost: model.image_cost,
@@ -404,9 +414,11 @@ const AdminPanel = () => {
                 onUpdateCost={(value) => updateModel(selectedModel.id, { cost: value })}
                 onUpdateEnabled={(value) => updateModel(selectedModel.id, { enabled: value })}
                 onUpdatePublicAccess={(value) => updateModel(selectedModel.id, { public_access: value })}
+                onUpdateCopperAccess={(value) => updateModel(selectedModel.id, { copper_access: value })}
                 onUpdateBronzeAccess={(value) => updateModel(selectedModel.id, { bronze_access: value })}
                 onUpdateSilverAccess={(value) => updateModel(selectedModel.id, { silver_access: value })}
                 onUpdateGoldAccess={(value) => updateModel(selectedModel.id, { gold_access: value })}
+                onUpdatePlatinumAccess={(value) => updateModel(selectedModel.id, { platinum_access: value })}
                 onUpdateDiamondAccess={(value) => updateModel(selectedModel.id, { diamond_access: value })}
                 onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
