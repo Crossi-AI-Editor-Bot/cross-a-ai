@@ -9,11 +9,9 @@ export interface ModelCost {
   cost: number;
   enabled: boolean;
   public_access: boolean;
-  copper_access: boolean;
   bronze_access: boolean;
   silver_access: boolean;
   gold_access: boolean;
-  platinum_access: boolean;
   diamond_access: boolean;
   image_cost: number;
   folder: string | null;
