@@ -32,12 +32,16 @@ const hasModelAccess = (model: ModelCost, tier: VipTier, isAdmin: boolean): bool
   
   // Check tier-specific access
   switch (tier) {
+    case 'copper':
+      return model.copper_access;
     case 'bronze':
       return model.bronze_access;
     case 'silver':
       return model.silver_access;
     case 'gold':
       return model.gold_access;
+    case 'platinum':
+      return model.platinum_access;
     case 'diamond':
       return model.diamond_access;
     default:
