@@ -25,9 +25,11 @@ interface ModelData {
   cost: number;
   enabled: boolean;
   public_access: boolean;
+  copper_access: boolean;
   bronze_access: boolean;
   silver_access: boolean;
   gold_access: boolean;
+  platinum_access: boolean;
   diamond_access: boolean;
   folder: string | null;
   image_cost: number;
@@ -40,9 +42,11 @@ interface FileEditorProps {
   onUpdateCost: (value: number) => void;
   onUpdateEnabled: (value: boolean) => void;
   onUpdatePublicAccess: (value: boolean) => void;
+  onUpdateCopperAccess: (value: boolean) => void;
   onUpdateBronzeAccess: (value: boolean) => void;
   onUpdateSilverAccess: (value: boolean) => void;
   onUpdateGoldAccess: (value: boolean) => void;
+  onUpdatePlatinumAccess: (value: boolean) => void;
   onUpdateDiamondAccess: (value: boolean) => void;
   onUpdateImageCost?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
@@ -55,9 +59,11 @@ export const FileEditor = ({
   onUpdateCost,
   onUpdateEnabled,
   onUpdatePublicAccess,
+  onUpdateCopperAccess,
   onUpdateBronzeAccess,
   onUpdateSilverAccess,
   onUpdateGoldAccess,
+  onUpdatePlatinumAccess,
   onUpdateDiamondAccess,
   onUpdateImageCost,
   onUpdateSystemPrompt,
@@ -226,6 +232,21 @@ export const FileEditor = ({
           </div>
 
           <div className="flex items-center gap-4">
+            <span className="text-purple-400">copper_access</span>
+            <span className="text-muted-foreground">=</span>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={model.copper_access}
+                onCheckedChange={onUpdateCopperAccess}
+              />
+              <span className={model.copper_access ? "text-orange-600" : "text-muted-foreground"}>
+                {model.copper_access ? "true" : "false"}
+              </span>
+              <Crown className="h-4 w-4 text-orange-600" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
             <span className="text-purple-400">bronze_access</span>
             <span className="text-muted-foreground">=</span>
             <div className="flex items-center gap-2">
@@ -267,6 +288,21 @@ export const FileEditor = ({
                 {model.gold_access ? "true" : "false"}
               </span>
               <Crown className="h-4 w-4 text-yellow-500" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="text-purple-400">platinum_access</span>
+            <span className="text-muted-foreground">=</span>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={model.platinum_access}
+                onCheckedChange={onUpdatePlatinumAccess}
+              />
+              <span className={model.platinum_access ? "text-slate-300" : "text-muted-foreground"}>
+                {model.platinum_access ? "true" : "false"}
+              </span>
+              <Crown className="h-4 w-4 text-slate-300" />
             </div>
           </div>
 
