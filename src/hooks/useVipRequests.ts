@@ -133,42 +133,35 @@ export const useVipRequests = (isAdmin: boolean = false) => {
 
       if (updateError) throw updateError;
 
-      // Check if user already has VIP status
+      // Delete existing VIP status if user has one (for clean upgrade)
       const { data: existingVip } = await supabase
         .from("vip_status")
         .select("id")
         .eq("user_id", request.user_id)
         .maybeSingle();
 
+      if (existingVip) {
+        const { error: deleteError } = await supabase
+          .from("vip_status")
+          .delete()
+          .eq("id", existingVip.id);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // Create new VIP status with the upgraded tier
       const expiresAt = new Date();
       expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1 year from now
 
-      if (existingVip) {
-        // Update existing VIP status
-        const { error: vipError } = await supabase
-          .from("vip_status")
-          .update({
-            tier: request.requested_tier,
-            expires_at: expiresAt.toISOString(),
-          })
-          .eq("id", existingVip.id);
+      const { error: vipError } = await supabase
+        .from("vip_status")
+        .insert({
+          user_id: request.user_id,
+          tier: request.requested_tier,
+          expires_at: expiresAt.toISOString(),
+        });
 
-        if (vipError) throw vipError;
-      } else {
-        // Insert new VIP status using edge function or RPC
-        // Since users can't insert into vip_status, we need to use a workaround
-        // For now, we'll need to add an RLS policy or use service role
-        // Let's add an admin insert policy
-        const { error: vipError } = await supabase
-          .from("vip_status")
-          .insert({
-            user_id: request.user_id,
-            tier: request.requested_tier,
-            expires_at: expiresAt.toISOString(),
-          });
-
-        if (vipError) throw vipError;
-      }
+      if (vipError) throw vipError;
 
       await fetchRequests();
       return { success: true };
