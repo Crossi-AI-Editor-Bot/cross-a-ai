@@ -1,6 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Brain, Crown, Folder, ChevronRight } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Brain, Crown, Folder, ChevronRight, Lock } from "lucide-react";
 import { useVipStatus, VipTier } from "@/hooks/useVipStatus";
 import { useEffect, useMemo, useState } from "react";
 import type { ModelCost } from "@/hooks/useModelCosts";
@@ -32,12 +33,16 @@ const hasModelAccess = (model: ModelCost, tier: VipTier, isAdmin: boolean): bool
   
   // Check tier-specific access
   switch (tier) {
+    case 'copper':
+      return model.copper_access;
     case 'bronze':
       return model.bronze_access;
     case 'silver':
       return model.silver_access;
     case 'gold':
       return model.gold_access;
+    case 'platinum':
+      return model.platinum_access;
     case 'diamond':
       return model.diamond_access;
     default:
@@ -45,27 +50,42 @@ const hasModelAccess = (model: ModelCost, tier: VipTier, isAdmin: boolean): bool
   }
 };
 
+// Get the minimum tier required to access a model
+const getRequiredTier = (model: ModelCost): string | null => {
+  if (model.public_access) return null;
+  if (model.copper_access) return 'Copper';
+  if (model.bronze_access) return 'Bronze';
+  if (model.silver_access) return 'Silver';
+  if (model.gold_access) return 'Gold';
+  if (model.platinum_access) return 'Platinum';
+  if (model.diamond_access) return 'Diamond';
+  return 'VIP';
+};
+
 const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
   const { tier, isAdmin, loading: vipLoading } = useVipStatus();
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
 
-  // Filter models based on enabled status and tier access
-  const availableModels = models.filter((m) => {
-    if (!m.enabled) return false;
-    return hasModelAccess(m, tier, isAdmin);
-  });
+  // Get all enabled models
+  const enabledModels = models.filter((m) => m.enabled);
+  
+  // Filter models that user can access (for auto-selection logic)
+  const availableModels = enabledModels.filter((m) => hasModelAccess(m, tier, isAdmin));
 
-  const selectedModel = value ? availableModels.find((m) => m.id === value) : undefined;
+  const selectedModel = value ? enabledModels.find((m) => m.id === value) : undefined;
 
   // Helper to check if model requires VIP (not public access)
   const isVipModel = (model: ModelCost): boolean => !model.public_access;
+  
+  // Check if model is locked for current user
+  const isModelLocked = (model: ModelCost): boolean => !hasModelAccess(model, tier, isAdmin);
 
   // Group models by folder
   const groupedModels = useMemo(() => {
     const groups: Record<string, ModelCost[]> = {};
     const unsorted: ModelCost[] = [];
 
-    availableModels.forEach((model) => {
+    enabledModels.forEach((model) => {
       const folder = model.folder;
       if (folder) {
         const topFolder = folder.split("/")[0];
@@ -77,7 +97,7 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
     });
 
     return { groups, unsorted };
-  }, [availableModels]);
+  }, [enabledModels]);
 
   const folderNames = Object.keys(groupedModels.groups).sort();
 
@@ -136,53 +156,99 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
       </SelectTrigger>
 
       <SelectContent>
-        {/* Render grouped models by folder */}
-        {folderNames.map((folderName) => (
-          <Collapsible
-            key={folderName}
-            open={openFolders[folderName]}
-            onOpenChange={() => toggleFolder(folderName)}
-          >
-            <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer">
-              <ChevronRight
-                className={`w-3 h-3 transition-transform ${openFolders[folderName] ? "rotate-90" : ""}`}
-              />
-              <Folder className="w-3 h-3" />
-              {folderName}
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              {groupedModels.groups[folderName].map((model) => (
-                <SelectItem key={model.id} value={model.id} className="pl-8">
-                  <div className="flex items-center gap-2">
-                    {isVipModel(model) && <Crown className="w-3 h-3 text-yellow-500" />}
-                    <span>{model.label} ({model.cost} credits)</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
+        <TooltipProvider delayDuration={300}>
+          {/* Render grouped models by folder */}
+          {folderNames.map((folderName) => (
+            <Collapsible
+              key={folderName}
+              open={openFolders[folderName]}
+              onOpenChange={() => toggleFolder(folderName)}
+            >
+              <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer">
+                <ChevronRight
+                  className={`w-3 h-3 transition-transform ${openFolders[folderName] ? "rotate-90" : ""}`}
+                />
+                <Folder className="w-3 h-3" />
+                {folderName}
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                {groupedModels.groups[folderName].map((model) => {
+                  const locked = isModelLocked(model);
+                  const requiredTier = getRequiredTier(model);
+                  
+                  return (
+                    <Tooltip key={model.id}>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <SelectItem 
+                            value={model.id} 
+                            className={`pl-8 ${locked ? "opacity-50 cursor-not-allowed" : ""}`}
+                            disabled={locked}
+                          >
+                            <div className="flex items-center gap-2">
+                              {locked ? (
+                                <Lock className="w-3 h-3 text-muted-foreground" />
+                              ) : isVipModel(model) ? (
+                                <Crown className="w-3 h-3 text-yellow-500" />
+                              ) : null}
+                              <span>{model.label} ({model.cost} credits)</span>
+                            </div>
+                          </SelectItem>
+                        </div>
+                      </TooltipTrigger>
+                      {locked && requiredTier && (
+                        <TooltipContent side="right">
+                          <p>Requires {requiredTier} VIP or higher</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  );
+                })}
+              </CollapsibleContent>
+            </Collapsible>
+          ))}
 
-        {/* Render unsorted models */}
-        {groupedModels.unsorted.length > 0 && (
-          <>
-            {hasGroups && (
-              <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">Other</div>
-            )}
-            {groupedModels.unsorted.map((model) => (
-              <SelectItem
-                key={model.id}
-                value={model.id}
-                className={hasGroups ? "pl-8" : ""}
-              >
-                <div className="flex items-center gap-2">
-                  {isVipModel(model) && <Crown className="w-3 h-3 text-yellow-500" />}
-                  <span>{model.label} ({model.cost} credits)</span>
-                </div>
-              </SelectItem>
-            ))}
-          </>
-        )}
+          {/* Render unsorted models */}
+          {groupedModels.unsorted.length > 0 && (
+            <>
+              {hasGroups && (
+                <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">Other</div>
+              )}
+              {groupedModels.unsorted.map((model) => {
+                const locked = isModelLocked(model);
+                const requiredTier = getRequiredTier(model);
+                
+                return (
+                  <Tooltip key={model.id}>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <SelectItem
+                          value={model.id}
+                          className={`${hasGroups ? "pl-8" : ""} ${locked ? "opacity-50 cursor-not-allowed" : ""}`}
+                          disabled={locked}
+                        >
+                          <div className="flex items-center gap-2">
+                            {locked ? (
+                              <Lock className="w-3 h-3 text-muted-foreground" />
+                            ) : isVipModel(model) ? (
+                              <Crown className="w-3 h-3 text-yellow-500" />
+                            ) : null}
+                            <span>{model.label} ({model.cost} credits)</span>
+                          </div>
+                        </SelectItem>
+                      </div>
+                    </TooltipTrigger>
+                    {locked && requiredTier && (
+                      <TooltipContent side="right">
+                        <p>Requires {requiredTier} VIP or higher</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                );
+              })}
+            </>
+          )}
+        </TooltipProvider>
       </SelectContent>
     </Select>
   );
