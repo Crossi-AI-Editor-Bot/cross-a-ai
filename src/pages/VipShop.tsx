@@ -19,6 +19,7 @@ import { useVipStatus, getRequiredTierFor, getNextTier } from "@/hooks/useVipSta
 import { useVipRequests } from "@/hooks/useVipRequests";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import VipAdminRequests from "@/components/VipAdminRequests";
+import VipTierComparisonChart from "@/components/VipTierComparisonChart";
 
 const tierBenefits: Record<VipTierType, string[]> = {
   copper: [
@@ -199,6 +200,11 @@ const VipShop = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Tier Comparison Chart */}
+        <div className="mb-12">
+          <VipTierComparisonChart />
+        </div>
 
         {/* Tier Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
