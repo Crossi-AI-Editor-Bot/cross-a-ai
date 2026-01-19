@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     // Use limit(1) because model_id is no longer unique (e.g., multiple GPT Nano entries)
     const { data: modelCostDataArray, error: costError } = await supabase
       .from('model_costs')
-      .select('cost, enabled, public_access, bronze_access, silver_access, gold_access, diamond_access, image_cost, system_prompt')
+      .select('cost, enabled, public_access, copper_access, bronze_access, silver_access, gold_access, platinum_access, diamond_access, image_cost, system_prompt')
       .eq('model_id', model)
       .eq('enabled', true)
       .limit(1);
@@ -176,6 +176,9 @@ Deno.serve(async (req) => {
         if (vipData) {
           const tier = vipData.tier;
           switch (tier) {
+            case 'copper':
+              hasAccess = modelCostData.copper_access;
+              break;
             case 'bronze':
               hasAccess = modelCostData.bronze_access;
               break;
@@ -184,6 +187,9 @@ Deno.serve(async (req) => {
               break;
             case 'gold':
               hasAccess = modelCostData.gold_access;
+              break;
+            case 'platinum':
+              hasAccess = modelCostData.platinum_access;
               break;
             case 'diamond':
               hasAccess = modelCostData.diamond_access;
