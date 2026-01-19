@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { AIModel } from "@/components/ModelSelector";
 
 interface Message {
   role: "user" | "assistant";
@@ -63,7 +62,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     }
   };
 
-  const sendMessage = async (content: string, model: AIModel, files?: File[]) => {
+  const sendMessage = async (content: string, modelCostId: string, files?: File[]) => {
     if ((!content.trim() && !files?.length)) return;
     
     if (!conversationId) {
@@ -139,10 +138,6 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         return;
       }
 
-      // Check if this is an image or video generation model
-      const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview';
-      const isVideoGen = model === 'google/veo-3.1-fast';
-
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
         {
@@ -157,67 +152,17 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
               content: msg.content,
               files: msg.files,
             })),
-            model,
+            modelCostId,
           }),
         }
       );
 
-      // Handle image generation response differently
-      if (isImageGen) {
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          
-          if (response.status === 429) {
-            toast({
-              title: "Rate Limit",
-              description: errorData.error || "Too many requests. Please try again later.",
-              variant: "destructive",
-            });
-            setMessages((prev) => prev.slice(0, -1));
-            return;
-          }
-          
-          if (response.status === 402) {
-            toast({
-              title: "Insufficient Image Credits",
-              description: "You don't have enough image credits. Credits reset weekly.",
-              variant: "destructive",
-            });
-            setMessages((prev) => prev.slice(0, -1));
-            window.location.reload();
-            return;
-          }
+      // Check content type to determine response handling
+      const contentType = response.headers.get('content-type') || '';
+      const isStreamResponse = contentType.includes('text/event-stream');
 
-          throw new Error(errorData.error || "Failed to generate image");
-        }
-
-        const data = await response.json();
-        const imageUrl = data.image;
-        const textResponse = data.text || "Here's your generated image:";
-        
-        updateAssistantMessage(textResponse, imageUrl);
-        // Update image credits for image models
-        if (data.imageCredits !== undefined) {
-          setNewImageCredits(data.imageCredits);
-        } else if (data.credits !== undefined) {
-          setNewImageCredits(data.credits);
-        }
-        
-        // Save to database with image
-        await saveMessagesToDatabase([
-          userMessage, 
-          { 
-            role: "assistant", 
-            content: JSON.stringify({ text: textResponse, image: imageUrl })
-          }
-        ]);
-        
-        setIsLoading(false);
-        return;
-      }
-
-      // Handle video generation response
-      if (isVideoGen) {
+      // Handle non-streaming JSON responses (image/video generation)
+      if (!isStreamResponse) {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           
@@ -234,7 +179,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           if (response.status === 402) {
             toast({
               title: "Insufficient Credits",
-              description: "You don't have enough credits. You'll get 15 credits tomorrow.",
+              description: errorData.error || "You don't have enough credits.",
               variant: "destructive",
             });
             setMessages((prev) => prev.slice(0, -1));
@@ -242,27 +187,52 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             return;
           }
 
-          throw new Error(errorData.error || "Failed to generate video");
+          throw new Error(errorData.error || "Request failed");
         }
 
         const data = await response.json();
-        const videoUrl = data.video;
-        const textResponse = data.text || "Here's your generated video:";
         
-        updateAssistantMessage(textResponse, undefined, videoUrl);
-        setNewCredits(data.credits);
-        
-        // Save to database with video
-        await saveMessagesToDatabase([
-          userMessage, 
-          { 
-            role: "assistant", 
-            content: JSON.stringify({ text: textResponse, video: videoUrl })
+        // Handle image generation response
+        if (data.image) {
+          const imageUrl = data.image;
+          const textResponse = data.text || "Here's your generated image:";
+          
+          updateAssistantMessage(textResponse, imageUrl);
+          if (data.credits !== undefined) {
+            setNewImageCredits(data.credits);
           }
-        ]);
+          
+          await saveMessagesToDatabase([
+            userMessage, 
+            { 
+              role: "assistant", 
+              content: JSON.stringify({ text: textResponse, image: imageUrl })
+            }
+          ]);
+          
+          setIsLoading(false);
+          return;
+        }
         
-        setIsLoading(false);
-        return;
+        // Handle video generation response
+        if (data.video) {
+          const videoUrl = data.video;
+          const textResponse = data.text || "Here's your generated video:";
+          
+          updateAssistantMessage(textResponse, undefined, videoUrl);
+          setNewCredits(data.credits);
+          
+          await saveMessagesToDatabase([
+            userMessage, 
+            { 
+              role: "assistant", 
+              content: JSON.stringify({ text: textResponse, video: videoUrl })
+            }
+          ]);
+          
+          setIsLoading(false);
+          return;
+        }
       }
 
       if (!response.ok || !response.body) {

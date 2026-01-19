@@ -22,17 +22,7 @@ const chatRequestSchema = z.object({
       data: z.string()
     })).optional()
   })).min(1).max(100),
-  model: z.enum([
-    'google/gemini-2.5-flash',
-    'google/gemini-2.5-pro', 
-    'google/gemini-2.5-flash-lite',
-    'google/gemini-2.5-flash-image',
-    'google/gemini-3-pro-image-preview',
-    'openai/gpt-5',
-    'openai/gpt-5-mini',
-    'openai/gpt-5-nano',
-    'google/veo-3.1-fast'
-  ]).default('google/gemini-2.5-flash')
+  modelCostId: z.string().uuid() // The unique record ID from model_costs table
 });
 
 Deno.serve(async (req) => {
@@ -79,7 +69,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messages, model } = validatedData;
+    const { messages, modelCostId } = validatedData;
+
+    // Fetch model configuration from database using the unique record ID
+    const { data: modelCostData, error: costError } = await supabase
+      .from('model_costs')
+      .select('model_id, cost, enabled, public_access, copper_access, bronze_access, silver_access, gold_access, platinum_access, diamond_access, image_cost, system_prompt')
+      .eq('id', modelCostId)
+      .single();
+
+    if (costError || !modelCostData) {
+      return new Response(
+        JSON.stringify({ error: 'Model not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!modelCostData.enabled) {
+      return new Response(
+        JSON.stringify({ error: 'Model is disabled' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const model = modelCostData.model_id;
 
     // Check if this is an image generation request
     const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview';
@@ -120,32 +133,6 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Insufficient credits' }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Fetch model cost and access settings from database
-    // Use limit(1) because model_id is no longer unique (e.g., multiple GPT Nano entries)
-    const { data: modelCostDataArray, error: costError } = await supabase
-      .from('model_costs')
-      .select('cost, enabled, public_access, copper_access, bronze_access, silver_access, gold_access, platinum_access, diamond_access, image_cost, system_prompt')
-      .eq('model_id', model)
-      .eq('enabled', true)
-      .limit(1);
-
-    if (costError) {
-      console.error('Error fetching model cost:', costError);
-      return new Response(
-        JSON.stringify({ error: 'Unable to fetch model cost' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const modelCostData = modelCostDataArray?.[0];
-    
-    if (!modelCostData) {
-      return new Response(
-        JSON.stringify({ error: 'Model not found or disabled' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
