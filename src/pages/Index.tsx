@@ -61,8 +61,6 @@ const Index = () => {
     [modelCosts, selectedModelCostId]
   );
 
-  const selectedModelForChat = (selectedModelRow?.model_id as AIModel) ?? "google/gemini-2.5-flash";
-
   useEffect(() => {
     if (selectedModelCostId) return;
     const preferred =
@@ -261,7 +259,7 @@ const Index = () => {
       <footer className="border-t border-border bg-card/50 backdrop-blur-sm sticky bottom-0 shadow-lg">
         <div className="container max-w-4xl mx-auto px-4 py-4">
           <ChatInput 
-            onSend={(content, files) => sendMessage(content, selectedModelForChat, files)} 
+            onSend={(content, files) => sendMessage(content, selectedModelCostId || "", files)} 
             disabled={isLoading} 
           />
         </div>
