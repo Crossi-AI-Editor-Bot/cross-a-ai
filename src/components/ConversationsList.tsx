@@ -7,6 +7,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,87 +89,89 @@ const ConversationsList = ({
             New Conversation
           </Button>
 
-          <div className="space-y-1 mt-4">
-            {conversations.map((conversation) => (
-              <div
-                key={conversation.id}
-                className={`group flex items-center gap-2 p-2 rounded-lg hover:bg-accent cursor-pointer ${
-                  currentConversationId === conversation.id ? "bg-accent" : ""
-                }`}
-              >
-                {editingId === conversation.id ? (
-                  <Input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onBlur={saveRename}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveRename();
-                      if (e.key === "Escape") {
-                        setEditingId(null);
-                        setEditTitle("");
-                      }
-                    }}
-                    autoFocus
-                    className="h-8"
-                  />
-                ) : (
-                  <>
-                    <div
-                      onClick={() => {
-                        onSelectConversation(conversation.id);
-                        setOpen(false);
+          <ScrollArea className="h-[calc(100vh-180px)] mt-4">
+            <div className="space-y-1 pr-4">
+              {conversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  className={`group flex items-center gap-2 p-2 rounded-lg hover:bg-accent cursor-pointer ${
+                    currentConversationId === conversation.id ? "bg-accent" : ""
+                  }`}
+                >
+                  {editingId === conversation.id ? (
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onBlur={saveRename}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveRename();
+                        if (e.key === "Escape") {
+                          setEditingId(null);
+                          setEditTitle("");
+                        }
                       }}
-                      className="flex-1 truncate text-sm"
-                    >
-                      {conversation.title}
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRename(conversation.id, conversation.title);
+                      autoFocus
+                      className="h-8"
+                    />
+                  ) : (
+                    <>
+                      <div
+                        onClick={() => {
+                          onSelectConversation(conversation.id);
+                          setOpen(false);
                         }}
+                        className="flex-1 truncate text-sm"
                       >
-                        <Edit2 className="w-3 h-3" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete this conversation and all its messages.
-                              This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => onDeleteConversation(conversation.id)}
+                        {conversation.title}
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRename(conversation.id, conversation.title);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete this conversation and all its messages.
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => onDeleteConversation(conversation.id)}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
       </SheetContent>
     </Sheet>
