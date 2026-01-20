@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('model_id, cost, enabled, public_access, copper_access, bronze_access, silver_access, gold_access, platinum_access, diamond_access, image_cost, system_prompt')
+      .select('model_id, label, cost, enabled, public_access, copper_access, bronze_access, silver_access, gold_access, platinum_access, diamond_access, image_cost, system_prompt')
       .eq('id', modelCostId)
       .single();
 
@@ -452,8 +452,43 @@ Deno.serve(async (req) => {
     };
 
     // Use custom system prompt if set (for Nano models), otherwise use default
-    const systemPrompt = modelCostData.system_prompt || 
+    let systemPrompt = modelCostData.system_prompt || 
       "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging.";
+    
+    // Check if this model uses crossicon data (label contains "crossicon" or specific model name)
+    const usesCrossiconData = modelCostData.label?.toLowerCase().includes('crossicon') || 
+                               modelCostData.label?.toLowerCase().includes('test');
+    
+    if (usesCrossiconData) {
+      // Fetch articles from crossicon API
+      const CROSSICON_API_KEY = Deno.env.get("CROSSICON_API_KEY");
+      if (CROSSICON_API_KEY) {
+        try {
+          console.log('Fetching crossicon articles for model:', modelCostData.label);
+          const articlesResponse = await fetch(
+            "https://sqntchwyanocimynivqr.supabase.co/functions/v1/get-articles",
+            {
+              headers: {
+                "x-api-key": CROSSICON_API_KEY
+              }
+            }
+          );
+          
+          if (articlesResponse.ok) {
+            const articlesData = await articlesResponse.json();
+            console.log('Received crossicon articles:', JSON.stringify(articlesData).substring(0, 200));
+            
+            // Append article data to system prompt
+            const articlesContext = `\n\nYou have access to the following articles from crossicon. Use ONLY this data to answer questions. If the question cannot be answered from this data, say you don't have information about that topic.\n\nARTICLES DATA:\n${JSON.stringify(articlesData, null, 2)}`;
+            systemPrompt = systemPrompt + articlesContext;
+          } else {
+            console.error('Failed to fetch crossicon articles:', articlesResponse.status);
+          }
+        } catch (fetchError) {
+          console.error('Error fetching crossicon articles:', fetchError);
+        }
+      }
+    }
     
     requestBody.messages = [
       { 
