@@ -30,14 +30,14 @@ const comparisonFeatures: ComparisonFeature[] = [
     },
   },
   {
-    name: "VIP Models Access",
+    name: "Exclusive VIP Models",
     values: {
-      copper: "Copper only",
-      bronze: "Copper, Bronze",
-      silver: "Copper–Silver",
-      gold: "Copper–Gold",
-      platinum: "Copper–Platinum",
-      diamond: "All Models",
+      copper: "4.0 Mega Lite, 4.0 Ultra",
+      bronze: "4.0 Mikro, 4.0 Mini",
+      silver: "4.0, 4.0 Lite",
+      gold: "4.0 Pro, 4.0 Pro Lite",
+      platinum: "4.0 Ultra Lite",
+      diamond: "4.0 Mega + All",
     },
   },
   {
