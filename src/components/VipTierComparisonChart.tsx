@@ -91,8 +91,8 @@ const tierColors: Record<VipTierType, string> = {
   bronze: "text-amber-700",
   silver: "text-slate-400",
   gold: "text-yellow-500",
-  platinum: "text-cyan-400",
-  diamond: "text-purple-400",
+  platinum: "text-purple-500",
+  diamond: "text-cyan-500",
 };
 
 interface ModelAccess {
