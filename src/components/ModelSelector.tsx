@@ -80,38 +80,85 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
   // Check if model is locked for current user
   const isModelLocked = (model: ModelCost): boolean => !hasModelAccess(model, tier, isAdmin);
 
-  // Group models by folder
-  const groupedModels = useMemo(() => {
-    const groups: Record<string, ModelCost[]> = {};
+  // Build nested folder tree structure
+  interface FolderNode {
+    name: string;
+    path: string;
+    models: ModelCost[];
+    children: Record<string, FolderNode>;
+  }
+
+  const { folderTree, unsortedModels } = useMemo(() => {
+    const tree: Record<string, FolderNode> = {};
     const unsorted: ModelCost[] = [];
 
     enabledModels.forEach((model) => {
       const folder = model.folder;
       if (folder) {
-        const topFolder = folder.split("/")[0];
-        if (!groups[topFolder]) groups[topFolder] = [];
-        groups[topFolder].push(model);
+        const parts = folder.split("/");
+        let currentLevel = tree;
+        let currentPath = "";
+
+        parts.forEach((part, index) => {
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          if (!currentLevel[part]) {
+            currentLevel[part] = {
+              name: part,
+              path: currentPath,
+              models: [],
+              children: {},
+            };
+          }
+          // Add model to the deepest folder
+          if (index === parts.length - 1) {
+            currentLevel[part].models.push(model);
+          }
+          currentLevel = currentLevel[part].children;
+        });
       } else {
         unsorted.push(model);
       }
     });
 
-    return { groups, unsorted };
+    return { folderTree: tree, unsortedModels: unsorted };
   }, [enabledModels]);
 
-  const folderNames = Object.keys(groupedModels.groups).sort();
+  const topFolderNames = Object.keys(folderTree).sort();
 
-  // Initialize open folders - open the folder containing selected model
+  // Get all folder paths for initialization
+  const getAllFolderPaths = (nodes: Record<string, FolderNode>, parentPath = ""): string[] => {
+    const paths: string[] = [];
+    Object.values(nodes).forEach((node) => {
+      paths.push(node.path);
+      paths.push(...getAllFolderPaths(node.children, node.path));
+    });
+    return paths;
+  };
+
+  // Check if a folder or its children contain the selected model
+  const folderContainsSelected = (node: FolderNode, selectedId: string | undefined): boolean => {
+    if (!selectedId) return false;
+    if (node.models.some((m) => m.id === selectedId)) return true;
+    return Object.values(node.children).some((child) => folderContainsSelected(child, selectedId));
+  };
+
+  // Initialize open folders - open folders containing selected model
   useEffect(() => {
-    if (folderNames.length > 0 && Object.keys(openFolders).length === 0) {
+    if (topFolderNames.length > 0 && Object.keys(openFolders).length === 0) {
+      const allPaths = getAllFolderPaths(folderTree);
       const initialState: Record<string, boolean> = {};
-      folderNames.forEach((name) => {
-        const hasSelected = groupedModels.groups[name].some((m) => m.id === value);
-        initialState[name] = hasSelected;
-      });
+      
+      const checkAndSetOpen = (nodes: Record<string, FolderNode>) => {
+        Object.values(nodes).forEach((node) => {
+          initialState[node.path] = folderContainsSelected(node, value);
+          checkAndSetOpen(node.children);
+        });
+      };
+      
+      checkAndSetOpen(folderTree);
       setOpenFolders(initialState);
     }
-  }, [folderNames, groupedModels.groups, value, openFolders]);
+  }, [topFolderNames, folderTree, value, openFolders]);
 
   // Auto-select first available model if current selection is unavailable
   useEffect(() => {
@@ -123,10 +170,10 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
     }
   }, [availableModels, value, vipLoading, onChange]);
 
-  const toggleFolder = (folderName: string) => {
+  const toggleFolder = (folderPath: string) => {
     setOpenFolders((prev) => ({
       ...prev,
-      [folderName]: !prev[folderName],
+      [folderPath]: !prev[folderPath],
     }));
   };
 
@@ -134,7 +181,79 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
     return null;
   }
 
-  const hasGroups = folderNames.length > 0;
+  const hasGroups = topFolderNames.length > 0;
+
+  // Render a single model item
+  const renderModelItem = (model: ModelCost, indent: number = 0) => {
+    const locked = isModelLocked(model);
+    const requiredTier = getRequiredTier(model);
+    const paddingLeft = indent > 0 ? `${indent * 16 + 8}px` : undefined;
+
+    return (
+      <Tooltip key={model.id}>
+        <TooltipTrigger asChild>
+          <div>
+            <SelectItem
+              value={model.id}
+              className={`${locked ? "opacity-50 cursor-not-allowed" : ""}`}
+              style={{ paddingLeft }}
+              disabled={locked}
+            >
+              <div className="flex items-center gap-2">
+                {locked ? (
+                  <Lock className="w-3 h-3 text-muted-foreground" />
+                ) : isVipModel(model) ? (
+                  <Crown className="w-3 h-3 text-yellow-500" />
+                ) : null}
+                <span>{model.label} ({model.cost} credits)</span>
+              </div>
+            </SelectItem>
+          </div>
+        </TooltipTrigger>
+        {locked && requiredTier && (
+          <TooltipContent side="right">
+            <p>Requires {requiredTier} VIP or higher</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    );
+  };
+
+  // Recursively render folder nodes
+  const renderFolderNode = (node: FolderNode, depth: number = 0): JSX.Element => {
+    const hasChildren = Object.keys(node.children).length > 0;
+    const hasModels = node.models.length > 0;
+    const paddingLeft = depth * 16 + 8;
+
+    return (
+      <Collapsible
+        key={node.path}
+        open={openFolders[node.path]}
+        onOpenChange={() => toggleFolder(node.path)}
+      >
+        <CollapsibleTrigger
+          className="flex items-center gap-2 w-full py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer"
+          style={{ paddingLeft: `${paddingLeft}px` }}
+        >
+          <ChevronRight
+            className={`w-3 h-3 transition-transform ${openFolders[node.path] ? "rotate-90" : ""}`}
+          />
+          <Folder className="w-3 h-3" />
+          {node.name}
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          {/* Render models in this folder */}
+          {hasModels && node.models.map((model) => renderModelItem(model, depth + 1))}
+          
+          {/* Render child folders */}
+          {hasChildren &&
+            Object.values(node.children)
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((child) => renderFolderNode(child, depth + 1))}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
 
   return (
     <Select value={value ?? ""} onValueChange={(v) => v && onChange(v)}>
@@ -157,95 +276,18 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
 
       <SelectContent>
         <TooltipProvider delayDuration={300}>
-          {/* Render grouped models by folder */}
-          {folderNames.map((folderName) => (
-            <Collapsible
-              key={folderName}
-              open={openFolders[folderName]}
-              onOpenChange={() => toggleFolder(folderName)}
-            >
-              <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer">
-                <ChevronRight
-                  className={`w-3 h-3 transition-transform ${openFolders[folderName] ? "rotate-90" : ""}`}
-                />
-                <Folder className="w-3 h-3" />
-                {folderName}
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                {groupedModels.groups[folderName].map((model) => {
-                  const locked = isModelLocked(model);
-                  const requiredTier = getRequiredTier(model);
-                  
-                  return (
-                    <Tooltip key={model.id}>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <SelectItem 
-                            value={model.id} 
-                            className={`pl-8 ${locked ? "opacity-50 cursor-not-allowed" : ""}`}
-                            disabled={locked}
-                          >
-                            <div className="flex items-center gap-2">
-                              {locked ? (
-                                <Lock className="w-3 h-3 text-muted-foreground" />
-                              ) : isVipModel(model) ? (
-                                <Crown className="w-3 h-3 text-yellow-500" />
-                              ) : null}
-                              <span>{model.label} ({model.cost} credits)</span>
-                            </div>
-                          </SelectItem>
-                        </div>
-                      </TooltipTrigger>
-                      {locked && requiredTier && (
-                        <TooltipContent side="right">
-                          <p>Requires {requiredTier} VIP or higher</p>
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  );
-                })}
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
+          {/* Render folder tree */}
+          {Object.values(folderTree)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((node) => renderFolderNode(node))}
 
           {/* Render unsorted models */}
-          {groupedModels.unsorted.length > 0 && (
+          {unsortedModels.length > 0 && (
             <>
               {hasGroups && (
                 <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">Other</div>
               )}
-              {groupedModels.unsorted.map((model) => {
-                const locked = isModelLocked(model);
-                const requiredTier = getRequiredTier(model);
-                
-                return (
-                  <Tooltip key={model.id}>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <SelectItem
-                          value={model.id}
-                          className={`${hasGroups ? "pl-8" : ""} ${locked ? "opacity-50 cursor-not-allowed" : ""}`}
-                          disabled={locked}
-                        >
-                          <div className="flex items-center gap-2">
-                            {locked ? (
-                              <Lock className="w-3 h-3 text-muted-foreground" />
-                            ) : isVipModel(model) ? (
-                              <Crown className="w-3 h-3 text-yellow-500" />
-                            ) : null}
-                            <span>{model.label} ({model.cost} credits)</span>
-                          </div>
-                        </SelectItem>
-                      </div>
-                    </TooltipTrigger>
-                    {locked && requiredTier && (
-                      <TooltipContent side="right">
-                        <p>Requires {requiredTier} VIP or higher</p>
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                );
-              })}
+              {unsortedModels.map((model) => renderModelItem(model, hasGroups ? 1 : 0))}
             </>
           )}
         </TooltipProvider>
