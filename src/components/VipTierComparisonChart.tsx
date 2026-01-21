@@ -30,14 +30,14 @@ const comparisonFeatures: ComparisonFeature[] = [
     },
   },
   {
-    name: "Tier Models Access",
+    name: "VIP Models Access",
     values: {
-      copper: "Copper",
-      bronze: "Bronze",
-      silver: "Silver",
-      gold: "Gold",
-      platinum: "Platinum",
-      diamond: "All",
+      copper: "Copper only",
+      bronze: "Copper, Bronze",
+      silver: "Copper–Silver",
+      gold: "Copper–Gold",
+      platinum: "Copper–Platinum",
+      diamond: "All Models",
     },
   },
   {
