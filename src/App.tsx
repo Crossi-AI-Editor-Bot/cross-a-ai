@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import AdminPanel from "./pages/AdminPanel";
 import VipShop from "./pages/VipShop";
 import NotFound from "./pages/NotFound";
+import { NotificationPopup } from "./components/NotificationPopup";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <NotificationPopup />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />

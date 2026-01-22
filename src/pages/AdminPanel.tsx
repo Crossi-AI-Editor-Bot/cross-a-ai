@@ -10,6 +10,7 @@ import { useSiteStatus } from "@/hooks/useSiteStatus";
 import { supabase } from "@/integrations/supabase/client";
 import { FileExplorer } from "@/components/admin/FileExplorer";
 import { FileEditor } from "@/components/admin/FileEditor";
+import { NotificationManager } from "@/components/admin/NotificationManager";
 
 interface ModelState {
   id: string;
@@ -434,6 +435,11 @@ const AdminPanel = () => {
               </Card>
             )}
           </div>
+        </div>
+
+        {/* Notification Manager */}
+        <div className="mt-6">
+          <NotificationManager />
         </div>
       </div>
     </div>
