@@ -390,6 +390,11 @@ const AdminPanel = () => {
           </Card>
         )}
 
+        {/* Notification Manager */}
+        <div className="mb-6">
+          <NotificationManager />
+        </div>
+
         {/* File Explorer Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[calc(100vh-220px)] min-h-[500px]">
           {/* Sidebar - File Explorer */}
@@ -435,11 +440,6 @@ const AdminPanel = () => {
               </Card>
             )}
           </div>
-        </div>
-
-        {/* Notification Manager */}
-        <div className="mt-6">
-          <NotificationManager />
         </div>
       </div>
     </div>
