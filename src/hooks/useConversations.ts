@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -11,12 +11,13 @@ interface Conversation {
 
 export const useConversations = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [currentConversationId, setCurrentConversationIdInternal] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const previousConversationIdRef = useRef<string | null>(null);
 
   // Check if a conversation has messages
-  const hasMessages = useCallback(async (conversationId: string): Promise<boolean> => {
+  const checkHasMessages = async (conversationId: string): Promise<boolean> => {
     const { count, error } = await supabase
       .from('messages')
       .select('*', { count: 'exact', head: true })
@@ -28,35 +29,32 @@ export const useConversations = () => {
     }
     
     return (count ?? 0) > 0;
-  }, []);
+  };
 
   // Delete empty conversation silently
-  const deleteEmptyConversation = useCallback(async (id: string) => {
-    const hasMsg = await hasMessages(id);
+  const deleteEmptyConversation = async (id: string) => {
+    const hasMsg = await checkHasMessages(id);
     if (!hasMsg) {
       await supabase.from('conversations').delete().eq('id', id);
       setConversations(prev => prev.filter(c => c.id !== id));
     }
-  }, [hasMessages]);
+  };
 
   // Wrapper for setCurrentConversationId that cleans up empty conversations
-  const setCurrentConversationId = useCallback(async (newId: string | null) => {
-    const oldId = currentConversationId;
+  const setCurrentConversationId = useCallback((newId: string | null) => {
+    const oldId = previousConversationIdRef.current;
     
     // Set the new conversation immediately
-    setCurrentConversationIdInternal(newId);
+    setCurrentConversationIdState(newId);
+    previousConversationIdRef.current = newId;
     
     // Clean up old conversation if it's empty (and different from new)
     if (oldId && oldId !== newId) {
       deleteEmptyConversation(oldId);
     }
-  }, [currentConversationId, deleteEmptyConversation]);
-
-  useEffect(() => {
-    fetchConversations();
   }, []);
 
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -71,7 +69,7 @@ export const useConversations = () => {
       // Filter out empty conversations
       const nonEmptyConversations: Conversation[] = [];
       for (const conv of data || []) {
-        const hasMsg = await hasMessages(conv.id);
+        const hasMsg = await checkHasMessages(conv.id);
         if (hasMsg) {
           nonEmptyConversations.push(conv);
         } else {
@@ -84,14 +82,19 @@ export const useConversations = () => {
       
       // If no current conversation and we have conversations, select the most recent
       if (!currentConversationId && nonEmptyConversations.length > 0) {
-        setCurrentConversationIdInternal(nonEmptyConversations[0].id);
+        setCurrentConversationIdState(nonEmptyConversations[0].id);
+        previousConversationIdRef.current = nonEmptyConversations[0].id;
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentConversationId]);
+
+  useEffect(() => {
+    fetchConversations();
+  }, []);
 
   const createConversation = async (title: string = 'New Chat') => {
     try {
@@ -112,7 +115,8 @@ export const useConversations = () => {
       if (error) throw error;
 
       setConversations(prev => [data, ...prev]);
-      setCurrentConversationIdInternal(data.id);
+      setCurrentConversationIdState(data.id);
+      previousConversationIdRef.current = data.id;
       return data.id;
     } catch (error) {
       console.error('Error creating conversation:', error);
@@ -140,9 +144,11 @@ export const useConversations = () => {
       if (currentConversationId === id) {
         const remaining = conversations.filter(c => c.id !== id);
         if (remaining.length > 0) {
-          setCurrentConversationIdInternal(remaining[0].id);
+          setCurrentConversationIdState(remaining[0].id);
+          previousConversationIdRef.current = remaining[0].id;
         } else {
-          setCurrentConversationIdInternal(null);
+          setCurrentConversationIdState(null);
+          previousConversationIdRef.current = null;
         }
       }
     } catch (error) {
