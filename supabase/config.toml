@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.claim-advent]
 verify_jwt = false
+
+[functions.elevenlabs-token]
+verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false
+
+[functions.voice-chat]
+verify_jwt = false
