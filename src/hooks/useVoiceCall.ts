@@ -16,10 +16,11 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
   const [error, setError] = useState<string | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const scribeTokenRef = useRef<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
   
   const { toast } = useToast();
 
@@ -114,6 +115,25 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     return data.response;
   };
 
+  const floatTo16BitPCM = (float32Array: Float32Array): ArrayBuffer => {
+    const buffer = new ArrayBuffer(float32Array.length * 2);
+    const view = new DataView(buffer);
+    for (let i = 0; i < float32Array.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32Array[i]));
+      view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+    return buffer;
+  };
+
+  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  };
+
   const startCall = useCallback(async () => {
     try {
       setState('connecting');
@@ -128,17 +148,17 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 16000,
         } 
       });
       streamRef.current = stream;
 
       // Get scribe token
       const token = await getScribeToken();
-      scribeTokenRef.current = token;
 
-      // Connect to ElevenLabs WebSocket
+      // Connect to ElevenLabs WebSocket with correct URL
       const ws = new WebSocket(
-        `wss://api.elevenlabs.io/v1/realtime_scribe/stream?model_id=scribe_v2_realtime&token=${token}`
+        `wss://api.elevenlabs.io/v1/speech-to-text/realtime?model_id=scribe_v2_realtime&token=${token}`
       );
       wsRef.current = ws;
 
@@ -146,36 +166,49 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
         console.log('WebSocket connected');
         setState('listening');
         
-        // Start recording
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        mediaRecorderRef.current = mediaRecorder;
-
-        mediaRecorder.ondataavailable = async (event) => {
-          if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
-            const arrayBuffer = await event.data.arrayBuffer();
-            const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-            ws.send(JSON.stringify({ audio: base64 }));
+        // Create audio context for processing
+        const audioContext = new AudioContext({ sampleRate: 16000 });
+        audioContextRef.current = audioContext;
+        
+        const source = audioContext.createMediaStreamSource(stream);
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+        processorRef.current = processor;
+        
+        processor.onaudioprocess = (e) => {
+          if (ws.readyState === WebSocket.OPEN) {
+            const inputData = e.inputBuffer.getChannelData(0);
+            const pcmData = floatTo16BitPCM(inputData);
+            const base64Audio = arrayBufferToBase64(pcmData);
+            
+            ws.send(JSON.stringify({
+              message_type: 'input_audio_chunk',
+              audio_base_64: base64Audio,
+            }));
           }
         };
-
-        mediaRecorder.start(250); // Send chunks every 250ms
+        
+        source.connect(processor);
+        processor.connect(audioContext.destination);
       };
 
       ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log('WebSocket message:', data.message_type);
           
-          if (data.type === 'partial_transcript') {
+          if (data.message_type === 'session_started') {
+            console.log('Session started:', data.session_id);
+          } else if (data.message_type === 'partial_transcript') {
             setPartialTranscript(data.text || '');
-          } else if (data.type === 'committed_transcript') {
+          } else if (data.message_type === 'committed_transcript' || data.message_type === 'committed_transcript_with_timestamps') {
             const transcript = data.text || '';
             setFinalTranscript(transcript);
             setPartialTranscript('');
             
             if (transcript.trim()) {
-              // Stop recording while processing
-              if (mediaRecorderRef.current?.state === 'recording') {
-                mediaRecorderRef.current.stop();
+              // Stop audio processing while handling response
+              if (processorRef.current) {
+                processorRef.current.disconnect();
               }
               
               try {
@@ -184,22 +217,29 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
                 await playTTS(response);
                 
                 // Resume listening after speaking
-                if (streamRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+                if (streamRef.current && wsRef.current?.readyState === WebSocket.OPEN && audioContextRef.current) {
                   setState('listening');
                   setPartialTranscript('');
                   
-                  const newRecorder = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
-                  mediaRecorderRef.current = newRecorder;
+                  const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
+                  const newProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+                  processorRef.current = newProcessor;
                   
-                  newRecorder.ondataavailable = async (e) => {
-                    if (e.data.size > 0 && wsRef.current?.readyState === WebSocket.OPEN) {
-                      const arrayBuffer = await e.data.arrayBuffer();
-                      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-                      wsRef.current.send(JSON.stringify({ audio: base64 }));
+                  newProcessor.onaudioprocess = (e) => {
+                    if (wsRef.current?.readyState === WebSocket.OPEN) {
+                      const inputData = e.inputBuffer.getChannelData(0);
+                      const pcmData = floatTo16BitPCM(inputData);
+                      const base64Audio = arrayBufferToBase64(pcmData);
+                      
+                      wsRef.current.send(JSON.stringify({
+                        message_type: 'input_audio_chunk',
+                        audio_base_64: base64Audio,
+                      }));
                     }
                   };
                   
-                  newRecorder.start(250);
+                  source.connect(newProcessor);
+                  newProcessor.connect(audioContextRef.current.destination);
                 }
               } catch (err) {
                 console.error('Processing error:', err);
@@ -207,9 +247,10 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
                 setState('error');
               }
             }
-          } else if (data.type === 'error') {
+          } else if (data.message_type === 'error') {
             console.error('Scribe error:', data);
-            setError(data.message || 'Transcription error');
+            setError(data.error || 'Transcription error');
+            setState('error');
           }
         } catch (err) {
           console.error('Message parse error:', err);
@@ -222,8 +263,8 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
         setState('error');
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket closed');
+      ws.onclose = (event) => {
+        console.log('WebSocket closed:', event.code, event.reason);
         if (state !== 'idle') {
           setState('idle');
         }
@@ -247,6 +288,18 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
+    }
+
+    // Stop audio processor
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+
+    // Close audio context
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
     }
 
     // Stop media recorder
