@@ -156,25 +156,15 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       // Get scribe token
       const token = await getScribeToken();
 
-      // Connect to ElevenLabs WebSocket with correct URL
+      // Connect to ElevenLabs WebSocket with VAD enabled for auto-commit
       const ws = new WebSocket(
-        `wss://api.elevenlabs.io/v1/speech-to-text/realtime?model_id=scribe_v2_realtime&token=${token}`
+        `wss://api.elevenlabs.io/v1/speech-to-text/realtime?model_id=scribe_v2_realtime&token=${token}&vad_commit_strategy=true&vad_silence_threshold_secs=1.0`
       );
       wsRef.current = ws;
 
       ws.onopen = () => {
         console.log('WebSocket connected');
         setState('listening');
-        
-        // Send configuration to enable VAD (Voice Activity Detection) for auto-commit
-        ws.send(JSON.stringify({
-          type: 'configure',
-          vad: {
-            mode: 'auto',
-            threshold: 0.5,
-            silence_duration_ms: 1000,
-          },
-        }));
         
         // Create audio context for processing
         const audioContext = new AudioContext({ sampleRate: 16000 });
