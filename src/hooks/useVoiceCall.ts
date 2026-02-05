@@ -166,6 +166,16 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
         console.log('WebSocket connected');
         setState('listening');
         
+        // Send configuration to enable VAD (Voice Activity Detection) for auto-commit
+        ws.send(JSON.stringify({
+          type: 'configure',
+          vad: {
+            mode: 'auto',
+            threshold: 0.5,
+            silence_duration_ms: 1000,
+          },
+        }));
+        
         // Create audio context for processing
         const audioContext = new AudioContext({ sampleRate: 16000 });
         audioContextRef.current = audioContext;
@@ -194,66 +204,85 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('WebSocket message:', data.message_type);
+          console.log('WebSocket message:', data.type || data.message_type, data);
           
-          if (data.message_type === 'session_started') {
+          // Handle different message types from ElevenLabs
+          const msgType = data.type || data.message_type;
+          
+          if (msgType === 'session_started' || msgType === 'session_begin') {
             console.log('Session started:', data.session_id);
-          } else if (data.message_type === 'partial_transcript') {
+          } else if (msgType === 'transcript' && data.is_final === false) {
+            // Partial transcript
+            setPartialTranscript(data.text || data.transcript || '');
+          } else if (msgType === 'transcript' && data.is_final === true) {
+            // Final transcript from VAD
+            const transcript = data.text || data.transcript || '';
+            setFinalTranscript(transcript);
+            setPartialTranscript('');
+            
+            if (transcript.trim()) {
+              await handleTranscriptCommit(transcript);
+            }
+          } else if (msgType === 'partial_transcript') {
             setPartialTranscript(data.text || '');
-          } else if (data.message_type === 'committed_transcript' || data.message_type === 'committed_transcript_with_timestamps') {
+          } else if (msgType === 'committed_transcript' || msgType === 'committed_transcript_with_timestamps' || msgType === 'final_transcript') {
             const transcript = data.text || '';
             setFinalTranscript(transcript);
             setPartialTranscript('');
             
             if (transcript.trim()) {
-              // Stop audio processing while handling response
-              if (processorRef.current) {
-                processorRef.current.disconnect();
-              }
-              
-              try {
-                const response = await sendToAI(transcript);
-                setAiResponse(response);
-                await playTTS(response);
-                
-                // Resume listening after speaking
-                if (streamRef.current && wsRef.current?.readyState === WebSocket.OPEN && audioContextRef.current) {
-                  setState('listening');
-                  setPartialTranscript('');
-                  
-                  const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
-                  const newProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
-                  processorRef.current = newProcessor;
-                  
-                  newProcessor.onaudioprocess = (e) => {
-                    if (wsRef.current?.readyState === WebSocket.OPEN) {
-                      const inputData = e.inputBuffer.getChannelData(0);
-                      const pcmData = floatTo16BitPCM(inputData);
-                      const base64Audio = arrayBufferToBase64(pcmData);
-                      
-                      wsRef.current.send(JSON.stringify({
-                        message_type: 'input_audio_chunk',
-                        audio_base_64: base64Audio,
-                      }));
-                    }
-                  };
-                  
-                  source.connect(newProcessor);
-                  newProcessor.connect(audioContextRef.current.destination);
-                }
-              } catch (err) {
-                console.error('Processing error:', err);
-                setError(err instanceof Error ? err.message : 'Processing failed');
-                setState('error');
-              }
+              await handleTranscriptCommit(transcript);
             }
-          } else if (data.message_type === 'error') {
+          } else if (msgType === 'error') {
             console.error('Scribe error:', data);
-            setError(data.error || 'Transcription error');
+            setError(data.error || data.message || 'Transcription error');
             setState('error');
           }
         } catch (err) {
           console.error('Message parse error:', err);
+        }
+      };
+      
+      const handleTranscriptCommit = async (transcript: string) => {
+        // Stop audio processing while handling response
+        if (processorRef.current) {
+          processorRef.current.disconnect();
+        }
+        
+        try {
+          const response = await sendToAI(transcript);
+          setAiResponse(response);
+          await playTTS(response);
+          
+          // Resume listening after speaking
+          if (streamRef.current && wsRef.current?.readyState === WebSocket.OPEN && audioContextRef.current) {
+            setState('listening');
+            setPartialTranscript('');
+            
+            const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
+            const newProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+            processorRef.current = newProcessor;
+            
+            newProcessor.onaudioprocess = (e) => {
+              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                const inputData = e.inputBuffer.getChannelData(0);
+                const pcmData = floatTo16BitPCM(inputData);
+                const base64Audio = arrayBufferToBase64(pcmData);
+                
+                wsRef.current.send(JSON.stringify({
+                  message_type: 'input_audio_chunk',
+                  audio_base_64: base64Audio,
+                }));
+              }
+            };
+            
+            source.connect(newProcessor);
+            newProcessor.connect(audioContextRef.current.destination);
+          }
+        } catch (err) {
+          console.error('Processing error:', err);
+          setError(err instanceof Error ? err.message : 'Processing failed');
+          setState('error');
         }
       };
 
