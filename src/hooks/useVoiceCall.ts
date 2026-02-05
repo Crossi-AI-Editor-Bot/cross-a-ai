@@ -17,7 +17,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const commitNextChunkRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -183,7 +183,9 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
             ws.send(JSON.stringify({
               message_type: 'input_audio_chunk',
               audio_base_64: base64Audio,
+              commit: commitNextChunkRef.current,
             }));
+            commitNextChunkRef.current = false;
           }
         };
         
@@ -259,10 +261,12 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
                 const pcmData = floatTo16BitPCM(inputData);
                 const base64Audio = arrayBufferToBase64(pcmData);
                 
-                wsRef.current.send(JSON.stringify({
-                  message_type: 'input_audio_chunk',
-                  audio_base_64: base64Audio,
-                }));
+                      wsRef.current.send(JSON.stringify({
+                        message_type: 'input_audio_chunk',
+                        audio_base_64: base64Audio,
+                        commit: commitNextChunkRef.current,
+                      }));
+                      commitNextChunkRef.current = false;
               }
             };
             
@@ -321,11 +325,8 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       audioContextRef.current = null;
     }
 
-    // Stop media recorder
-    if (mediaRecorderRef.current?.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    mediaRecorderRef.current = null;
+    // Reset manual commit flag
+    commitNextChunkRef.current = false;
 
     // Close WebSocket
     if (wsRef.current) {
@@ -354,5 +355,9 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     error,
     startCall,
     endCall,
+    answerNow: () => {
+      // Force the next audio chunk to be committed immediately
+      commitNextChunkRef.current = true;
+    },
   };
 };

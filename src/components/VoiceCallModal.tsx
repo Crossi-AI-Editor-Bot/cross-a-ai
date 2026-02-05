@@ -34,7 +34,10 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate }: VoiceCallModalP
     error,
     startCall,
     endCall,
+    answerNow,
   } = useVoiceCall({ onCreditsUpdate });
+
+  const canAnswerNow = state === 'listening' && !!(partialTranscript || finalTranscript);
 
   useEffect(() => {
     if (open && state === 'idle') {
@@ -127,6 +130,17 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate }: VoiceCallModalP
               </p>
             )}
           </div>
+
+          {/* Answer now button (manual commit) */}
+          <Button
+            variant="secondary"
+            size="lg"
+            className="w-full h-12"
+            onClick={answerNow}
+            disabled={!canAnswerNow}
+          >
+            Answer now
+          </Button>
 
           {/* End call button */}
           <Button
