@@ -8,6 +8,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Brain } from "lucide-react";
 
+const useVersion = () => {
+  const [version, setVersion] = useState<string>("0.0.0.0");
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "app_version")
+        .maybeSingle();
+      
+      if (data?.value) {
+        setVersion(typeof data.value === 'string' ? data.value : (data.value as any).version || "0.0.0.0");
+      }
+    };
+    fetchVersion();
+  }, []);
+
+  return version;
+};
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -77,8 +98,11 @@ const Auth = () => {
     }
   };
 
+  const version = useVersion();
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <span className="absolute bottom-4 left-4 text-xs text-muted-foreground">v{version}</span>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">

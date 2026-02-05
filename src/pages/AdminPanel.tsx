@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Power, PowerOff, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -43,6 +45,23 @@ const AdminPanel = () => {
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [togglingSite, setTogglingSite] = useState(false);
+  const [appVersion, setAppVersion] = useState("0.0.0.0");
+
+  // Load app version
+  useEffect(() => {
+    const loadVersion = async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "app_version")
+        .maybeSingle();
+      
+      if (data?.value) {
+        setAppVersion(typeof data.value === 'string' ? data.value : (data.value as any).version || "0.0.0.0");
+      }
+    };
+    if (isAdmin) loadVersion();
+  }, [isAdmin]);
 
   // Load folders from database
   useEffect(() => {
@@ -270,6 +289,11 @@ const AdminPanel = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Save app version
+      await supabase
+        .from("site_settings")
+        .upsert({ key: "app_version", value: appVersion }, { onConflict: "key" });
+
       for (const model of models) {
         const { error } = await supabase
           .from("model_costs")
@@ -352,6 +376,16 @@ const AdminPanel = () => {
               <Monitor className="h-6 w-6 md:h-8 md:w-8" />
               Admin Control Panel
             </h1>
+            <div className="flex items-center gap-2 mt-2">
+              <Label htmlFor="version" className="text-sm text-muted-foreground">Version:</Label>
+              <Input
+                id="version"
+                value={appVersion}
+                onChange={(e) => setAppVersion(e.target.value)}
+                className="w-32 h-8 text-sm"
+                placeholder="0.0.0.0"
+              />
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Button
