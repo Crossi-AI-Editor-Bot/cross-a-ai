@@ -66,8 +66,10 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
   const { tier, isAdmin, loading: vipLoading } = useVipStatus();
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
 
-  // Get all enabled models
-  const enabledModels = models.filter((m) => m.enabled);
+  // Get all enabled models, excluding Call Models folder
+  const enabledModels = models.filter(
+    (m) => m.enabled && !m.folder?.toLowerCase().startsWith("call models")
+  );
   
   // Filter models that user can access (for auto-selection logic)
   const availableModels = enabledModels.filter((m) => hasModelAccess(m, tier, isAdmin));
