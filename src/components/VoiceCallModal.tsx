@@ -9,11 +9,13 @@ import {
 } from '@/components/ui/dialog';
 import { useVoiceCall, VoiceCallState } from '@/hooks/useVoiceCall';
 import { cn } from '@/lib/utils';
+import type { ModelCost } from '@/hooks/useModelCosts';
 
 interface VoiceCallModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreditsUpdate?: (credits: number) => void;
+  selectedModel?: ModelCost | null;
 }
 
 const stateLabels: Record<VoiceCallState, string> = {
@@ -25,7 +27,7 @@ const stateLabels: Record<VoiceCallState, string> = {
   error: 'Error',
 };
 
-const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate }: VoiceCallModalProps) => {
+const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel }: VoiceCallModalProps) => {
   const {
     state,
     partialTranscript,
@@ -35,7 +37,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate }: VoiceCallModalP
     startCall,
     endCall,
     answerNow,
-  } = useVoiceCall({ onCreditsUpdate });
+  } = useVoiceCall({ onCreditsUpdate, modelCostId: selectedModel?.id });
 
   const canAnswerNow = state === 'listening' && !!(partialTranscript || finalTranscript);
 
@@ -62,7 +64,9 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate }: VoiceCallModalP
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center">Voice Call</DialogTitle>
+          <DialogTitle className="text-center">
+            {selectedModel ? selectedModel.label : 'Voice Call'}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="flex flex-col items-center gap-6 py-6">
@@ -153,7 +157,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate }: VoiceCallModalP
           </Button>
           
           <p className="text-xs text-muted-foreground">
-            Powered by GPT-5 Nano • 1 credit per message
+            {selectedModel ? `${selectedModel.cost} credit${selectedModel.cost !== 1 ? 's' : ''} per message` : '1 credit per message'}
           </p>
         </div>
       </DialogContent>

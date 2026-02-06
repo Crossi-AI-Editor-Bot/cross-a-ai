@@ -192,24 +192,28 @@ const AdminPanel = () => {
     }
   };
 
-  const handleAddModel = async (modelId: string, label: string) => {
+  const handleAddModel = async (modelId: string, label: string, folder?: string) => {
     try {
+      const targetFolder = folder || "Beta";
       const { data, error } = await supabase
         .from("model_costs")
         .insert({
           model_id: modelId,
           label: label,
-          cost: 5,
+          cost: folder === "Call Models" ? 1 : 5,
           enabled: true,
-          public_access: false,
+          public_access: folder === "Call Models" ? true : false,
           copper_access: true,
           bronze_access: true,
           silver_access: true,
           gold_access: true,
           platinum_access: true,
           diamond_access: true,
-          folder: "Beta",
+          folder: targetFolder,
           image_cost: 0,
+          system_prompt: folder === "Call Models" 
+            ? "You are a helpful voice assistant. Keep your responses concise and conversational since they will be spoken aloud. Avoid using markdown, lists, or special formatting. Respond naturally as if having a phone conversation."
+            : null,
         })
         .select()
         .single();
@@ -236,9 +240,16 @@ const AdminPanel = () => {
         };
         setModels((prev) => [...prev, newModel]);
         setSelectedModelId(data.id);
+        
+        // Auto-create the Call Models folder if it doesn't exist
+        if (folder === "Call Models" && !customFolders.includes("Call Models")) {
+          await supabase.from("admin_folders").insert({ path: "Call Models" });
+          setCustomFolders((prev) => [...prev, "Call Models"]);
+        }
+        
         toast({
           title: "Model added",
-          description: `${label} has been added to the Beta folder.`,
+          description: `${label} has been added to the ${targetFolder} folder.`,
         });
       }
     } catch (error) {

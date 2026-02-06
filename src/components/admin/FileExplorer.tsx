@@ -41,7 +41,7 @@ interface FileExplorerProps {
   folders: string[];
   onCreateFolder: (name: string) => void;
   onDeleteFolder: (name: string) => void;
-  onAddModel?: (modelId: string, label: string) => void;
+  onAddModel?: (modelId: string, label: string, folder?: string) => void;
 }
 
 interface FolderNode {
@@ -88,15 +88,22 @@ export const FileExplorer = ({
   const [draggedItem, setDraggedItem] = useState<{ type: "model" | "folder"; id: string } | null>(null);
   const [dragOverFolder, setDragOverFolder] = useState<string | null | "unsorted">(null);
   const [showAddModel, setShowAddModel] = useState(false);
+  const [showAddCallModel, setShowAddCallModel] = useState(false);
   const [newModelLabel, setNewModelLabel] = useState("");
 
   const folderTree = buildFolderTree(folders);
 
-  const handleAddModel = () => {
+  const handleAddModel = (isCallModel: boolean = false) => {
     if (newModelLabel.trim() && onAddModel) {
-      onAddModel("openai/gpt-5-nano", newModelLabel.trim());
+      if (isCallModel) {
+        // For call models, we pass a special folder prefix
+        onAddModel("openai/gpt-5-nano", newModelLabel.trim(), "Call Models");
+      } else {
+        onAddModel("openai/gpt-5-nano", newModelLabel.trim());
+      }
       setNewModelLabel("");
       setShowAddModel(false);
+      setShowAddCallModel(false);
     }
   };
 
@@ -348,16 +355,28 @@ export const FileExplorer = ({
         <span className="text-sm font-medium text-foreground">Models</span>
         <div className="flex items-center gap-1">
           {onAddModel && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => setShowAddModel(true)}
-              title="Add GPT-5 Nano"
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              Nano
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowAddModel(true)}
+                title="Add GPT-5 Nano"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Nano
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowAddCallModel(true)}
+                title="Add Call Model"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Call
+              </Button>
+            </>
           )}
           <Button
             variant="ghost"
@@ -382,16 +401,40 @@ export const FileExplorer = ({
               value={newModelLabel}
               onChange={(e) => setNewModelLabel(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddModel();
+                if (e.key === "Enter") handleAddModel(false);
                 if (e.key === "Escape") setShowAddModel(false);
               }}
               className="h-6 text-xs"
               placeholder="Model display name..."
             />
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddModel}>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleAddModel(false)}>
               <Save className="h-3 w-3" />
             </Button>
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddModel(false)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
+        {/* Add new call model input */}
+        {showAddCallModel && (
+          <div className="flex items-center gap-1 px-2 py-1 bg-green-500/20 rounded-md mb-2">
+            <FileText className="h-4 w-4 text-green-400 shrink-0" />
+            <Input
+              autoFocus
+              value={newModelLabel}
+              onChange={(e) => setNewModelLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddModel(true);
+                if (e.key === "Escape") setShowAddCallModel(false);
+              }}
+              className="h-6 text-xs"
+              placeholder="Call model name..."
+            />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleAddModel(true)}>
+              <Save className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddCallModel(false)}>
               <X className="h-3 w-3" />
             </Button>
           </div>

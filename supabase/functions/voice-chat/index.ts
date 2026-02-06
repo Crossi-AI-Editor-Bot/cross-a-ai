@@ -34,13 +34,34 @@ serve(async (req) => {
       });
     }
 
-    const { message } = await req.json();
+    const { message, modelCostId } = await req.json();
 
     if (!message || message.trim().length === 0) {
       return new Response(JSON.stringify({ error: 'Message is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Get model configuration if modelCostId is provided
+    let modelConfig: { cost: number; system_prompt: string | null } = {
+      cost: 1,
+      system_prompt: 'You are a helpful voice assistant. Keep your responses concise and conversational since they will be spoken aloud. Avoid using markdown, lists, or special formatting. Respond naturally as if having a phone conversation.',
+    };
+
+    if (modelCostId) {
+      const { data: modelData, error: modelError } = await supabase
+        .from('model_costs')
+        .select('cost, system_prompt')
+        .eq('id', modelCostId)
+        .single();
+
+      if (!modelError && modelData) {
+        modelConfig = {
+          cost: modelData.cost,
+          system_prompt: modelData.system_prompt || modelConfig.system_prompt,
+        };
+      }
     }
 
     // Check user credits
@@ -50,7 +71,7 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .single();
 
-    if (creditError || !creditData || creditData.credits < 1) {
+    if (creditError || !creditData || creditData.credits < modelConfig.cost) {
       return new Response(JSON.stringify({ error: 'Insufficient credits' }), {
         status: 402,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -74,7 +95,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful voice assistant. Keep your responses concise and conversational since they will be spoken aloud. Avoid using markdown, lists, or special formatting. Respond naturally as if having a phone conversation.',
+            content: modelConfig.system_prompt,
           },
           {
             role: 'user',
@@ -106,15 +127,16 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const responseText = aiData.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
 
-    // Deduct 1 credit
+    // Deduct credits based on model cost
+    const newCredits = creditData.credits - modelConfig.cost;
     await supabase
       .from('user_credits')
-      .update({ credits: creditData.credits - 1 })
+      .update({ credits: newCredits })
       .eq('user_id', user.id);
 
     return new Response(JSON.stringify({ 
       response: responseText,
-      credits: creditData.credits - 1,
+      credits: newCredits,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

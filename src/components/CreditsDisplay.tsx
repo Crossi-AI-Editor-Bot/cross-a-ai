@@ -38,7 +38,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
           <ImageIcon className="w-4 h-4 text-purple-400" />
           <span className="text-sm font-medium text-purple-300">
-            {imageCredits.toFixed(0)} / 30 {imageCost > 0 && `(-${imageCost})`}
+            {imageCredits.toFixed(5)} / 30 {imageCost > 0 && `(-${imageCost})`}
           </span>
         </div>
       )}
@@ -48,7 +48,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg">
           <Coins className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium text-foreground">
-            {credits.toFixed(1)} / {maxCredits} {modelData && `(-${modelCost})`}
+            {credits.toFixed(5)} / {maxCredits} {modelData && `(-${modelCost})`}
           </span>
         </div>
       )}

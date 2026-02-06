@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Bot, LogOut, Trash2, Settings, Sparkles, Phone } from "lucide-react";
 import AdventCalendar from "@/components/AdventCalendar";
 import VoiceCallModal from "@/components/VoiceCallModal";
+import CallModelSelector from "@/components/CallModelSelector";
+import type { ModelCost } from "@/hooks/useModelCosts";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -55,7 +57,9 @@ const Index = () => {
   const { isDisabled, disabledUntil, loading: siteLoading } = useSiteStatus();
   const { tier: vipTier, loading: vipLoading } = useVipStatus();
   const [selectedModelCostId, setSelectedModelCostId] = useState<string | undefined>(undefined);
+  const [callModelSelectorOpen, setCallModelSelectorOpen] = useState(false);
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
+  const [selectedCallModel, setSelectedCallModel] = useState<ModelCost | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedModelRow = useMemo(
@@ -159,7 +163,7 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => setVoiceCallOpen(true)}
+                onClick={() => setCallModelSelectorOpen(true)}
                 title="Voice Call"
               >
                 <Phone className="w-4 h-4" />
@@ -275,10 +279,20 @@ const Index = () => {
         </div>
       </footer>
 
+      <CallModelSelector
+        open={callModelSelectorOpen}
+        onOpenChange={setCallModelSelectorOpen}
+        onSelectModel={(model) => {
+          setSelectedCallModel(model);
+          setVoiceCallOpen(true);
+        }}
+      />
+
       <VoiceCallModal 
         open={voiceCallOpen} 
         onOpenChange={setVoiceCallOpen}
         onCreditsUpdate={updateCredits}
+        selectedModel={selectedCallModel}
       />
     </div>
   );

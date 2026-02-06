@@ -6,6 +6,7 @@ export type VoiceCallState = 'idle' | 'connecting' | 'listening' | 'processing' 
 
 interface UseVoiceCallOptions {
   onCreditsUpdate?: (credits: number) => void;
+  modelCostId?: string;
 }
 
 export const useVoiceCall = (options?: UseVoiceCallOptions) => {
@@ -97,7 +98,10 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ message: transcript }),
+        body: JSON.stringify({ 
+          message: transcript,
+          modelCostId: options?.modelCostId,
+        }),
       }
     );
 
