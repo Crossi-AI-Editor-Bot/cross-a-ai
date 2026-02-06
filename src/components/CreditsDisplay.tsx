@@ -11,6 +11,13 @@ interface CreditsDisplayProps {
 
 const IMAGE_MODELS = ["google/gemini-2.5-flash-image", "google/gemini-3-pro-image-preview"] as const;
 
+// Format number to show decimals only when needed (up to 5)
+const formatCredits = (value: number): string => {
+  if (Number.isInteger(value)) return value.toString();
+  const formatted = value.toFixed(5);
+  return formatted.replace(/\.?0+$/, "");
+};
+
 const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: CreditsDisplayProps) => {
   const { isVip } = useVipStatus();
 
@@ -38,7 +45,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
           <ImageIcon className="w-4 h-4 text-purple-400" />
           <span className="text-sm font-medium text-purple-300">
-            {imageCredits.toFixed(5)} / 30 {imageCost > 0 && `(-${imageCost})`}
+            {formatCredits(imageCredits)} / 30 {imageCost > 0 && `(-${imageCost})`}
           </span>
         </div>
       )}
@@ -48,7 +55,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg">
           <Coins className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium text-foreground">
-            {credits.toFixed(5)} / {maxCredits} {modelData && `(-${modelCost})`}
+            {formatCredits(credits)} / {maxCredits} {modelData && `(-${modelCost})`}
           </span>
         </div>
       )}
