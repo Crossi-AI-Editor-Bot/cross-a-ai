@@ -275,31 +275,53 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
           await playTTS(response);
           
           // Resume listening after speaking
-          if (streamRef.current && wsRef.current?.readyState === WebSocket.OPEN && audioContextRef.current) {
+          console.log('TTS complete, resuming listening...', {
+            hasStream: !!streamRef.current,
+            wsState: wsRef.current?.readyState,
+            hasAudioContext: !!audioContextRef.current
+          });
+          
+          if (streamRef.current && audioContextRef.current) {
+            // Resume audio context if suspended (common after user gesture requirement)
+            if (audioContextRef.current.state === 'suspended') {
+              await audioContextRef.current.resume();
+            }
+            
             setState('listening');
             setPartialTranscript('');
             
-            const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
-            const newProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
-            processorRef.current = newProcessor;
-            
-            newProcessor.onaudioprocess = (e) => {
-              if (wsRef.current?.readyState === WebSocket.OPEN) {
-                const inputData = e.inputBuffer.getChannelData(0);
-                const pcmData = floatTo16BitPCM(inputData);
-                const base64Audio = arrayBufferToBase64(pcmData);
-                
-                      wsRef.current.send(JSON.stringify({
-                        message_type: 'input_audio_chunk',
-                        audio_base_64: base64Audio,
-                        commit: commitNextChunkRef.current,
-                      }));
-                      commitNextChunkRef.current = false;
-              }
-            };
-            
-            source.connect(newProcessor);
-            newProcessor.connect(audioContextRef.current.destination);
+            // Only reconnect audio if WebSocket is still open
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
+              const newProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+              processorRef.current = newProcessor;
+              
+              newProcessor.onaudioprocess = (e) => {
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  const inputData = e.inputBuffer.getChannelData(0);
+                  const pcmData = floatTo16BitPCM(inputData);
+                  const base64Audio = arrayBufferToBase64(pcmData);
+                  
+                  wsRef.current.send(JSON.stringify({
+                    message_type: 'input_audio_chunk',
+                    audio_base_64: base64Audio,
+                    commit: commitNextChunkRef.current,
+                  }));
+                  commitNextChunkRef.current = false;
+                }
+              };
+              
+              source.connect(newProcessor);
+              newProcessor.connect(audioContextRef.current.destination);
+              console.log('Audio processing resumed');
+            } else {
+              console.warn('WebSocket closed, cannot resume audio streaming');
+              setError('Connection lost. Please restart the call.');
+              setState('error');
+            }
+          } else {
+            console.error('Cannot resume: missing stream or audio context');
+            setState('error');
           }
         } catch (err) {
           console.error('Processing error:', err);
