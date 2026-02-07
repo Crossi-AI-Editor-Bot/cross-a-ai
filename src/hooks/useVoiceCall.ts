@@ -4,9 +4,15 @@ import { useToast } from '@/hooks/use-toast';
 
 export type VoiceCallState = 'idle' | 'connecting' | 'listening' | 'processing' | 'speaking' | 'error';
 
+export interface CallMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 interface UseVoiceCallOptions {
   onCreditsUpdate?: (credits: number) => void;
   modelCostId?: string;
+  conversationId?: string | null;
 }
 
 export const useVoiceCall = (options?: UseVoiceCallOptions) => {
@@ -15,6 +21,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
   const [finalTranscript, setFinalTranscript] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [callMessages, setCallMessages] = useState<CallMessage[]>([]);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -22,6 +29,8 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const conversationIdRef = useRef<string | null>(options?.conversationId || null);
+  const callMessagesRef = useRef<CallMessage[]>([]);
   
   const { toast } = useToast();
 
@@ -33,9 +42,60 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     return data.token;
   };
 
+  // Load existing messages for a conversation
+  const loadConversationMessages = async (convId: string) => {
+    const { data } = await supabase
+      .from('messages')
+      .select('role, content')
+      .eq('conversation_id', convId)
+      .order('created_at', { ascending: true });
+    
+    if (data) {
+      const msgs = data.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+      setCallMessages(msgs);
+      callMessagesRef.current = msgs;
+    }
+  };
+
+  // Create or reuse a call conversation
+  const ensureConversation = async (modelLabel?: string): Promise<string> => {
+    if (conversationIdRef.current) {
+      await loadConversationMessages(conversationIdRef.current);
+      return conversationIdRef.current;
+    }
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
+
+    const title = `📞 ${modelLabel || 'Voice Call'}`;
+    const { data, error } = await supabase
+      .from('conversations')
+      .insert({ user_id: session.user.id, title })
+      .select('id')
+      .single();
+    
+    if (error || !data) throw new Error('Failed to create call conversation');
+    conversationIdRef.current = data.id;
+    return data.id;
+  };
+
+  // Save a message to the database
+  const saveMessage = async (role: 'user' | 'assistant', content: string) => {
+    if (!conversationIdRef.current) return;
+    
+    await supabase.from('messages').insert({
+      conversation_id: conversationIdRef.current,
+      role,
+      content,
+    });
+
+    const newMsg: CallMessage = { role, content };
+    callMessagesRef.current = [...callMessagesRef.current, newMsg];
+    setCallMessages([...callMessagesRef.current]);
+  };
+
   const playBrowserTTS = (text: string): Promise<void> => {
     return new Promise((resolve, reject) => {
-      // Cancel any previous speech
       window.speechSynthesis.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
@@ -54,7 +114,6 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     setState('speaking');
     
     try {
-      // Try ElevenLabs TTS first
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
         {
@@ -96,7 +155,6 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       });
     } catch (err) {
       console.error('ElevenLabs TTS error, falling back to browser TTS:', err);
-      // Fallback to browser speech synthesis
       try {
         await playBrowserTTS(text);
       } catch (fallbackErr) {
@@ -125,6 +183,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
         body: JSON.stringify({ 
           message: transcript,
           modelCostId: options?.modelCostId,
+          history: callMessagesRef.current,
         }),
       }
     );
@@ -162,13 +221,16 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     return btoa(binary);
   };
 
-  const startCall = useCallback(async () => {
+  const startCall = useCallback(async (modelLabel?: string) => {
     try {
       setState('connecting');
       setError(null);
       setPartialTranscript('');
       setFinalTranscript('');
       setAiResponse('');
+
+      // Ensure we have a conversation for this call
+      await ensureConversation(modelLabel);
 
       // Get microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -184,7 +246,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       // Get scribe token
       const token = await getScribeToken();
 
-      // Connect to ElevenLabs WebSocket with VAD enabled for auto-commit
+      // Connect to ElevenLabs WebSocket with VAD enabled
       const ws = new WebSocket(
         `wss://api.elevenlabs.io/v1/speech-to-text/realtime?model_id=scribe_v2_realtime&token=${token}&vad_commit_strategy=true&vad_silence_threshold_secs=1.0`
       );
@@ -194,7 +256,6 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
         console.log('WebSocket connected');
         setState('listening');
         
-        // Create audio context for processing
         const audioContext = new AudioContext({ sampleRate: 16000 });
         audioContextRef.current = audioContext;
         
@@ -226,16 +287,13 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
           const data = JSON.parse(event.data);
           console.log('WebSocket message:', data.type || data.message_type, data);
           
-          // Handle different message types from ElevenLabs
           const msgType = data.type || data.message_type;
           
           if (msgType === 'session_started' || msgType === 'session_begin') {
             console.log('Session started:', data.session_id);
           } else if (msgType === 'transcript' && data.is_final === false) {
-            // Partial transcript
             setPartialTranscript(data.text || data.transcript || '');
           } else if (msgType === 'transcript' && data.is_final === true) {
-            // Final transcript from VAD
             const transcript = data.text || data.transcript || '';
             setFinalTranscript(transcript);
             setPartialTranscript('');
@@ -264,17 +322,22 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       };
       
       const handleTranscriptCommit = async (transcript: string) => {
-        // Stop audio processing while handling response
         if (processorRef.current) {
           processorRef.current.disconnect();
         }
         
+        // Save user message
+        await saveMessage('user', transcript);
+        
         try {
           const response = await sendToAI(transcript);
           setAiResponse(response);
+          
+          // Save AI response
+          await saveMessage('assistant', response);
+          
           await playTTS(response);
           
-          // Resume listening after speaking
           console.log('TTS complete, resuming listening...', {
             hasStream: !!streamRef.current,
             wsState: wsRef.current?.readyState,
@@ -282,7 +345,6 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
           });
           
           if (streamRef.current && audioContextRef.current) {
-            // Resume audio context if suspended (common after user gesture requirement)
             if (audioContextRef.current.state === 'suspended') {
               await audioContextRef.current.resume();
             }
@@ -290,7 +352,6 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
             setState('listening');
             setPartialTranscript('');
             
-            // Only reconnect audio if WebSocket is still open
             if (wsRef.current?.readyState === WebSocket.OPEN) {
               const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
               const newProcessor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
@@ -357,38 +418,34 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
   }, [toast, options]);
 
   const endCall = useCallback(() => {
-    // Stop audio playback
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
 
-    // Stop audio processor
     if (processorRef.current) {
       processorRef.current.disconnect();
       processorRef.current = null;
     }
 
-    // Close audio context
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
 
-    // Reset manual commit flag
     commitNextChunkRef.current = false;
 
-    // Close WebSocket
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
 
-    // Stop media stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
+
+    window.speechSynthesis.cancel();
 
     setState('idle');
     setPartialTranscript('');
@@ -397,17 +454,31 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     setError(null);
   }, []);
 
+  const getConversationId = useCallback(() => conversationIdRef.current, []);
+
+  const setConversationId = useCallback((id: string | null) => {
+    conversationIdRef.current = id;
+    if (id) {
+      loadConversationMessages(id);
+    } else {
+      setCallMessages([]);
+      callMessagesRef.current = [];
+    }
+  }, []);
+
   return {
     state,
     partialTranscript,
     finalTranscript,
     aiResponse,
     error,
+    callMessages,
     startCall,
     endCall,
     answerNow: () => {
-      // Force the next audio chunk to be committed immediately
       commitNextChunkRef.current = true;
     },
+    getConversationId,
+    setConversationId,
   };
 };

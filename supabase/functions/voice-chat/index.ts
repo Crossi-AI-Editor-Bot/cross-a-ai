@@ -34,7 +34,7 @@ serve(async (req) => {
       });
     }
 
-    const { message, modelCostId } = await req.json();
+    const { message, modelCostId, history } = await req.json();
 
     if (!message || message.trim().length === 0) {
       return new Response(JSON.stringify({ error: 'Message is required' }), {
@@ -84,6 +84,26 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
+    // Build messages array with conversation history
+    const aiMessages: Array<{ role: string; content: string }> = [
+      {
+        role: 'system',
+        content: modelConfig.system_prompt!,
+      },
+    ];
+
+    // Add conversation history if provided
+    if (Array.isArray(history) && history.length > 0) {
+      for (const msg of history) {
+        if (msg.role && msg.content) {
+          aiMessages.push({ role: msg.role, content: msg.content });
+        }
+      }
+    }
+
+    // Add current message
+    aiMessages.push({ role: 'user', content: message });
+
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -92,16 +112,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'openai/gpt-5-nano',
-        messages: [
-          {
-            role: 'system',
-            content: modelConfig.system_prompt,
-          },
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
+        messages: aiMessages,
         stream: false,
       }),
     });

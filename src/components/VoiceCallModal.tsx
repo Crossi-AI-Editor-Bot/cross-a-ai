@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Phone, PhoneOff, Mic, Loader2, Volume2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { Phone, PhoneOff, Mic, Loader2, Volume2, User, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useVoiceCall, VoiceCallState } from '@/hooks/useVoiceCall';
 import { cn } from '@/lib/utils';
 import type { ModelCost } from '@/hooks/useModelCosts';
@@ -16,6 +17,7 @@ interface VoiceCallModalProps {
   onOpenChange: (open: boolean) => void;
   onCreditsUpdate?: (credits: number) => void;
   selectedModel?: ModelCost | null;
+  existingConversationId?: string | null;
 }
 
 const stateLabels: Record<VoiceCallState, string> = {
@@ -27,23 +29,33 @@ const stateLabels: Record<VoiceCallState, string> = {
   error: 'Error',
 };
 
-const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel }: VoiceCallModalProps) => {
+const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, existingConversationId }: VoiceCallModalProps) => {
   const {
     state,
     partialTranscript,
     finalTranscript,
     aiResponse,
     error,
+    callMessages,
     startCall,
     endCall,
     answerNow,
+    setConversationId,
   } = useVoiceCall({ onCreditsUpdate, modelCostId: selectedModel?.id });
 
+  const scrollRef = useRef<HTMLDivElement>(null);
   const canAnswerNow = state === 'listening' && !!(partialTranscript || finalTranscript);
+
+  // Set conversation ID when modal opens
+  useEffect(() => {
+    if (open && existingConversationId) {
+      setConversationId(existingConversationId);
+    }
+  }, [open, existingConversationId, setConversationId]);
 
   useEffect(() => {
     if (open && state === 'idle') {
-      startCall();
+      startCall(selectedModel?.label);
     }
     
     return () => {
@@ -53,28 +65,33 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel }: 
     };
   }, [open]);
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [callMessages, partialTranscript, finalTranscript, aiResponse]);
+
   const handleClose = () => {
     endCall();
     onOpenChange(false);
   };
 
-  const isActive = state !== 'idle' && state !== 'error';
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-center">
             {selectedModel ? selectedModel.label : 'Voice Call'}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="flex flex-col items-center gap-6 py-6">
-          {/* Status indicator */}
-          <div className="relative">
+        <div className="flex flex-col gap-4 flex-1 min-h-0">
+          {/* Status indicator - compact */}
+          <div className="flex items-center justify-center gap-3">
             <div 
               className={cn(
-                "w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300",
+                "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 shrink-0",
                 state === 'idle' && "bg-muted",
                 state === 'connecting' && "bg-primary/20",
                 state === 'listening' && "bg-accent animate-pulse",
@@ -83,80 +100,97 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel }: 
                 state === 'error' && "bg-destructive/20"
               )}
             >
-              {state === 'connecting' && <Loader2 className="w-10 h-10 text-primary animate-spin" />}
-              {state === 'listening' && <Mic className="w-10 h-10 text-accent-foreground" />}
-              {state === 'processing' && <Loader2 className="w-10 h-10 text-secondary-foreground animate-spin" />}
-              {state === 'speaking' && <Volume2 className="w-10 h-10 text-primary" />}
-              {state === 'idle' && <Phone className="w-10 h-10 text-muted-foreground" />}
-              {state === 'error' && <PhoneOff className="w-10 h-10 text-destructive" />}
+              {state === 'connecting' && <Loader2 className="w-6 h-6 text-primary animate-spin" />}
+              {state === 'listening' && <Mic className="w-6 h-6 text-accent-foreground" />}
+              {state === 'processing' && <Loader2 className="w-6 h-6 text-secondary-foreground animate-spin" />}
+              {state === 'speaking' && <Volume2 className="w-6 h-6 text-primary" />}
+              {state === 'idle' && <Phone className="w-6 h-6 text-muted-foreground" />}
+              {state === 'error' && <PhoneOff className="w-6 h-6 text-destructive" />}
             </div>
-            
-            {/* Pulsing ring for active states */}
-            {(state === 'listening' || state === 'speaking') && (
-              <div className={cn(
-                "absolute inset-0 rounded-full animate-ping opacity-30",
-                state === 'listening' && "bg-accent-foreground",
-                state === 'speaking' && "bg-primary"
-              )} />
-            )}
+            <p className="text-sm font-medium text-foreground">
+              {stateLabels[state]}
+            </p>
           </div>
 
-          {/* State label */}
-          <p className="text-lg font-medium text-foreground">
-            {stateLabels[state]}
-          </p>
-
-          {/* Transcription display */}
-          <div className="w-full min-h-[80px] p-4 bg-muted/50 rounded-lg">
-            {partialTranscript && (
-              <p className="text-sm text-muted-foreground italic">
-                {partialTranscript}
-              </p>
-            )}
-            {finalTranscript && !partialTranscript && (
-              <p className="text-sm text-foreground">
-                <span className="font-medium">You:</span> {finalTranscript}
-              </p>
-            )}
-            {aiResponse && (
-              <p className="text-sm text-primary mt-2">
-                <span className="font-medium">AI:</span> {aiResponse}
-              </p>
-            )}
-            {error && (
-              <p className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            {!partialTranscript && !finalTranscript && !aiResponse && !error && (
-              <p className="text-sm text-muted-foreground text-center">
+          {/* Conversation history - scrollable */}
+          <div 
+            ref={scrollRef}
+            className="flex-1 min-h-[200px] max-h-[400px] overflow-y-auto rounded-lg bg-muted/30 border border-border p-3 space-y-3"
+          >
+            {callMessages.length === 0 && !partialTranscript && !finalTranscript && !aiResponse && !error && (
+              <p className="text-sm text-muted-foreground text-center py-8">
                 {state === 'listening' ? 'Start speaking...' : 'Waiting...'}
               </p>
             )}
+
+            {callMessages.map((msg, index) => (
+              <div key={index} className={cn(
+                "flex gap-2 text-sm",
+                msg.role === 'user' ? "justify-end" : "justify-start"
+              )}>
+                {msg.role === 'assistant' && (
+                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                )}
+                <div className={cn(
+                  "rounded-lg px-3 py-2 max-w-[80%]",
+                  msg.role === 'user' 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-card border border-border text-foreground"
+                )}>
+                  {msg.content}
+                </div>
+                {msg.role === 'user' && (
+                  <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5 text-accent-foreground" />
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Live partial/final transcript */}
+            {partialTranscript && (
+              <div className="flex gap-2 justify-end text-sm">
+                <div className="rounded-lg px-3 py-2 max-w-[80%] bg-primary/50 text-primary-foreground italic">
+                  {partialTranscript}
+                </div>
+                <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center shrink-0 mt-0.5">
+                  <User className="w-3.5 h-3.5 text-accent-foreground" />
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <p className="text-sm text-destructive text-center py-2">
+                {error}
+              </p>
+            )}
           </div>
 
-          {/* Answer now button (manual commit) */}
-          <Button
-            variant="secondary"
-            size="lg"
-            className="w-full h-12"
-            onClick={answerNow}
-            disabled={!canAnswerNow}
-          >
-            Answer now
-          </Button>
+          {/* Controls */}
+          <div className="flex items-center gap-3 justify-center">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1 max-w-[200px]"
+              onClick={answerNow}
+              disabled={!canAnswerNow}
+            >
+              Answer now
+            </Button>
 
-          {/* End call button */}
-          <Button
-            variant="destructive"
-            size="lg"
-            className="rounded-full w-16 h-16"
-            onClick={handleClose}
-          >
-            <PhoneOff className="w-6 h-6" />
-          </Button>
+            <Button
+              variant="destructive"
+              size="lg"
+              className="rounded-full w-14 h-14 shrink-0"
+              onClick={handleClose}
+            >
+              <PhoneOff className="w-5 h-5" />
+            </Button>
+          </div>
           
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground text-center">
             {selectedModel ? `${selectedModel.cost} credit${selectedModel.cost !== 1 ? 's' : ''} per message` : '1 credit per message'}
           </p>
         </div>
