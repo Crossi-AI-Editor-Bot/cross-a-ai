@@ -33,10 +33,28 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     return data.token;
   };
 
+  const playBrowserTTS = (text: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // Cancel any previous speech
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      utterance.onend = () => resolve();
+      utterance.onerror = (event) => reject(new Error(`Speech synthesis error: ${event.error}`));
+      
+      window.speechSynthesis.speak(utterance);
+    });
+  };
+
   const playTTS = async (text: string): Promise<void> => {
     setState('speaking');
     
     try {
+      // Try ElevenLabs TTS first
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
         {
@@ -77,8 +95,14 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
         audioRef.current.play().catch(reject);
       });
     } catch (err) {
-      console.error('TTS error:', err);
-      throw err;
+      console.error('ElevenLabs TTS error, falling back to browser TTS:', err);
+      // Fallback to browser speech synthesis
+      try {
+        await playBrowserTTS(text);
+      } catch (fallbackErr) {
+        console.error('Browser TTS error:', fallbackErr);
+        throw fallbackErr;
+      }
     }
   };
 
