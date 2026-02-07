@@ -60,6 +60,7 @@ const Index = () => {
   const [callModelSelectorOpen, setCallModelSelectorOpen] = useState(false);
   const [voiceCallOpen, setVoiceCallOpen] = useState(false);
   const [selectedCallModel, setSelectedCallModel] = useState<ModelCost | null>(null);
+  const [callConversationId, setCallConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedModelRow = useMemo(
@@ -156,6 +157,11 @@ const Index = () => {
                 onCreateConversation={handleCreateConversation}
                 onDeleteConversation={deleteConversation}
                 onRenameConversation={renameConversation}
+                onContinueCall={(convId) => {
+                  setCallConversationId(convId);
+                  setSelectedCallModel(null);
+                  setVoiceCallOpen(true);
+                }}
               />
             </div>
             <div className="flex items-center gap-3">
@@ -284,15 +290,22 @@ const Index = () => {
         onOpenChange={setCallModelSelectorOpen}
         onSelectModel={(model) => {
           setSelectedCallModel(model);
+          setCallConversationId(null);
           setVoiceCallOpen(true);
         }}
       />
 
       <VoiceCallModal 
         open={voiceCallOpen} 
-        onOpenChange={setVoiceCallOpen}
+        onOpenChange={(open) => {
+          setVoiceCallOpen(open);
+          if (!open) {
+            refetchConversations();
+          }
+        }}
         onCreditsUpdate={updateCredits}
         selectedModel={selectedCallModel}
+        existingConversationId={callConversationId}
       />
     </div>
   );

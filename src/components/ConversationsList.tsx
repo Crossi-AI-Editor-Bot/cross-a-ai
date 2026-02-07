@@ -1,4 +1,4 @@
-import { MessageSquarePlus, Trash2, Edit2 } from "lucide-react";
+import { MessageSquarePlus, Trash2, Edit2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -37,6 +37,7 @@ interface ConversationsListProps {
   onCreateConversation: () => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, title: string) => void;
+  onContinueCall?: (conversationId: string) => void;
 }
 
 const ConversationsList = ({
@@ -46,6 +47,7 @@ const ConversationsList = ({
   onCreateConversation,
   onDeleteConversation,
   onRenameConversation,
+  onContinueCall,
 }: ConversationsListProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -124,6 +126,21 @@ const ConversationsList = ({
                       >
                         {conversation.title}
                       </div>
+                      {conversation.title.startsWith('📞') && onContinueCall && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          title="Continue call"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onContinueCall(conversation.id);
+                            setOpen(false);
+                          }}
+                        >
+                          <Phone className="w-3 h-3" />
+                        </Button>
+                      )}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                         <Button
                           variant="ghost"
