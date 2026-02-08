@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FileExplorer } from "@/components/admin/FileExplorer";
 import { FileEditor } from "@/components/admin/FileEditor";
 import { NotificationManager } from "@/components/admin/NotificationManager";
+import VipTierManager from "@/components/admin/VipTierManager";
 
 interface ModelState {
   id: string;
@@ -438,6 +439,11 @@ const AdminPanel = () => {
         {/* Notification Manager */}
         <div className="mb-6">
           <NotificationManager />
+        </div>
+
+        {/* VIP Tier Manager */}
+        <div className="mb-6">
+          <VipTierManager />
         </div>
 
         {/* File Explorer Layout */}

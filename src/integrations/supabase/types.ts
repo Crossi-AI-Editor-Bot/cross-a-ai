@@ -336,7 +336,7 @@ export type Database = {
           admin_notes: string | null
           created_at: string
           id: string
-          requested_tier: Database["public"]["Enums"]["vip_tier"]
+          requested_tier: string
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
@@ -347,7 +347,7 @@ export type Database = {
           admin_notes?: string | null
           created_at?: string
           id?: string
-          requested_tier: Database["public"]["Enums"]["vip_tier"]
+          requested_tier: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -358,7 +358,7 @@ export type Database = {
           admin_notes?: string | null
           created_at?: string
           id?: string
-          requested_tier?: Database["public"]["Enums"]["vip_tier"]
+          requested_tier?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
@@ -372,22 +372,70 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
-          tier: Database["public"]["Enums"]["vip_tier"]
+          tier: string
           user_id: string
         }
         Insert: {
           created_at?: string
           expires_at: string
           id?: string
-          tier?: Database["public"]["Enums"]["vip_tier"]
+          tier?: string
           user_id: string
         }
         Update: {
           created_at?: string
           expires_at?: string
           id?: string
-          tier?: Database["public"]["Enums"]["vip_tier"]
+          tier?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      vip_tiers: {
+        Row: {
+          bg_color: string
+          color: string
+          created_at: string
+          daily_credits: number
+          display_name: string
+          gradient_from: string
+          gradient_to: string
+          icon_name: string
+          id: string
+          name: string
+          sort_order: number
+          text_color: string
+          updated_at: string
+        }
+        Insert: {
+          bg_color?: string
+          color?: string
+          created_at?: string
+          daily_credits?: number
+          display_name: string
+          gradient_from?: string
+          gradient_to?: string
+          icon_name?: string
+          id?: string
+          name: string
+          sort_order?: number
+          text_color?: string
+          updated_at?: string
+        }
+        Update: {
+          bg_color?: string
+          color?: string
+          created_at?: string
+          daily_credits?: number
+          display_name?: string
+          gradient_from?: string
+          gradient_to?: string
+          icon_name?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          text_color?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -411,7 +459,6 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      vip_tier: "copper" | "bronze" | "silver" | "gold" | "platinum" | "diamond"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -540,7 +587,6 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      vip_tier: ["copper", "bronze", "silver", "gold", "platinum", "diamond"],
     },
   },
 } as const
