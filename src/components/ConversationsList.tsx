@@ -96,8 +96,14 @@ const ConversationsList = ({
               {conversations.map((conversation) => (
                 <div
                   key={conversation.id}
-                  className={`group flex items-center gap-2 p-2 rounded-lg hover:bg-accent cursor-pointer ${
-                    currentConversationId === conversation.id ? "bg-accent" : ""
+                  className={`group flex items-center gap-2 p-2 rounded-lg cursor-pointer ${
+                    conversation.title.startsWith('📞')
+                      ? 'bg-primary/10 border border-primary/20 hover:bg-primary/20'
+                      : 'hover:bg-accent'
+                  } ${
+                    currentConversationId === conversation.id
+                      ? conversation.title.startsWith('📞') ? 'bg-primary/20 ring-1 ring-primary/40' : 'bg-accent'
+                      : ''
                   }`}
                 >
                   {editingId === conversation.id ? (
