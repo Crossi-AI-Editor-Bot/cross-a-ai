@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { VipTier } from "./useVipStatus";
 
 export interface VipRequest {
   id: string;
   user_id: string;
-  requested_tier: VipTier;
+  requested_tier: string;
   status: 'pending' | 'approved' | 'declined';
   admin_notes: string | null;
   reviewed_by: string | null;
@@ -71,7 +70,7 @@ export const useVipRequests = (isAdmin: boolean = false) => {
     fetchRequests();
   }, [fetchRequests]);
 
-  const createRequest = async (tier: VipTier, message?: string) => {
+  const createRequest = async (tier: string, message?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !tier) return { error: "Not authenticated" };

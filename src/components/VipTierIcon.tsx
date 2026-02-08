@@ -1,7 +1,8 @@
 import { Crown, Award, Star, Gem, Coins, Hexagon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useVipTiers, type VipTierConfig } from "@/hooks/useVipTiers";
 
-export type VipTierType = 'copper' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+export type VipTierType = string;
 
 interface VipTierIconProps {
   tier: VipTierType;
@@ -10,55 +11,8 @@ interface VipTierIconProps {
   className?: string;
 }
 
-const tierConfig: Record<VipTierType, { 
-  icon: typeof Crown; 
-  label: string; 
-  gradient: string;
-  textColor: string;
-  bgColor: string;
-}> = {
-  copper: {
-    icon: Coins,
-    label: 'Copper',
-    gradient: 'from-orange-700 to-orange-500',
-    textColor: 'text-orange-700',
-    bgColor: 'bg-orange-100',
-  },
-  bronze: {
-    icon: Award,
-    label: 'Bronze',
-    gradient: 'from-amber-700 to-amber-500',
-    textColor: 'text-amber-700',
-    bgColor: 'bg-amber-100',
-  },
-  silver: {
-    icon: Star,
-    label: 'Silver',
-    gradient: 'from-slate-400 to-slate-300',
-    textColor: 'text-slate-500',
-    bgColor: 'bg-slate-100',
-  },
-  gold: {
-    icon: Crown,
-    label: 'Gold',
-    gradient: 'from-yellow-500 to-yellow-400',
-    textColor: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-  },
-  platinum: {
-    icon: Hexagon,
-    label: 'Platinum',
-    gradient: 'from-purple-500 to-purple-400',
-    textColor: 'text-purple-600',
-    bgColor: 'bg-purple-100',
-  },
-  diamond: {
-    icon: Gem,
-    label: 'Diamond',
-    gradient: 'from-cyan-400 to-blue-500',
-    textColor: 'text-cyan-600',
-    bgColor: 'bg-cyan-100',
-  },
+const iconMap: Record<string, typeof Crown> = {
+  Crown, Award, Star, Gem, Coins, Hexagon,
 };
 
 const sizeClasses = {
@@ -76,21 +30,28 @@ const containerSizes = {
 };
 
 export const VipTierIcon = ({ tier, size = 'md', showLabel = false, className }: VipTierIconProps) => {
-  const config = tierConfig[tier];
-  const Icon = config.icon;
+  const { getTierConfig } = useVipTiers();
+  const config = getTierConfig(tier);
+
+  const Icon = iconMap[config?.icon_name || 'Crown'] || Crown;
+  const gradientFrom = config?.gradient_from || 'from-gray-400';
+  const gradientTo = config?.gradient_to || 'to-gray-300';
+  const textColor = config?.text_color || 'text-gray-500';
+  const displayName = config?.display_name || tier;
 
   return (
     <div className={cn("flex flex-col items-center gap-1", className)}>
       <div className={cn(
         "rounded-full bg-gradient-to-br flex items-center justify-center shadow-md",
-        config.gradient,
+        gradientFrom,
+        gradientTo,
         containerSizes[size]
       )}>
         <Icon className={cn(sizeClasses[size], "text-white drop-shadow")} />
       </div>
       {showLabel && (
-        <span className={cn("font-semibold text-sm", config.textColor)}>
-          {config.label}
+        <span className={cn("font-semibold text-sm", textColor)}>
+          {displayName}
         </span>
       )}
     </div>
@@ -98,18 +59,23 @@ export const VipTierIcon = ({ tier, size = 'md', showLabel = false, className }:
 };
 
 export const VipTierBadge = ({ tier, className }: { tier: VipTierType; className?: string }) => {
-  const config = tierConfig[tier];
-  const Icon = config.icon;
+  const { getTierConfig } = useVipTiers();
+  const config = getTierConfig(tier);
+
+  const Icon = iconMap[config?.icon_name || 'Crown'] || Crown;
+  const bgColor = config?.bg_color || 'bg-gray-100';
+  const textColor = config?.text_color || 'text-gray-500';
+  const displayName = config?.display_name || tier;
 
   return (
     <div className={cn(
       "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-      config.bgColor,
-      config.textColor,
+      bgColor,
+      textColor,
       className
     )}>
       <Icon className="w-3.5 h-3.5" />
-      {config.label}
+      {displayName}
     </div>
   );
 };

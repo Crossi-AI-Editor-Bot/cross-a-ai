@@ -14,60 +14,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { VipTierIcon, VipTierBadge, type VipTierType } from "@/components/VipTierIcon";
-import { useVipStatus, getRequiredTierFor, getNextTier } from "@/hooks/useVipStatus";
+import { VipTierIcon, VipTierBadge } from "@/components/VipTierIcon";
+import { useVipStatus } from "@/hooks/useVipStatus";
 import { useVipRequests } from "@/hooks/useVipRequests";
+import { useVipTiers } from "@/hooks/useVipTiers";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import VipAdminRequests from "@/components/VipAdminRequests";
 import VipTierComparisonChart from "@/components/VipTierComparisonChart";
-
-const tierBenefits: Record<VipTierType, string[]> = {
-  copper: [
-    "16 daily credits (vs 15 free)",
-    "Access to Copper-tier models",
-    "Basic priority support",
-  ],
-  bronze: [
-    "18 daily credits",
-    "Access to Bronze-tier models",
-    "All Copper benefits",
-    "Priority support",
-  ],
-  silver: [
-    "20 daily credits",
-    "Access to Silver-tier models",
-    "All Bronze benefits",
-    "Extended chat history",
-  ],
-  gold: [
-    "22 daily credits",
-    "Access to Gold-tier models",
-    "All Silver benefits",
-    "Early access to new features",
-  ],
-  platinum: [
-    "24 daily credits",
-    "Access to Platinum-tier models",
-    "All Gold benefits",
-    "Exclusive Platinum features",
-  ],
-  diamond: [
-    "25 daily credits",
-    "Access to ALL models",
-    "All Platinum benefits",
-    "Exclusive Diamond features",
-    "Direct admin support",
-  ],
-};
-
-const tierDescriptions: Record<VipTierType, string> = {
-  copper: "Entry level VIP",
-  bronze: "Requires Copper",
-  silver: "Requires Bronze",
-  gold: "Requires Silver",
-  platinum: "Requires Gold",
-  diamond: "Requires Platinum",
-};
 
 const VipShop = () => {
   const navigate = useNavigate();
@@ -75,23 +28,22 @@ const VipShop = () => {
   const { tier: currentTier, loading: vipLoading, hasTierAccess } = useVipStatus();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { userRequests, createRequest, loading: requestsLoading } = useVipRequests(isAdmin);
-  const [requestingTier, setRequestingTier] = useState<VipTierType | null>(null);
+  const { tiers, tierNames, getRequiredTierFor, loading: tiersLoading } = useVipTiers();
+  const [requestingTier, setRequestingTier] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<VipTierType | null>(null);
+  const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [requestMessage, setRequestMessage] = useState("");
-
-  const tiers: VipTierType[] = ['copper', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
 
   const pendingRequest = userRequests.find(r => r.status === 'pending');
 
-  const canRequestTier = (tier: VipTierType): boolean => {
-    const requiredTier = getRequiredTierFor(tier);
-    if (!requiredTier) return true; // copper has no requirement
+  const canRequestTier = (tierName: string): boolean => {
+    const requiredTier = getRequiredTierFor(tierName);
+    if (!requiredTier) return true;
     return hasTierAccess(requiredTier);
   };
 
-  const openRequestDialog = (tier: VipTierType) => {
-    setSelectedTier(tier);
+  const openRequestDialog = (tierName: string) => {
+    setSelectedTier(tierName);
     setRequestMessage("");
     setDialogOpen(true);
   };
@@ -115,26 +67,18 @@ const VipShop = () => {
     setDialogOpen(false);
 
     if (result.error) {
-      toast({
-        title: "Error",
-        description: result.error,
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: result.error, variant: "destructive" });
     } else {
-      toast({
-        title: "Request submitted!",
-        description: "Your VIP request has been sent to the admin for review.",
-      });
+      toast({ title: "Request submitted!", description: "Your VIP request has been sent to the admin for review." });
     }
   };
 
-  const getRequestStatus = (tier: VipTierType) => {
-    const request = userRequests.find(r => r.requested_tier === tier);
-    if (!request) return null;
-    return request.status;
+  const getRequestStatus = (tierName: string) => {
+    const request = userRequests.find(r => r.requested_tier === tierName);
+    return request?.status || null;
   };
 
-  if (vipLoading || adminLoading || requestsLoading) {
+  if (vipLoading || adminLoading || requestsLoading || tiersLoading) {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -144,7 +88,6 @@ const VipShop = () => {
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
-      {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -157,24 +100,22 @@ const VipShop = () => {
                 <h1 className="text-xl font-bold">VIP Shop</h1>
               </div>
             </div>
-            {currentTier && (
-              <VipTierBadge tier={currentTier} />
-            )}
+            {currentTier && <VipTierBadge tier={currentTier} />}
           </div>
         </div>
       </header>
 
       <main className="container max-w-6xl mx-auto px-4 py-8">
-        {/* Upgrade Path Info */}
+        {/* Upgrade Path */}
         <Card className="mb-8 bg-muted/30">
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-2">Upgrade Path</p>
               <div className="flex items-center justify-center gap-2 flex-wrap">
                 {tiers.map((tier, i) => (
-                  <div key={tier} className="flex items-center gap-2">
-                    <span className={`capitalize text-sm font-medium ${currentTier === tier ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {tier}
+                  <div key={tier.name} className="flex items-center gap-2">
+                    <span className={`capitalize text-sm font-medium ${currentTier === tier.name ? 'text-primary' : 'text-muted-foreground'}`}>
+                      {tier.display_name}
                     </span>
                     {i < tiers.length - 1 && <span className="text-muted-foreground">→</span>}
                   </div>
@@ -184,7 +125,6 @@ const VipShop = () => {
           </CardContent>
         </Card>
 
-        {/* Current Status */}
         {pendingRequest && (
           <Card className="mb-8 border-yellow-500/50 bg-yellow-500/5">
             <CardContent className="pt-6">
@@ -201,7 +141,6 @@ const VipShop = () => {
           </Card>
         )}
 
-        {/* Tier Comparison Chart */}
         <div className="mb-12">
           <VipTierComparisonChart />
         </div>
@@ -209,47 +148,48 @@ const VipShop = () => {
         {/* Tier Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {tiers.map((tier) => {
-            const isCurrentTier = currentTier === tier;
-            const status = getRequestStatus(tier);
+            const isCurrentTier = currentTier === tier.name;
+            const status = getRequestStatus(tier.name);
             const isPending = status === 'pending';
             const isDeclined = status === 'declined';
-            const canRequest = canRequestTier(tier);
-            const requiredTier = getRequiredTierFor(tier);
-            const alreadyHas = hasTierAccess(tier);
+            const canRequest = canRequestTier(tier.name);
+            const requiredTier = getRequiredTierFor(tier.name);
+            const alreadyHas = hasTierAccess(tier.name);
+            const requiredTierConfig = requiredTier ? tiers.find(t => t.name === requiredTier) : null;
 
             return (
               <Card 
-                key={tier} 
+                key={tier.name} 
                 className={`relative transition-all hover:shadow-lg ${
                   isCurrentTier ? 'ring-2 ring-primary' : ''
                 } ${!canRequest && !alreadyHas ? 'opacity-60' : ''}`}
               >
                 {isCurrentTier && (
-                  <Badge className="absolute -top-2 -right-2 bg-primary">
-                    Current
-                  </Badge>
+                  <Badge className="absolute -top-2 -right-2 bg-primary">Current</Badge>
                 )}
                 {!canRequest && !alreadyHas && (
                   <Badge variant="secondary" className="absolute -top-2 -right-2">
-                    <Lock className="w-3 h-3 mr-1" />
-                    Locked
+                    <Lock className="w-3 h-3 mr-1" />Locked
                   </Badge>
                 )}
                 <CardHeader className="text-center pb-2">
-                  <VipTierIcon tier={tier} size="xl" className="mx-auto mb-2" />
-                  <CardTitle className="capitalize">{tier}</CardTitle>
+                  <VipTierIcon tier={tier.name} size="xl" className="mx-auto mb-2" />
+                  <CardTitle>{tier.display_name}</CardTitle>
                   <CardDescription>
-                    {tierDescriptions[tier]}
+                    {tier.daily_credits} credits/day
+                    {requiredTierConfig ? ` · Requires ${requiredTierConfig.display_name}` : ' · Entry level'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 mb-6">
-                    {tierBenefits[tier].map((benefit, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span>{benefit}</span>
-                      </li>
-                    ))}
+                    <li className="flex items-start gap-2 text-sm">
+                      <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span>{tier.daily_credits} daily credits</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                      <span>Access to {tier.display_name}-tier models</span>
+                    </li>
                   </ul>
 
                   {alreadyHas ? (
@@ -259,36 +199,25 @@ const VipShop = () => {
                   ) : !canRequest ? (
                     <Button className="w-full" variant="outline" disabled>
                       <Lock className="w-4 h-4 mr-2" />
-                      Need {requiredTier}
+                      Need {requiredTierConfig?.display_name}
                     </Button>
                   ) : isPending ? (
                     <Button className="w-full" variant="outline" disabled>
-                      <Clock className="w-4 h-4 mr-2" />
-                      Pending
+                      <Clock className="w-4 h-4 mr-2" />Pending
                     </Button>
                   ) : isDeclined ? (
-                    <Button 
-                      className="w-full" 
-                      variant="outline"
-                      onClick={() => openRequestDialog(tier)}
-                      disabled={!!pendingRequest || requestingTier === tier}
-                    >
-                      {requestingTier === tier ? "Requesting..." : "Request Again"}
+                    <Button className="w-full" variant="outline" onClick={() => openRequestDialog(tier.name)} disabled={!!pendingRequest}>
+                      Request Again
                     </Button>
                   ) : (
-                    <Button 
-                      className="w-full" 
-                      onClick={() => openRequestDialog(tier)}
-                      disabled={!!pendingRequest || requestingTier === tier}
-                    >
-                      {requestingTier === tier ? "Requesting..." : "Request"}
+                    <Button className="w-full" onClick={() => openRequestDialog(tier.name)} disabled={!!pendingRequest}>
+                      Request
                     </Button>
                   )}
 
                   {isDeclined && (
                     <p className="text-xs text-red-500 mt-2 text-center flex items-center justify-center gap-1">
-                      <X className="w-3 h-3" />
-                      Previous request declined
+                      <X className="w-3 h-3" />Previous request declined
                     </p>
                   )}
                 </CardContent>
@@ -297,11 +226,9 @@ const VipShop = () => {
           })}
         </div>
 
-        {/* Admin Section */}
         {isAdmin && <VipAdminRequests />}
       </main>
 
-      {/* Request Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -312,7 +239,6 @@ const VipShop = () => {
               Tell us why you'd like to become a {selectedTier} VIP member.
             </DialogDescription>
           </DialogHeader>
-          
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">Message (optional)</label>
@@ -325,11 +251,8 @@ const VipShop = () => {
               />
             </div>
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleRequestTier} disabled={requestingTier !== null}>
               {requestingTier ? "Submitting..." : "Submit Request"}
             </Button>

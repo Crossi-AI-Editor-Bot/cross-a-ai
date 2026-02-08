@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, X, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { VipTierIcon, type VipTierType } from "@/components/VipTierIcon";
+import { VipTierIcon } from "@/components/VipTierIcon";
 import {
   Table,
   TableBody,
@@ -20,94 +20,11 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-const tiers: VipTierType[] = ['copper', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
-
-interface ComparisonFeature {
-  name: string;
-  values: Record<VipTierType, string | boolean>;
-}
-
-const staticFeatures: ComparisonFeature[] = [
-  {
-    name: "Daily Credits",
-    values: {
-      copper: "16",
-      bronze: "18",
-      silver: "20",
-      gold: "22",
-      platinum: "24",
-      diamond: "25",
-    },
-  },
-  {
-    name: "Priority Support",
-    values: {
-      copper: "Basic",
-      bronze: true,
-      silver: true,
-      gold: true,
-      platinum: true,
-      diamond: "Direct Admin",
-    },
-  },
-  {
-    name: "Extended Chat History",
-    values: {
-      copper: false,
-      bronze: false,
-      silver: true,
-      gold: true,
-      platinum: true,
-      diamond: true,
-    },
-  },
-  {
-    name: "Early Feature Access",
-    values: {
-      copper: false,
-      bronze: false,
-      silver: false,
-      gold: true,
-      platinum: true,
-      diamond: true,
-    },
-  },
-  {
-    name: "Exclusive Features",
-    values: {
-      copper: false,
-      bronze: false,
-      silver: false,
-      gold: false,
-      platinum: true,
-      diamond: true,
-    },
-  },
-];
-
-const tierColors: Record<VipTierType, string> = {
-  copper: "text-orange-600",
-  bronze: "text-amber-700",
-  silver: "text-slate-400",
-  gold: "text-yellow-500",
-  platinum: "text-purple-500",
-  diamond: "text-cyan-500",
-};
-
-interface ModelAccess {
-  label: string;
-  copper_access: boolean;
-  bronze_access: boolean;
-  silver_access: boolean;
-  gold_access: boolean;
-  platinum_access: boolean;
-  diamond_access: boolean;
-  public_access: boolean;
-}
+import { useVipTiers } from "@/hooks/useVipTiers";
 
 const VipTierComparisonChart = () => {
-  const [openDialog, setOpenDialog] = useState<VipTierType | null>(null);
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
+  const { tiers, loading: tiersLoading } = useVipTiers();
 
   const { data: models = [] } = useQuery({
     queryKey: ["vip-models"],
@@ -119,19 +36,16 @@ const VipTierComparisonChart = () => {
         .order("label");
       
       if (error) throw error;
-      return data as ModelAccess[];
+      return data as any[];
     },
   });
 
-  // Get exclusive models for each tier (models that require VIP but this tier can access)
-  const getExclusiveModels = (tier: VipTierType): string[] => {
-    const tierAccessKey = `${tier}_access` as keyof ModelAccess;
-    
+  // Get exclusive models for each tier
+  const getExclusiveModels = (tierName: string): string[] => {
+    const accessKey = `${tierName}_access`;
     return models
       .filter((model) => {
-        // Model must be accessible by this tier
-        const hasAccess = model[tierAccessKey] as boolean;
-        // Model must be VIP-exclusive (not public)
+        const hasAccess = model[accessKey] as boolean;
         const isVipExclusive = !model.public_access;
         return hasAccess && isVipExclusive;
       })
@@ -149,8 +63,8 @@ const VipTierComparisonChart = () => {
     return <span className="font-medium">{value}</span>;
   };
 
-  const renderModelsCell = (tier: VipTierType) => {
-    const exclusiveModels = getExclusiveModels(tier);
+  const renderModelsCell = (tierName: string) => {
+    const exclusiveModels = getExclusiveModels(tierName);
     
     if (exclusiveModels.length === 0) {
       return <span className="text-muted-foreground text-xs">Public only</span>;
@@ -160,7 +74,7 @@ const VipTierComparisonChart = () => {
     const hasMore = exclusiveModels.length > 2;
 
     return (
-      <Dialog open={openDialog === tier} onOpenChange={(open) => setOpenDialog(open ? tier : null)}>
+      <Dialog open={openDialog === tierName} onOpenChange={(open) => setOpenDialog(open ? tierName : null)}>
         <DialogTrigger asChild>
           <button className="text-left hover:bg-muted/50 rounded px-1 py-0.5 transition-colors w-full group">
             <div className="text-xs space-y-0.5">
@@ -181,34 +95,27 @@ const VipTierComparisonChart = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <VipTierIcon tier={tier} size="sm" />
-              <span className={`capitalize ${tierColors[tier]}`}>{tier}</span>
+              <VipTierIcon tier={tierName} size="sm" />
+              <span className="capitalize">{tierName}</span>
               <span>VIP Models</span>
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">
             <div className="space-y-2 pr-4">
               {exclusiveModels.map((model) => (
-                <div
-                  key={model}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
-                >
+                <div key={model} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
                   <Check className="w-4 h-4 text-green-500 shrink-0" />
                   <span className="text-sm">{model}</span>
                 </div>
               ))}
             </div>
           </ScrollArea>
-          <p className="text-xs text-muted-foreground mt-2">
-            {tier === "diamond" 
-              ? "Diamond tier has access to all VIP models"
-              : `${exclusiveModels.length} exclusive model${exclusiveModels.length !== 1 ? "s" : ""} available`
-            }
-          </p>
         </DialogContent>
       </Dialog>
     );
   };
+
+  if (tiersLoading) return null;
 
   return (
     <Card className="overflow-hidden">
@@ -222,11 +129,11 @@ const VipTierComparisonChart = () => {
               <TableRow className="bg-muted/30">
                 <TableHead className="w-[180px] font-semibold">Feature</TableHead>
                 {tiers.map((tier) => (
-                  <TableHead key={tier} className="text-center min-w-[100px]">
+                  <TableHead key={tier.name} className="text-center min-w-[100px]">
                     <div className="flex flex-col items-center gap-1">
-                      <VipTierIcon tier={tier} size="sm" />
-                      <span className={`capitalize text-xs font-medium ${tierColors[tier]}`}>
-                        {tier}
+                      <VipTierIcon tier={tier.name} size="sm" />
+                      <span className={`capitalize text-xs font-medium ${tier.text_color}`}>
+                        {tier.display_name}
                       </span>
                     </div>
                   </TableHead>
@@ -236,32 +143,23 @@ const VipTierComparisonChart = () => {
             <TableBody>
               {/* VIP Models Row */}
               <TableRow className="bg-muted/10">
-                <TableCell className="font-medium text-sm">
-                  Exclusive VIP Models
-                </TableCell>
+                <TableCell className="font-medium text-sm">Exclusive VIP Models</TableCell>
                 {tiers.map((tier) => (
-                  <TableCell key={tier} className="text-center text-sm">
-                    {renderModelsCell(tier)}
+                  <TableCell key={tier.name} className="text-center text-sm">
+                    {renderModelsCell(tier.name)}
                   </TableCell>
                 ))}
               </TableRow>
-              
-              {/* Static Features */}
-              {staticFeatures.map((feature, index) => (
-                <TableRow 
-                  key={feature.name}
-                  className={(index + 1) % 2 === 0 ? "bg-muted/10" : ""}
-                >
-                  <TableCell className="font-medium text-sm">
-                    {feature.name}
+
+              {/* Daily Credits Row */}
+              <TableRow>
+                <TableCell className="font-medium text-sm">Daily Credits</TableCell>
+                {tiers.map((tier) => (
+                  <TableCell key={tier.name} className="text-center text-sm">
+                    <span className="font-medium">{tier.daily_credits}</span>
                   </TableCell>
-                  {tiers.map((tier) => (
-                    <TableCell key={tier} className="text-center text-sm">
-                      {renderValue(feature.values[tier])}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
+                ))}
+              </TableRow>
             </TableBody>
           </Table>
         </div>

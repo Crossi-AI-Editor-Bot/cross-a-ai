@@ -1,40 +1,14 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useVipTiers } from "@/hooks/useVipTiers";
 
-export type VipTier = 'copper' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond' | null;
-
-// Tier hierarchy for comparison - upgrade path: copper → bronze → silver → gold → platinum → diamond
-const TIER_LEVELS: Record<string, number> = {
-  copper: 1,
-  bronze: 2,
-  silver: 3,
-  gold: 4,
-  platinum: 5,
-  diamond: 6,
-};
-
-// Get the next tier in the upgrade path
-export const getNextTier = (currentTier: VipTier): VipTier => {
-  if (!currentTier) return 'copper';
-  const tierOrder: VipTier[] = ['copper', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
-  const currentIndex = tierOrder.indexOf(currentTier);
-  if (currentIndex === -1 || currentIndex === tierOrder.length - 1) return null;
-  return tierOrder[currentIndex + 1];
-};
-
-// Get the required tier to upgrade from
-export const getRequiredTierFor = (targetTier: VipTier): VipTier => {
-  if (!targetTier) return null;
-  const tierOrder: VipTier[] = ['copper', 'bronze', 'silver', 'gold', 'platinum', 'diamond'];
-  const targetIndex = tierOrder.indexOf(targetTier);
-  if (targetIndex <= 0) return null; // copper has no requirement
-  return tierOrder[targetIndex - 1];
-};
+export type VipTier = string | null;
 
 export const useVipStatus = () => {
   const [tier, setTier] = useState<VipTier>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { tiers, loading: tiersLoading } = useVipTiers();
 
   useEffect(() => {
     const checkVipStatus = async () => {
@@ -48,7 +22,6 @@ export const useVipStatus = () => {
           return;
         }
 
-        // Check if user is admin (admins get diamond access)
         const { data: adminData } = await supabase
           .from("user_roles")
           .select("role")
@@ -58,12 +31,13 @@ export const useVipStatus = () => {
 
         if (adminData) {
           setIsAdmin(true);
-          setTier('diamond'); // Admins get highest tier
+          // Admins get highest tier
+          const highestTier = tiers.length > 0 ? tiers[tiers.length - 1].name : 'diamond';
+          setTier(highestTier);
           setLoading(false);
           return;
         }
 
-        // Check for active VIP status with tier
         const { data: vipData } = await supabase
           .from("vip_status")
           .select("tier, expires_at")
@@ -72,7 +46,7 @@ export const useVipStatus = () => {
           .maybeSingle();
 
         if (vipData) {
-          setTier(vipData.tier as VipTier);
+          setTier(vipData.tier as string);
         } else {
           setTier(null);
         }
@@ -84,24 +58,39 @@ export const useVipStatus = () => {
       }
     };
 
-    checkVipStatus();
+    if (!tiersLoading) {
+      checkVipStatus();
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      checkVipStatus();
+      if (!tiersLoading) checkVipStatus();
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [tiers, tiersLoading]);
 
-  // Helper to check if user has access to a specific tier level
-  const hasTierAccess = (requiredTier: VipTier): boolean => {
+  const hasTierAccess = (requiredTier: string): boolean => {
     if (isAdmin) return true;
     if (!tier || !requiredTier) return false;
-    return TIER_LEVELS[tier] >= TIER_LEVELS[requiredTier];
+    const tierOrder = tiers.map(t => t.name);
+    const currentLevel = tierOrder.indexOf(tier);
+    const requiredLevel = tierOrder.indexOf(requiredTier);
+    if (currentLevel === -1 || requiredLevel === -1) return false;
+    return currentLevel >= requiredLevel;
   };
 
-  // Legacy compatibility
   const isVip = tier !== null || isAdmin;
 
-  return { tier, isVip, isAdmin, loading, hasTierAccess };
+  return { tier, isVip, isAdmin, loading: loading || tiersLoading, hasTierAccess };
+};
+
+// Legacy exports for compatibility
+export const getNextTier = (currentTier: VipTier): VipTier => {
+  // This is now handled by useVipTiers hook
+  return null;
+};
+
+export const getRequiredTierFor = (targetTier: VipTier): VipTier => {
+  // This is now handled by useVipTiers hook
+  return null;
 };

@@ -162,25 +162,10 @@ Deno.serve(async (req) => {
 
         if (vipData) {
           const tier = vipData.tier;
-          switch (tier) {
-            case 'copper':
-              hasAccess = modelCostData.copper_access;
-              break;
-            case 'bronze':
-              hasAccess = modelCostData.bronze_access;
-              break;
-            case 'silver':
-              hasAccess = modelCostData.silver_access;
-              break;
-            case 'gold':
-              hasAccess = modelCostData.gold_access;
-              break;
-            case 'platinum':
-              hasAccess = modelCostData.platinum_access;
-              break;
-            case 'diamond':
-              hasAccess = modelCostData.diamond_access;
-              break;
+          // Dynamically check access using tier_access column pattern
+          const accessKey = `${tier}_access`;
+          if (accessKey in modelCostData) {
+            hasAccess = (modelCostData as any)[accessKey];
           }
         }
       }
