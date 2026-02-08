@@ -31,6 +31,9 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const conversationIdRef = useRef<string | null>(options?.conversationId || null);
   const callMessagesRef = useRef<CallMessage[]>([]);
+  const lastModelLabelRef = useRef<string | undefined>(undefined);
+  const retryCountRef = useRef(0);
+  const maxRetries = 3;
   
   const { toast } = useToast();
 
@@ -221,7 +224,51 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     return btoa(binary);
   };
 
-  const startCall = useCallback(async (modelLabel?: string) => {
+  const cleanupCallResources = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    window.speechSynthesis.cancel();
+    commitNextChunkRef.current = false;
+  }, []);
+
+  const autoRestart = useCallback(async () => {
+    if (retryCountRef.current >= maxRetries) {
+      console.error('Max auto-restart retries reached');
+      setState('error');
+      setError('Call failed after multiple retries. Please try again manually.');
+      return;
+    }
+    retryCountRef.current += 1;
+    console.log(`Auto-restarting call (attempt ${retryCountRef.current}/${maxRetries})...`);
+    
+    cleanupCallResources();
+    
+    // Small delay before restarting
+    await new Promise(r => setTimeout(r, 1000));
+    
+    // startCall will reuse the existing conversationId and reload messages
+    startCallInternal(lastModelLabelRef.current);
+  }, []);
+
+  const startCallInternal = useCallback(async (modelLabel?: string) => {
     try {
       setState('connecting');
       setError(null);
@@ -375,26 +422,26 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
               source.connect(newProcessor);
               newProcessor.connect(audioContextRef.current.destination);
               console.log('Audio processing resumed');
+              retryCountRef.current = 0; // Reset retry count on successful resume
             } else {
-              console.warn('WebSocket closed, cannot resume audio streaming');
-              setError('Connection lost. Please restart the call.');
-              setState('error');
+              console.warn('WebSocket closed, auto-restarting...');
+              autoRestart();
             }
           } else {
-            console.error('Cannot resume: missing stream or audio context');
-            setState('error');
+            console.error('Cannot resume: missing stream or audio context, auto-restarting...');
+            autoRestart();
           }
         } catch (err) {
           console.error('Processing error:', err);
           setError(err instanceof Error ? err.message : 'Processing failed');
-          setState('error');
+          autoRestart();
         }
       };
 
       ws.onerror = (event) => {
         console.error('WebSocket error:', event);
         setError('Connection error');
-        setState('error');
+        autoRestart();
       };
 
       ws.onclose = (event) => {
@@ -417,35 +464,15 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     }
   }, [toast, options]);
 
+  const startCall = useCallback(async (modelLabel?: string) => {
+    lastModelLabelRef.current = modelLabel;
+    retryCountRef.current = 0;
+    await startCallInternal(modelLabel);
+  }, [startCallInternal]);
+
   const endCall = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-
-    commitNextChunkRef.current = false;
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-
-    window.speechSynthesis.cancel();
+    retryCountRef.current = maxRetries; // Prevent auto-restart during intentional end
+    cleanupCallResources();
 
     setState('idle');
     setPartialTranscript('');
