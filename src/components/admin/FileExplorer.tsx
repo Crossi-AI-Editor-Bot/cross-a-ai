@@ -25,12 +25,9 @@ interface ModelFile {
   cost: number;
   enabled: boolean;
   public_access: boolean;
-  bronze_access: boolean;
-  silver_access: boolean;
-  gold_access: boolean;
-  diamond_access: boolean;
   folder: string | null;
   image_cost?: number;
+  tier_access: Record<string, boolean>;
 }
 
 interface FileExplorerProps {

@@ -178,6 +178,35 @@ export type Database = {
         }
         Relationships: []
       }
+      model_tier_access: {
+        Row: {
+          has_access: boolean
+          id: string
+          model_cost_id: string
+          tier_name: string
+        }
+        Insert: {
+          has_access?: boolean
+          id?: string
+          model_cost_id: string
+          tier_name: string
+        }
+        Update: {
+          has_access?: boolean
+          id?: string
+          model_cost_id?: string
+          tier_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_tier_access_model_cost_id_fkey"
+            columns: ["model_cost_id"]
+            isOneToOne: false
+            referencedRelation: "model_costs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           active: boolean

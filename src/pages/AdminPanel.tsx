@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useModelCosts } from "@/hooks/useModelCosts";
 import { useSiteStatus } from "@/hooks/useSiteStatus";
+import { useVipTiers } from "@/hooks/useVipTiers";
 import { supabase } from "@/integrations/supabase/client";
 import { FileExplorer } from "@/components/admin/FileExplorer";
 import { FileEditor } from "@/components/admin/FileEditor";
@@ -22,15 +23,10 @@ interface ModelState {
   cost: number;
   enabled: boolean;
   public_access: boolean;
-  copper_access: boolean;
-  bronze_access: boolean;
-  silver_access: boolean;
-  gold_access: boolean;
-  platinum_access: boolean;
-  diamond_access: boolean;
   folder: string | null;
   image_cost: number;
   system_prompt: string | null;
+  tier_access: Record<string, boolean>;
 }
 
 const AdminPanel = () => {
@@ -39,6 +35,7 @@ const AdminPanel = () => {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { modelCosts, loading: costsLoading } = useModelCosts();
   const { isDisabled, disabledUntil, disableSite, enableSite, loading: siteLoading } = useSiteStatus();
+  const { tiers, loading: tiersLoading } = useVipTiers();
   const [customFolders, setCustomFolders] = useState<string[]>([]);
   const [foldersLoading, setFoldersLoading] = useState(true);
   
@@ -103,15 +100,10 @@ const AdminPanel = () => {
       cost: model.cost,
       enabled: model.enabled,
       public_access: model.public_access,
-      copper_access: model.copper_access,
-      bronze_access: model.bronze_access,
-      silver_access: model.silver_access,
-      gold_access: model.gold_access,
-      platinum_access: model.platinum_access,
-      diamond_access: model.diamond_access,
       folder: model.folder || null,
       image_cost: model.image_cost || 0,
       system_prompt: model.system_prompt || null,
+      tier_access: { ...model.tier_access },
     }));
     setModels(initialModels);
   }, [modelCosts]);
@@ -132,6 +124,16 @@ const AdminPanel = () => {
   const updateModel = (id: string, updates: Partial<ModelState>) => {
     setModels((prev) =>
       prev.map((m) => (m.id === id ? { ...m, ...updates } : m))
+    );
+  };
+
+  const updateTierAccess = (modelId: string, tierName: string, value: boolean) => {
+    setModels((prev) =>
+      prev.map((m) =>
+        m.id === modelId
+          ? { ...m, tier_access: { ...m.tier_access, [tierName]: value } }
+          : m
+      )
     );
   };
 
@@ -162,7 +164,6 @@ const AdminPanel = () => {
 
   const handleDeleteFolder = async (name: string) => {
     try {
-      // Delete the folder and all child folders
       const { error } = await supabase
         .from("admin_folders")
         .delete()
@@ -170,7 +171,6 @@ const AdminPanel = () => {
       
       if (error) throw error;
       
-      // Update local state - remove this folder and all children
       setCustomFolders((prev) => prev.filter((f) => f !== name && !f.startsWith(name + "/")));
       setModels((prev) =>
         prev.map((m) => 
@@ -204,12 +204,6 @@ const AdminPanel = () => {
           cost: folder === "Call Models" ? 1 : 5,
           enabled: true,
           public_access: folder === "Call Models" ? true : false,
-          copper_access: true,
-          bronze_access: true,
-          silver_access: true,
-          gold_access: true,
-          platinum_access: true,
-          diamond_access: true,
           folder: targetFolder,
           image_cost: 0,
           system_prompt: folder === "Call Models" 
@@ -222,6 +216,11 @@ const AdminPanel = () => {
       if (error) throw error;
 
       if (data) {
+        // Tier access entries are auto-created by the DB trigger
+        // Build default tier access (all true)
+        const defaultTierAccess: Record<string, boolean> = {};
+        tiers.forEach((t) => { defaultTierAccess[t.name] = true; });
+
         const newModel: ModelState = {
           id: data.id,
           model_id: data.model_id,
@@ -229,20 +228,14 @@ const AdminPanel = () => {
           cost: data.cost,
           enabled: data.enabled,
           public_access: data.public_access,
-          copper_access: data.copper_access,
-          bronze_access: data.bronze_access,
-          silver_access: data.silver_access,
-          gold_access: data.gold_access,
-          platinum_access: data.platinum_access,
-          diamond_access: data.diamond_access,
           folder: data.folder,
           image_cost: data.image_cost || 0,
           system_prompt: data.system_prompt || null,
+          tier_access: defaultTierAccess,
         };
         setModels((prev) => [...prev, newModel]);
         setSelectedModelId(data.id);
         
-        // Auto-create the Call Models folder if it doesn't exist
         if (folder === "Call Models" && !customFolders.includes("Call Models")) {
           await supabase.from("admin_folders").insert({ path: "Call Models" });
           setCustomFolders((prev) => [...prev, "Call Models"]);
@@ -307,6 +300,7 @@ const AdminPanel = () => {
         .upsert({ key: "app_version", value: appVersion }, { onConflict: "key" });
 
       for (const model of models) {
+        // Save model core data
         const { error } = await supabase
           .from("model_costs")
           .update({
@@ -314,12 +308,6 @@ const AdminPanel = () => {
             label: model.label,
             enabled: model.enabled,
             public_access: model.public_access,
-            copper_access: model.copper_access,
-            bronze_access: model.bronze_access,
-            silver_access: model.silver_access,
-            gold_access: model.gold_access,
-            platinum_access: model.platinum_access,
-            diamond_access: model.diamond_access,
             folder: model.folder,
             image_cost: model.image_cost,
             system_prompt: model.system_prompt,
@@ -327,6 +315,22 @@ const AdminPanel = () => {
           .eq("id", model.id);
 
         if (error) throw error;
+
+        // Save tier access via upsert
+        for (const [tierName, hasAccess] of Object.entries(model.tier_access)) {
+          const { error: accessError } = await supabase
+            .from("model_tier_access" as any)
+            .upsert(
+              {
+                model_cost_id: model.id,
+                tier_name: tierName,
+                has_access: hasAccess,
+              } as any,
+              { onConflict: "model_cost_id,tier_name" }
+            );
+
+          if (accessError) throw accessError;
+        }
       }
 
       toast({
@@ -366,7 +370,7 @@ const AdminPanel = () => {
     }
   };
 
-  if (adminLoading || costsLoading || siteLoading || foldersLoading) {
+  if (adminLoading || costsLoading || siteLoading || foldersLoading || tiersLoading) {
     return null;
   }
 
@@ -467,16 +471,12 @@ const AdminPanel = () => {
             {selectedModel ? (
               <FileEditor
                 model={selectedModel}
+                tiers={tiers}
                 onUpdateLabel={(value) => updateModel(selectedModel.id, { label: value })}
                 onUpdateCost={(value) => updateModel(selectedModel.id, { cost: value })}
                 onUpdateEnabled={(value) => updateModel(selectedModel.id, { enabled: value })}
                 onUpdatePublicAccess={(value) => updateModel(selectedModel.id, { public_access: value })}
-                onUpdateCopperAccess={(value) => updateModel(selectedModel.id, { copper_access: value })}
-                onUpdateBronzeAccess={(value) => updateModel(selectedModel.id, { bronze_access: value })}
-                onUpdateSilverAccess={(value) => updateModel(selectedModel.id, { silver_access: value })}
-                onUpdateGoldAccess={(value) => updateModel(selectedModel.id, { gold_access: value })}
-                onUpdatePlatinumAccess={(value) => updateModel(selectedModel.id, { platinum_access: value })}
-                onUpdateDiamondAccess={(value) => updateModel(selectedModel.id, { diamond_access: value })}
+                onUpdateTierAccess={(tierName, value) => updateTierAccess(selectedModel.id, tierName, value)}
                 onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
                 onDelete={() => handleDeleteModel(selectedModel.id)}
