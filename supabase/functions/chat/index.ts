@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('model_id, label, cost, enabled, public_access, copper_access, bronze_access, silver_access, gold_access, platinum_access, diamond_access, image_cost, system_prompt')
+      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt')
       .eq('id', modelCostId)
       .single();
 
@@ -137,7 +137,6 @@ Deno.serve(async (req) => {
     }
 
     // Check access based on user tier
-    // First check if user is admin (admins have full access)
     const { data: adminData } = await supabase
       .from('user_roles')
       .select('role')
@@ -148,11 +147,10 @@ Deno.serve(async (req) => {
     const isAdmin = !!adminData;
 
     if (!isAdmin) {
-      // Check if model has public access (free users)
       let hasAccess = modelCostData.public_access;
 
       if (!hasAccess) {
-        // Check VIP tier access
+        // Check VIP tier access via junction table
         const { data: vipData } = await supabase
           .from('vip_status')
           .select('tier, expires_at')
@@ -161,11 +159,16 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (vipData) {
-          const tier = vipData.tier;
-          // Dynamically check access using tier_access column pattern
-          const accessKey = `${tier}_access`;
-          if (accessKey in modelCostData) {
-            hasAccess = (modelCostData as any)[accessKey];
+          // Query the junction table for this model + tier
+          const { data: accessData } = await supabase
+            .from('model_tier_access')
+            .select('has_access')
+            .eq('model_cost_id', modelCostId)
+            .eq('tier_name', vipData.tier)
+            .maybeSingle();
+
+          if (accessData) {
+            hasAccess = accessData.has_access;
           }
         }
       }
@@ -221,7 +224,6 @@ Deno.serve(async (req) => {
     let newImageCredits = initialImageCredits;
     
     if (isImageGen) {
-      // Deduct from image credits
       newImageCredits = initialImageCredits - imageCreditCost;
       const { error: deductError } = await supabase
         .from('user_image_credits')
@@ -232,7 +234,6 @@ Deno.serve(async (req) => {
         console.error('Failed to deduct image credits:', deductError);
       }
     } else {
-      // Deduct from regular credits
       newCredits = initialCredits - creditCost;
       const { error: deductError } = await supabase
         .from('user_credits')
@@ -249,10 +250,8 @@ Deno.serve(async (req) => {
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
       const prompt = lastUserMessage?.content || 'Generate an image';
       
-      // Build content array for multimodal request
       const content: any[] = [{ type: "text", text: prompt }];
       
-      // Include any images from the last message for editing
       if (lastUserMessage?.files && lastUserMessage.files.length > 0) {
         for (const file of lastUserMessage.files) {
           if (file.type.startsWith('image/')) {
@@ -330,14 +329,12 @@ Deno.serve(async (req) => {
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
       const prompt = lastUserMessage?.content || 'Generate a video';
       
-      // Extract image URL if provided in files
       let imageUrl: string | undefined;
       let lastFrameUrl: string | undefined;
       
       if (lastUserMessage?.files && lastUserMessage.files.length > 0) {
         for (const file of lastUserMessage.files) {
           if (file.type.startsWith('image/')) {
-            // Use the base64 data URL directly or first image as the input
             if (!imageUrl) {
               imageUrl = file.data;
             } else if (!lastFrameUrl) {
@@ -359,7 +356,6 @@ Deno.serve(async (req) => {
           resolution: "720p"
         };
         
-        // Add image if provided
         if (imageUrl) {
           input.image = imageUrl;
         }
@@ -371,7 +367,6 @@ Deno.serve(async (req) => {
         
         console.log('VEO 3.1 Fast generation response:', output);
         
-        // Get the video URL from the output
         let videoUrl: string;
         if (typeof output === 'object' && output !== null && 'url' in output && typeof (output as any).url === 'function') {
           videoUrl = (output as any).url();
@@ -440,12 +435,11 @@ Deno.serve(async (req) => {
     let systemPrompt = modelCostData.system_prompt || 
       "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging.";
     
-    // Check if this model uses crossicon data (label contains "crossicon" or specific model name)
+    // Check if this model uses crossicon data
     const usesCrossiconData = modelCostData.label?.toLowerCase().includes('crossicon') || 
                                modelCostData.label?.toLowerCase().includes('test');
     
     if (usesCrossiconData) {
-      // Fetch articles from crossicon API
       const CROSSICON_API_KEY = Deno.env.get("CROSSICON_API_KEY");
       if (CROSSICON_API_KEY) {
         try {
@@ -463,7 +457,6 @@ Deno.serve(async (req) => {
             const articlesData = await articlesResponse.json();
             console.log('Received crossicon articles:', JSON.stringify(articlesData).substring(0, 200));
             
-            // Append article data to system prompt
             const articlesContext = `\n\nYou have access to the following articles from crossicon. Use ONLY this data to answer questions. If the question cannot be answered from this data, say you don't have information about that topic.\n\nARTICLES DATA:\n${JSON.stringify(articlesData, null, 2)}`;
             systemPrompt = systemPrompt + articlesContext;
           } else {
@@ -502,50 +495,34 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
+
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      
-      return new Response(JSON.stringify({ error: "AI API error", details: errorText }), {
+
+      return new Response(JSON.stringify({ error: "AI service error", details: errorText }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Handle streaming response via Lovable gateway
-    const reader = response.body?.getReader();
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          while (true) {
-            const { done, value } = await reader!.read();
-            if (done) {
-              // Send credits update before closing
-              const creditsEvent = `data: ${JSON.stringify({ type: 'credits', credits: newCredits })}\n\n`;
-              controller.enqueue(new TextEncoder().encode(creditsEvent));
-              controller.close();
-              break;
-            }
-            controller.enqueue(value);
-          }
-        } catch (error) {
-          controller.error(error);
-        }
-      }
+    // Stream the response back to the client
+    return new Response(response.body, {
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     });
-
-    return new Response(stream, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
-  } catch (e) {
-    console.error("Chat error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  } catch (error) {
+    console.error("Chat function error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

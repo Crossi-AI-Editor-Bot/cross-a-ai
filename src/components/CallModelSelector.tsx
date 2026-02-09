@@ -10,6 +10,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useModelCosts, type ModelCost } from "@/hooks/useModelCosts";
 import { useVipStatus } from "@/hooks/useVipStatus";
+import { useVipTiers } from "@/hooks/useVipTiers";
 import { cn } from "@/lib/utils";
 
 interface CallModelSelectorProps {
@@ -18,47 +19,37 @@ interface CallModelSelectorProps {
   onSelectModel: (model: ModelCost) => void;
 }
 
-const TIER_ORDER = ["public", "copper", "bronze", "silver", "gold", "platinum", "diamond"] as const;
-
 const CallModelSelector = ({ open, onOpenChange, onSelectModel }: CallModelSelectorProps) => {
   const { modelCosts } = useModelCosts();
-  const { tier: userTier } = useVipStatus();
+  const { tier: userTier, isAdmin } = useVipStatus();
+  const { tiers, tierNames } = useVipTiers();
 
-  // Filter only call models (folder starts with "Call Models")
   const callModels = useMemo(() => {
     return modelCosts.filter(
       (m) => m.enabled && m.folder?.toLowerCase().startsWith("call models")
     );
   }, [modelCosts]);
 
-  const getUserTierIndex = () => {
-    if (!userTier) return 0; // public access only
-    return TIER_ORDER.indexOf(userTier as any) + 1; // +1 because public is index 0
-  };
-
   const canAccessModel = (model: ModelCost): boolean => {
-    const tierIndex = getUserTierIndex();
-    
-    // Check access based on tier
+    if (isAdmin) return true;
     if (model.public_access) return true;
-    if (tierIndex >= 1 && model.copper_access) return true;
-    if (tierIndex >= 2 && model.bronze_access) return true;
-    if (tierIndex >= 3 && model.silver_access) return true;
-    if (tierIndex >= 4 && model.gold_access) return true;
-    if (tierIndex >= 5 && model.platinum_access) return true;
-    if (tierIndex >= 6 && model.diamond_access) return true;
+    if (!userTier) return false;
     
-    return false;
+    // Check if user's tier or any lower tier grants access
+    const userTierIndex = tierNames.indexOf(userTier);
+    if (userTierIndex === -1) return false;
+    
+    // Check if user's specific tier has access
+    return model.tier_access[userTier] ?? false;
   };
 
   const getRequiredTier = (model: ModelCost): string | null => {
     if (model.public_access) return null;
-    if (model.copper_access) return "Copper";
-    if (model.bronze_access) return "Bronze";
-    if (model.silver_access) return "Silver";
-    if (model.gold_access) return "Gold";
-    if (model.platinum_access) return "Platinum";
-    if (model.diamond_access) return "Diamond";
+    for (const tier of tiers) {
+      if (model.tier_access[tier.name]) {
+        return tier.display_name;
+      }
+    }
     return null;
   };
 

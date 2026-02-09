@@ -14,6 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { VipTierIcon } from "@/components/VipTierIcon";
+import type { VipTierConfig } from "@/hooks/useVipTiers";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-2.5-flash-image-preview'];
 const NANO_MODEL_ID = 'openai/gpt-5-nano';
@@ -25,29 +27,20 @@ interface ModelData {
   cost: number;
   enabled: boolean;
   public_access: boolean;
-  copper_access: boolean;
-  bronze_access: boolean;
-  silver_access: boolean;
-  gold_access: boolean;
-  platinum_access: boolean;
-  diamond_access: boolean;
   folder: string | null;
   image_cost: number;
   system_prompt?: string | null;
+  tier_access: Record<string, boolean>;
 }
 
 interface FileEditorProps {
   model: ModelData;
+  tiers: VipTierConfig[];
   onUpdateLabel: (value: string) => void;
   onUpdateCost: (value: number) => void;
   onUpdateEnabled: (value: boolean) => void;
   onUpdatePublicAccess: (value: boolean) => void;
-  onUpdateCopperAccess: (value: boolean) => void;
-  onUpdateBronzeAccess: (value: boolean) => void;
-  onUpdateSilverAccess: (value: boolean) => void;
-  onUpdateGoldAccess: (value: boolean) => void;
-  onUpdatePlatinumAccess: (value: boolean) => void;
-  onUpdateDiamondAccess: (value: boolean) => void;
+  onUpdateTierAccess: (tierName: string, value: boolean) => void;
   onUpdateImageCost?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
   onDelete?: () => void;
@@ -55,16 +48,12 @@ interface FileEditorProps {
 
 export const FileEditor = ({
   model,
+  tiers,
   onUpdateLabel,
   onUpdateCost,
   onUpdateEnabled,
   onUpdatePublicAccess,
-  onUpdateCopperAccess,
-  onUpdateBronzeAccess,
-  onUpdateSilverAccess,
-  onUpdateGoldAccess,
-  onUpdatePlatinumAccess,
-  onUpdateDiamondAccess,
+  onUpdateTierAccess,
   onUpdateImageCost,
   onUpdateSystemPrompt,
   onDelete,
@@ -165,7 +154,7 @@ export const FileEditor = ({
             />
           </div>
 
-          {/* Image Cost - only show for image models */}
+          {/* Image Cost */}
           {isImageModel && onUpdateImageCost && (
             <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-purple-400" />
@@ -194,10 +183,7 @@ export const FileEditor = ({
             <span className="text-purple-400">enabled</span>
             <span className="text-muted-foreground">=</span>
             <div className="flex items-center gap-2">
-              <Switch
-                checked={model.enabled}
-                onCheckedChange={onUpdateEnabled}
-              />
+              <Switch checked={model.enabled} onCheckedChange={onUpdateEnabled} />
               <span className={model.enabled ? "text-green-400" : "text-red-400"}>
                 {model.enabled ? "true" : "false"}
               </span>
@@ -216,14 +202,12 @@ export const FileEditor = ({
             <span>Access Controls by Tier</span>
           </div>
 
+          {/* Public access */}
           <div className="flex items-center gap-4">
             <span className="text-purple-400">public_access</span>
             <span className="text-muted-foreground">=</span>
             <div className="flex items-center gap-2">
-              <Switch
-                checked={model.public_access}
-                onCheckedChange={onUpdatePublicAccess}
-              />
+              <Switch checked={model.public_access} onCheckedChange={onUpdatePublicAccess} />
               <span className={model.public_access ? "text-green-400" : "text-muted-foreground"}>
                 {model.public_access ? "true" : "false"}
               </span>
@@ -231,95 +215,26 @@ export const FileEditor = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-purple-400">copper_access</span>
-            <span className="text-muted-foreground">=</span>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={model.copper_access}
-                onCheckedChange={onUpdateCopperAccess}
-              />
-              <span className={model.copper_access ? "text-orange-600" : "text-muted-foreground"}>
-                {model.copper_access ? "true" : "false"}
-              </span>
-              <Crown className="h-4 w-4 text-orange-600" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-purple-400">bronze_access</span>
-            <span className="text-muted-foreground">=</span>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={model.bronze_access}
-                onCheckedChange={onUpdateBronzeAccess}
-              />
-              <span className={model.bronze_access ? "text-amber-600" : "text-muted-foreground"}>
-                {model.bronze_access ? "true" : "false"}
-              </span>
-              <Crown className="h-4 w-4 text-amber-600" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-purple-400">silver_access</span>
-            <span className="text-muted-foreground">=</span>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={model.silver_access}
-                onCheckedChange={onUpdateSilverAccess}
-              />
-              <span className={model.silver_access ? "text-gray-400" : "text-muted-foreground"}>
-                {model.silver_access ? "true" : "false"}
-              </span>
-              <Crown className="h-4 w-4 text-gray-400" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-purple-400">gold_access</span>
-            <span className="text-muted-foreground">=</span>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={model.gold_access}
-                onCheckedChange={onUpdateGoldAccess}
-              />
-              <span className={model.gold_access ? "text-yellow-400" : "text-muted-foreground"}>
-                {model.gold_access ? "true" : "false"}
-              </span>
-              <Crown className="h-4 w-4 text-yellow-500" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-purple-400">platinum_access</span>
-            <span className="text-muted-foreground">=</span>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={model.platinum_access}
-                onCheckedChange={onUpdatePlatinumAccess}
-              />
-              <span className={model.platinum_access ? "text-slate-300" : "text-muted-foreground"}>
-                {model.platinum_access ? "true" : "false"}
-              </span>
-              <Crown className="h-4 w-4 text-slate-300" />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="text-purple-400">diamond_access</span>
-            <span className="text-muted-foreground">=</span>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={model.diamond_access}
-                onCheckedChange={onUpdateDiamondAccess}
-              />
-              <span className={model.diamond_access ? "text-cyan-400" : "text-muted-foreground"}>
-                {model.diamond_access ? "true" : "false"}
-              </span>
-              <Crown className="h-4 w-4 text-cyan-400" />
-            </div>
-          </div>
+          {/* Dynamic tier access */}
+          {tiers.map((tier) => {
+            const hasAccess = model.tier_access[tier.name] ?? true;
+            return (
+              <div key={tier.name} className="flex items-center gap-4">
+                <span className="text-purple-400">{tier.name}_access</span>
+                <span className="text-muted-foreground">=</span>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={hasAccess}
+                    onCheckedChange={(v) => onUpdateTierAccess(tier.name, v)}
+                  />
+                  <span className={hasAccess ? `${tier.text_color}` : "text-muted-foreground"}>
+                    {hasAccess ? "true" : "false"}
+                  </span>
+                  <VipTierIcon tier={tier.name} size="sm" />
+                </div>
+              </div>
+            );
+          })}
 
           {/* System Prompt - only for Nano models */}
           {isNanoModel && onUpdateSystemPrompt && (

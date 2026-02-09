@@ -26,41 +26,46 @@ const VipTierComparisonChart = () => {
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const { tiers, loading: tiersLoading } = useVipTiers();
 
-  const { data: models = [] } = useQuery({
-    queryKey: ["vip-models"],
+  // Fetch models + their tier access from junction table
+  const { data: modelsWithAccess = [] } = useQuery({
+    queryKey: ["vip-models-access"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("model_costs")
-        .select("label, copper_access, bronze_access, silver_access, gold_access, platinum_access, diamond_access, public_access")
-        .eq("enabled", true)
-        .order("label");
-      
-      if (error) throw error;
-      return data as any[];
+      const [modelsRes, accessRes] = await Promise.all([
+        supabase
+          .from("model_costs")
+          .select("id, label, public_access")
+          .eq("enabled", true)
+          .order("label"),
+        supabase
+          .from("model_tier_access" as any)
+          .select("model_cost_id, tier_name, has_access"),
+      ]);
+
+      if (modelsRes.error) throw modelsRes.error;
+      if (accessRes.error) throw accessRes.error;
+
+      const accessMap = new Map<string, Record<string, boolean>>();
+      for (const row of (accessRes.data || []) as any[]) {
+        if (!accessMap.has(row.model_cost_id)) {
+          accessMap.set(row.model_cost_id, {});
+        }
+        accessMap.get(row.model_cost_id)![row.tier_name] = row.has_access;
+      }
+
+      return (modelsRes.data || []).map((m: any) => ({
+        ...m,
+        tier_access: accessMap.get(m.id) || {},
+      }));
     },
   });
 
-  // Get exclusive models for each tier
   const getExclusiveModels = (tierName: string): string[] => {
-    const accessKey = `${tierName}_access`;
-    return models
+    return modelsWithAccess
       .filter((model) => {
-        const hasAccess = model[accessKey] as boolean;
-        const isVipExclusive = !model.public_access;
-        return hasAccess && isVipExclusive;
+        const hasAccess = model.tier_access[tierName] ?? false;
+        return hasAccess && !model.public_access;
       })
       .map((model) => model.label);
-  };
-
-  const renderValue = (value: string | boolean) => {
-    if (typeof value === "boolean") {
-      return value ? (
-        <Check className="w-5 h-5 text-green-500 mx-auto" />
-      ) : (
-        <X className="w-5 h-5 text-muted-foreground/40 mx-auto" />
-      );
-    }
-    return <span className="font-medium">{value}</span>;
   };
 
   const renderModelsCell = (tierName: string) => {
@@ -141,7 +146,6 @@ const VipTierComparisonChart = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {/* VIP Models Row */}
               <TableRow className="bg-muted/10">
                 <TableCell className="font-medium text-sm">Exclusive VIP Models</TableCell>
                 {tiers.map((tier) => (
@@ -150,8 +154,6 @@ const VipTierComparisonChart = () => {
                   </TableCell>
                 ))}
               </TableRow>
-
-              {/* Daily Credits Row */}
               <TableRow>
                 <TableCell className="font-medium text-sm">Daily Credits</TableCell>
                 {tiers.map((tier) => (
