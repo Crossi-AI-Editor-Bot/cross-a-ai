@@ -1,4 +1,4 @@
-import { icons } from "lucide-react";
+import { type LucideIcon, Crown, Gem, Star, Award, Coins, Hexagon, Shield, Zap, Heart, Flame, Diamond, Sparkles, Trophy, Medal, Rocket, Target, Sun, Moon, Globe, Key, Lock, Unlock, Bell, Bookmark, Camera, Clock, Cloud, Compass, Coffee, Eye, Feather, Flag, Gift, Headphones, Home, Layers, Leaf, LifeBuoy, Link, Map, MapPin, MessageCircle, Mic, Monitor, Music, Package, Palette, PenTool, Phone, Plane, Power, Radio, RefreshCw, Scissors, Search, Send, Server, Settings, ShieldCheck, ShoppingBag, ShoppingCart, Sliders, Smartphone, Speaker, Swords, Tag, Terminal, ThumbsUp, Truck, Tv, Umbrella, Upload, Users, Video, Wifi, Wind, Wrench, Activity, Airplay, AlertTriangle, Anchor, Archive, AtSign, BarChart, Battery, BellRing, Bluetooth, Bold, Box, Briefcase, Bug, Building, Cake, Calculator, Calendar, Cat, Check, ChevronRight, CircleDot, Clapperboard, CloudLightning, Code, Cpu, CreditCard, Database, Dog, Fingerprint, Fish, FlaskConical, Flower, Footprints, Gamepad, Glasses, Grape, Guitar, Hammer, HandMetal, Hash, Infinity, Joystick, Landmark, Laugh, Magnet, Megaphone, Mountain, Paintbrush, PartyPopper, Pencil, PiggyBank, Pizza, Plug, Popcorn, Puzzle, Rainbow, Receipt, ScanFace, Shell, Ship, Skull, Snowflake, Sparkle, Stamp, Stethoscope, Sunrise, Telescope, Tent, Timer, ToyBrick, TreePine, UtensilsCrossed, Wand2, Waves } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVipTiers, type VipTierConfig } from "@/hooks/useVipTiers";
 
@@ -11,7 +11,25 @@ interface VipTierIconProps {
   className?: string;
 }
 
-const getIcon = (name: string) => icons[name as keyof typeof icons] || icons.Crown;
+const iconMap: Record<string, LucideIcon> = {
+  Crown, Gem, Star, Award, Coins, Hexagon, Shield, Zap, Heart, Flame, Diamond, Sparkles,
+  Trophy, Medal, Rocket, Target, Sun, Moon, Globe, Key, Lock, Unlock, Bell, Bookmark,
+  Camera, Clock, Cloud, Compass, Coffee, Eye, Feather, Flag, Gift, Headphones, Home, Layers,
+  Leaf, LifeBuoy, Link, Map, MapPin, MessageCircle, Mic, Monitor, Music, Package, Palette,
+  PenTool, Phone, Plane, Power, Radio, RefreshCw, Scissors, Search, Send, Server, Settings,
+  ShieldCheck, ShoppingBag, ShoppingCart, Sliders, Smartphone, Speaker, Swords, Tag, Terminal,
+  ThumbsUp, Truck, Tv, Umbrella, Upload, Users, Video, Wifi, Wind, Wrench, Activity, Airplay,
+  AlertTriangle, Anchor, Archive, AtSign, BarChart, Battery, BellRing, Bluetooth, Bold, Box,
+  Briefcase, Bug, Building, Cake, Calculator, Calendar, Cat, Check, ChevronRight, CircleDot,
+  Clapperboard, CloudLightning, Code, Cpu, CreditCard, Database, Dog, Fingerprint, Fish,
+  FlaskConical, Flower, Footprints, Gamepad, Glasses, Grape, Guitar, Hammer, HandMetal, Hash,
+  Infinity, Joystick, Landmark, Laugh, Magnet, Megaphone, Mountain, Paintbrush, PartyPopper,
+  Pencil, PiggyBank, Pizza, Plug, Popcorn, Puzzle, Rainbow, Receipt, ScanFace, Shell, Ship,
+  Skull, Snowflake, Sparkle, Stamp, Stethoscope, Sunrise, Telescope, Tent, Timer, ToyBrick,
+  TreePine, UtensilsCrossed, Wand2, Waves,
+};
+
+const getIcon = (name: string): LucideIcon => iconMap[name] || Crown;
 
 const sizeClasses = {
   sm: 'w-4 h-4',
