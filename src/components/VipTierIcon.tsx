@@ -1,4 +1,4 @@
-import { Crown, Award, Star, Gem, Coins, Hexagon } from "lucide-react";
+import { icons } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useVipTiers, type VipTierConfig } from "@/hooks/useVipTiers";
 
@@ -11,9 +11,7 @@ interface VipTierIconProps {
   className?: string;
 }
 
-const iconMap: Record<string, typeof Crown> = {
-  Crown, Award, Star, Gem, Coins, Hexagon,
-};
+const getIcon = (name: string) => icons[name as keyof typeof icons] || icons.Crown;
 
 const sizeClasses = {
   sm: 'w-4 h-4',
@@ -33,7 +31,7 @@ export const VipTierIcon = ({ tier, size = 'md', showLabel = false, className }:
   const { getTierConfig } = useVipTiers();
   const config = getTierConfig(tier);
 
-  const Icon = iconMap[config?.icon_name || 'Crown'] || Crown;
+  const Icon = getIcon(config?.icon_name || 'Crown');
   const gradientFrom = config?.gradient_from || 'from-gray-400';
   const gradientTo = config?.gradient_to || 'to-gray-300';
   const textColor = config?.text_color || 'text-gray-500';
@@ -62,7 +60,7 @@ export const VipTierBadge = ({ tier, className }: { tier: VipTierType; className
   const { getTierConfig } = useVipTiers();
   const config = getTierConfig(tier);
 
-  const Icon = iconMap[config?.icon_name || 'Crown'] || Crown;
+  const Icon = getIcon(config?.icon_name || 'Crown');
   const bgColor = config?.bg_color || 'bg-gray-100';
   const textColor = config?.text_color || 'text-gray-500';
   const displayName = config?.display_name || tier;
