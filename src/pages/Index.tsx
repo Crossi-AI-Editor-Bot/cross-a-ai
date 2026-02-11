@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Bot, LogOut, Trash2, Settings, Sparkles, Phone } from "lucide-react";
+import { Bot, LogOut, Trash2, Settings, Phone } from "lucide-react";
+import { VipTierBadge } from "@/components/VipTierIcon";
 import AdventCalendar from "@/components/AdventCalendar";
 import VoiceCallModal from "@/components/VoiceCallModal";
 import CallModelSelector from "@/components/CallModelSelector";
@@ -174,15 +175,23 @@ const Index = () => {
               >
                 <Phone className="w-4 h-4" />
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/vip")}
-                className="gap-1.5"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">VIP</span>
-              </Button>
+              {vipTier ? (
+                <button
+                  onClick={() => navigate("/vip")}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-border hover:bg-accent transition-colors"
+                >
+                  <VipTierBadge tier={vipTier} />
+                </button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/vip")}
+                  className="gap-1.5"
+                >
+                  <span className="text-xs font-medium">VIP</span>
+                </Button>
+              )}
               <CreditsDisplay
                 credits={credits}
                 imageCredits={imageCredits}
