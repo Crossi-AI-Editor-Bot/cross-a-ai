@@ -15,6 +15,7 @@ import { FileExplorer } from "@/components/admin/FileExplorer";
 import { FileEditor } from "@/components/admin/FileEditor";
 import { NotificationManager } from "@/components/admin/NotificationManager";
 import VipTierManager from "@/components/admin/VipTierManager";
+import DefaultModelManager from "@/components/admin/DefaultModelManager";
 
 interface ModelState {
   id: string;
@@ -448,6 +449,11 @@ const AdminPanel = () => {
         {/* VIP Tier Manager */}
         <div className="mb-6">
           <VipTierManager />
+        </div>
+
+        {/* Default Model Settings */}
+        <div className="mb-6">
+          <DefaultModelManager models={models} tiers={tiers} />
         </div>
 
         {/* File Explorer Layout */}
