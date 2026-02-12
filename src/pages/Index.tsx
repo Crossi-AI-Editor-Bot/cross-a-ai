@@ -68,13 +68,40 @@ const Index = () => {
     [modelCosts, selectedModelCostId]
   );
 
+  // Load default model based on user's VIP tier from site_settings
   useEffect(() => {
     if (selectedModelCostId) return;
-    const preferred =
-      modelCosts.find((m) => m.enabled && m.model_id === "google/gemini-2.5-flash") ??
-      modelCosts.find((m) => m.enabled);
-    if (preferred) setSelectedModelCostId(preferred.id);
-  }, [modelCosts, selectedModelCostId]);
+    if (!modelCosts.length) return;
+
+    const loadDefault = async () => {
+      try {
+        const { data } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "default_models")
+          .maybeSingle();
+
+        const defaults = data?.value as Record<string, string> | null;
+        const tierKey = vipTier || "public";
+        const defaultId = defaults?.[tierKey] || defaults?.["public"];
+
+        if (defaultId && modelCosts.find((m) => m.id === defaultId && m.enabled)) {
+          setSelectedModelCostId(defaultId);
+          return;
+        }
+      } catch (e) {
+        console.error("Error loading default model:", e);
+      }
+
+      // Fallback
+      const preferred =
+        modelCosts.find((m) => m.enabled && m.model_id === "google/gemini-2.5-flash") ??
+        modelCosts.find((m) => m.enabled);
+      if (preferred) setSelectedModelCostId(preferred.id);
+    };
+
+    loadDefault();
+  }, [modelCosts, selectedModelCostId, vipTier]);
 
   // Check authentication
   useEffect(() => {
