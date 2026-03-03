@@ -13,6 +13,7 @@ export interface VipTierConfig {
   gradient_to: string;
   text_color: string;
   bg_color: string;
+  hidden: boolean;
   created_at: string;
   updated_at: string;
 }

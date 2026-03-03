@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.voice-chat]
 verify_jwt = false
+
+[functions.redeem-invite-code]
+verify_jwt = false

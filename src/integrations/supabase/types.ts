@@ -360,6 +360,39 @@ export type Database = {
         }
         Relationships: []
       }
+      vip_invite_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string
+          id: string
+          tier_name: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by: string
+          id?: string
+          tier_name: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          tier_name?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
       vip_requests: {
         Row: {
           admin_notes: string | null
@@ -429,6 +462,7 @@ export type Database = {
           display_name: string
           gradient_from: string
           gradient_to: string
+          hidden: boolean
           icon_name: string
           id: string
           name: string
@@ -444,6 +478,7 @@ export type Database = {
           display_name: string
           gradient_from?: string
           gradient_to?: string
+          hidden?: boolean
           icon_name?: string
           id?: string
           name: string
@@ -459,6 +494,7 @@ export type Database = {
           display_name?: string
           gradient_from?: string
           gradient_to?: string
+          hidden?: boolean
           icon_name?: string
           id?: string
           name?: string
