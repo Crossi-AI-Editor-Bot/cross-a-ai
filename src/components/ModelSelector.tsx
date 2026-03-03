@@ -1,11 +1,12 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Brain, Crown, Folder, ChevronRight, Lock } from "lucide-react";
+import { Brain, Crown, Folder, ChevronRight, Lock, RotateCcw } from "lucide-react";
 import { useVipStatus, VipTier } from "@/hooks/useVipStatus";
 import { useVipTiers } from "@/hooks/useVipTiers";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import type { ModelCost } from "@/hooks/useModelCosts";
+import { supabase } from "@/integrations/supabase/client";
 
 export type AIModel =
   | "openai/gpt-5-nano"
@@ -45,6 +46,33 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
   const { tier, isAdmin, loading: vipLoading } = useVipStatus();
   const { tierNames } = useVipTiers();
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
+  const [defaultModelId, setDefaultModelId] = useState<string | null>(null);
+
+  // Load the default model ID for this user's tier
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "default_models")
+          .maybeSingle();
+        const defaults = data?.value as Record<string, string> | null;
+        const tierKey = tier || "public";
+        const id = defaults?.[tierKey] || defaults?.["public"] || null;
+        setDefaultModelId(id);
+      } catch {
+        setDefaultModelId(null);
+      }
+    };
+    load();
+  }, [tier]);
+
+  const handleResetToDefault = useCallback(() => {
+    if (defaultModelId && models.find((m) => m.id === defaultModelId && m.enabled)) {
+      onChange(defaultModelId);
+    }
+  }, [defaultModelId, models, onChange]);
 
   const enabledModels = models.filter(
     (m) => m.enabled && !m.folder?.toLowerCase().startsWith("call models")
@@ -226,6 +254,22 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
 
       <SelectContent>
         <TooltipProvider delayDuration={300}>
+          {/* Reset to default */}
+          {defaultModelId && defaultModelId !== value && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleResetToDefault();
+              }}
+              className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer mb-1"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset to default
+            </button>
+          )}
+
           {Object.values(folderTree)
             .sort((a, b) => a.name.localeCompare(b.name))
             .map((node) => renderFolderNode(node))}
