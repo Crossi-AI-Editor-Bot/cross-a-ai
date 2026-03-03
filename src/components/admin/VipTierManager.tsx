@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Plus, Trash2, GripVertical, Save, Crown, Gem, Star, Award, Coins, Hexagon, Shield, Zap, Heart, Flame, Diamond, Sparkles, Trophy, Medal, Rocket, Target, Sun, Moon, Globe, Key, Lock, Unlock, Bell, Bookmark, Camera, Clock, Cloud, Compass, Coffee, Eye, Feather, Flag, Gift, Headphones, Home, Layers, Leaf, LifeBuoy, Link, Map, MapPin, MessageCircle, Mic, Monitor, Music, Package, Palette, PenTool, Phone, Plane, Power, Radio, RefreshCw, Scissors, Search, Send, Server, Settings, ShieldCheck, ShoppingBag, ShoppingCart, Sliders, Smartphone, Speaker, Swords, Tag, Terminal, ThumbsUp, Truck, Tv, Umbrella, Upload, Users, Video, Wifi, Wind, Wrench, X, Activity, Airplay, AlertTriangle, Anchor, Archive, AtSign, BarChart, Battery, BellRing, Bluetooth, Bold, Box, Briefcase, Bug, Building, Cake, Calculator, Calendar, Cat, Check, ChevronRight, CircleDot, Clapperboard, CloudLightning, Code, Cpu, CreditCard, Database, Dog, Fingerprint, Fish, FlaskConical, Flower, Footprints, Gamepad, Glasses, Grape, Guitar, Hammer, HandMetal, Hash, Infinity, Joystick, Landmark, Laugh, Magnet, Megaphone, Mountain, Paintbrush, PartyPopper, Pencil, PiggyBank, Pizza, Plug, Popcorn, Puzzle, Rainbow, Receipt, ScanFace, Shell, Ship, Skull, Snowflake, Sparkle, Stamp, Stethoscope, Sunrise, Telescope, Tent, Timer, ToyBrick, TreePine, UtensilsCrossed, Wand2, Waves } from "lucide-react";
+import { Plus, Trash2, GripVertical, Save, Crown, Gem, Star, Award, Coins, Hexagon, Shield, Zap, Heart, Flame, Diamond, Sparkles, Trophy, Medal, Rocket, Target, Sun, Moon, Globe, Key, Lock, Unlock, Bell, Bookmark, Camera, Clock, Cloud, Compass, Coffee, Eye, Feather, Flag, Gift, Headphones, Home, Layers, Leaf, LifeBuoy, Link, Map, MapPin, MessageCircle, Mic, Monitor, Music, Package, Palette, PenTool, Phone, Plane, Power, Radio, RefreshCw, Scissors, Search, Send, Server, Settings, ShieldCheck, ShoppingBag, ShoppingCart, Sliders, Smartphone, Speaker, Swords, Tag, Terminal, ThumbsUp, Truck, Tv, Umbrella, Upload, Users, Video, Wifi, Wind, Wrench, X, Activity, Airplay, AlertTriangle, Anchor, Archive, AtSign, BarChart, Battery, BellRing, Bluetooth, Bold, Box, Briefcase, Bug, Building, Cake, Calculator, Calendar, Cat, Check, ChevronRight, CircleDot, Clapperboard, CloudLightning, Code, Cpu, CreditCard, Database, Dog, Fingerprint, Fish, FlaskConical, Flower, Footprints, Gamepad, Glasses, Grape, Guitar, Hammer, HandMetal, Hash, Infinity, Joystick, Landmark, Laugh, Magnet, Megaphone, Mountain, Paintbrush, PartyPopper, Pencil, PiggyBank, Pizza, Plug, Popcorn, Puzzle, Rainbow, Receipt, ScanFace, Shell, Ship, Skull, Snowflake, Sparkle, Stamp, Stethoscope, Sunrise, Telescope, Tent, Timer, ToyBrick, TreePine, UtensilsCrossed, Wand2, Waves, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -137,6 +138,7 @@ interface EditingTier {
   sort_order: number;
   icon_name: string;
   colorPresetIndex: number;
+  hidden: boolean;
 }
 
 const VipTierManager = () => {
@@ -160,6 +162,7 @@ const VipTierManager = () => {
       sort_order: tier.sort_order,
       icon_name: tier.icon_name,
       colorPresetIndex: findColorPresetIndex(tier),
+      hidden: tier.hidden || false,
     });
     setIsCreating(false);
   };
@@ -172,6 +175,7 @@ const VipTierManager = () => {
       sort_order: (tiers.length + 1) * 10,
       icon_name: "Crown",
       colorPresetIndex: 0,
+      hidden: false,
     });
     setIsCreating(true);
   };
@@ -191,6 +195,7 @@ const VipTierManager = () => {
       gradient_to: preset.gradient_to,
       text_color: preset.text_color,
       bg_color: preset.bg_color,
+      hidden: editingTier.hidden,
     };
 
     try {
@@ -273,7 +278,10 @@ const VipTierManager = () => {
                     <Icon className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-sm">{tier.display_name}</p>
+                    <p className="font-medium text-sm flex items-center gap-1.5">
+                      {tier.display_name}
+                      {(tier as any).hidden && <Badge variant="secondary" className="text-[10px] px-1 py-0">Hidden</Badge>}
+                    </p>
                     <p className="text-xs text-muted-foreground">{tier.daily_credits} credits/day · Order: {tier.sort_order}</p>
                   </div>
                   <Button
@@ -373,7 +381,21 @@ const VipTierManager = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="tier-hidden"
+                  checked={editingTier.hidden}
+                  onChange={(e) => setEditingTier({ ...editingTier, hidden: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="tier-hidden" className="text-xs text-muted-foreground flex items-center gap-1">
+                  <EyeOff className="w-3 h-3" />
+                  Hidden (invite code only)
+                </label>
+              </div>
               </div>
 
               <div className="flex gap-2 pt-2">

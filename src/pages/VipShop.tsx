@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Clock, X, Sparkles, Lock } from "lucide-react";
+import { ArrowLeft, Check, Clock, X, Sparkles, Lock, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import { useVipTiers } from "@/hooks/useVipTiers";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import VipAdminRequests from "@/components/VipAdminRequests";
 import VipTierComparisonChart from "@/components/VipTierComparisonChart";
+import { supabase } from "@/integrations/supabase/client";
 
 const VipShop = () => {
   const navigate = useNavigate();
@@ -33,6 +35,11 @@ const VipShop = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [requestMessage, setRequestMessage] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [redeemingCode, setRedeemingCode] = useState(false);
+
+  // Filter out hidden tiers from display
+  const visibleTiers = tiers.filter((t) => !(t as any).hidden);
 
   const pendingRequest = userRequests.find(r => r.status === 'pending');
 
@@ -112,12 +119,12 @@ const VipShop = () => {
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-2">Upgrade Path</p>
               <div className="flex items-center justify-center gap-2 flex-wrap">
-                {tiers.map((tier, i) => (
+                {visibleTiers.map((tier, i) => (
                   <div key={tier.name} className="flex items-center gap-2">
                     <span className={`capitalize text-sm font-medium ${currentTier === tier.name ? 'text-primary' : 'text-muted-foreground'}`}>
                       {tier.display_name}
                     </span>
-                    {i < tiers.length - 1 && <span className="text-muted-foreground">→</span>}
+                    {i < visibleTiers.length - 1 && <span className="text-muted-foreground">→</span>}
                   </div>
                 ))}
               </div>
@@ -147,7 +154,7 @@ const VipShop = () => {
 
         {/* Tier Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-          {tiers.map((tier) => {
+          {visibleTiers.map((tier) => {
             const isCurrentTier = currentTier === tier.name;
             const status = getRequestStatus(tier.name);
             const isPending = status === 'pending';
@@ -225,6 +232,50 @@ const VipShop = () => {
             );
           })}
         </div>
+
+        {/* Invite Code Redemption */}
+        <Card className="mb-8">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Ticket className="w-5 h-5 text-primary" />
+              <h3 className="font-semibold">Have an invite code?</h3>
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter invite code (e.g. XXXX-XXXX-XXXX)"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                className="font-mono"
+                maxLength={14}
+              />
+              <Button
+                onClick={async () => {
+                  if (!inviteCode.trim()) return;
+                  setRedeemingCode(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("redeem-invite-code", {
+                      body: { code: inviteCode.trim() },
+                    });
+                    if (error || data?.error) {
+                      toast({ title: "Invalid code", description: data?.error || "Could not redeem code.", variant: "destructive" });
+                    } else {
+                      toast({ title: "VIP Activated! 🎉", description: `You are now a ${data.tier} VIP member!` });
+                      setInviteCode("");
+                      window.location.reload();
+                    }
+                  } catch {
+                    toast({ title: "Error", description: "Failed to redeem code.", variant: "destructive" });
+                  } finally {
+                    setRedeemingCode(false);
+                  }
+                }}
+                disabled={redeemingCode || !inviteCode.trim()}
+              >
+                {redeemingCode ? "Redeeming..." : "Redeem"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {isAdmin && <VipAdminRequests />}
       </main>
