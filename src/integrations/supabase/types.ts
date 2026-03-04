@@ -285,6 +285,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_call_credits: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          last_reset_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_credits: {
         Row: {
           created_at: string
@@ -469,6 +496,8 @@ export type Database = {
           sort_order: number
           text_color: string
           updated_at: string
+          weekly_call_credits: number
+          weekly_image_credits: number
         }
         Insert: {
           bg_color?: string
@@ -485,6 +514,8 @@ export type Database = {
           sort_order?: number
           text_color?: string
           updated_at?: string
+          weekly_call_credits?: number
+          weekly_image_credits?: number
         }
         Update: {
           bg_color?: string
@@ -501,6 +532,8 @@ export type Database = {
           sort_order?: number
           text_color?: string
           updated_at?: string
+          weekly_call_credits?: number
+          weekly_image_credits?: number
         }
         Relationships: []
       }
@@ -517,6 +550,10 @@ export type Database = {
         Returns: boolean
       }
       reset_daily_credits: { Args: { p_user_id: string }; Returns: undefined }
+      reset_weekly_call_credits: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       reset_weekly_image_credits: {
         Args: { p_user_id: string }
         Returns: undefined

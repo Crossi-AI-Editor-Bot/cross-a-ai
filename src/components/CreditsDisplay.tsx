@@ -1,24 +1,24 @@
-import { Coins, Crown, ImageIcon } from "lucide-react";
+import { Coins, Crown, ImageIcon, Phone } from "lucide-react";
 import { useVipStatus } from "@/hooks/useVipStatus";
 import type { ModelCost } from "@/hooks/useModelCosts";
 
 interface CreditsDisplayProps {
   credits: number;
   imageCredits?: number;
+  callCredits?: number;
   selectedModelCostId?: string;
   models: ModelCost[];
 }
 
 const IMAGE_MODELS = ["google/gemini-2.5-flash-image", "google/gemini-3-pro-image-preview"] as const;
 
-// Format number to show decimals only when needed (up to 5)
 const formatCredits = (value: number): string => {
   if (Number.isInteger(value)) return value.toString();
   const formatted = value.toFixed(5);
   return formatted.replace(/\.?0+$/, "");
 };
 
-const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: CreditsDisplayProps) => {
+const CreditsDisplay = ({ credits, imageCredits, callCredits, selectedModelCostId, models }: CreditsDisplayProps) => {
   const { isVip } = useVipStatus();
 
   const modelData = selectedModelCostId ? models.find((m) => m.id === selectedModelCostId) : null;
@@ -45,7 +45,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
           <ImageIcon className="w-4 h-4 text-purple-400" />
           <span className="text-sm font-medium text-purple-300">
-            {formatCredits(imageCredits)} / 30 {imageCost > 0 && `(-${imageCost})`}
+            {formatCredits(imageCredits)} {imageCost > 0 && `(-${imageCost})`}
           </span>
         </div>
       )}
@@ -56,6 +56,16 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
           <Coins className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium text-foreground">
             {formatCredits(credits)} / {maxCredits} {modelData && `(-${modelCost})`}
+          </span>
+        </div>
+      )}
+
+      {/* Call credits - always shown as a compact indicator */}
+      {callCredits !== undefined && (
+        <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg">
+          <Phone className="w-3.5 h-3.5 text-green-400" />
+          <span className="text-xs font-medium text-green-400 hidden sm:inline">
+            {formatCredits(callCredits)}
           </span>
         </div>
       )}

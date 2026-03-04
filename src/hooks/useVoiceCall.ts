@@ -11,6 +11,7 @@ export interface CallMessage {
 
 interface UseVoiceCallOptions {
   onCreditsUpdate?: (credits: number) => void;
+  onCallCreditsUpdate?: (credits: number) => void;
   modelCostId?: string;
   conversationId?: string | null;
 }
@@ -198,8 +199,8 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
 
     const data = await response.json();
     
-    if (data.credits !== undefined && options?.onCreditsUpdate) {
-      options.onCreditsUpdate(data.credits);
+    if (data.callCredits !== undefined && options?.onCallCreditsUpdate) {
+      options.onCallCreditsUpdate(data.callCredits);
     }
     
     return data.response;

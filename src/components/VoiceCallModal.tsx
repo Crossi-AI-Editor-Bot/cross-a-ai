@@ -16,6 +16,7 @@ interface VoiceCallModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreditsUpdate?: (credits: number) => void;
+  onCallCreditsUpdate?: (credits: number) => void;
   selectedModel?: ModelCost | null;
   existingConversationId?: string | null;
 }
@@ -29,7 +30,7 @@ const stateLabels: Record<VoiceCallState, string> = {
   error: 'Error',
 };
 
-const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, existingConversationId }: VoiceCallModalProps) => {
+const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, onCallCreditsUpdate, selectedModel, existingConversationId }: VoiceCallModalProps) => {
   const {
     state,
     partialTranscript,
@@ -41,7 +42,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
     endCall,
     answerNow,
     setConversationId,
-  } = useVoiceCall({ onCreditsUpdate, modelCostId: selectedModel?.id });
+  } = useVoiceCall({ onCreditsUpdate, onCallCreditsUpdate, modelCostId: selectedModel?.id });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const canAnswerNow = state === 'listening' && !!(partialTranscript || finalTranscript);
@@ -191,7 +192,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
           </div>
           
           <p className="text-xs text-muted-foreground text-center">
-            {selectedModel ? `${selectedModel.cost} credit${selectedModel.cost !== 1 ? 's' : ''} per message` : '1 credit per message'}
+            {selectedModel ? `${selectedModel.cost} call credit${selectedModel.cost !== 1 ? 's' : ''} per message` : '1 call credit per message'}
           </p>
         </div>
       </DialogContent>
