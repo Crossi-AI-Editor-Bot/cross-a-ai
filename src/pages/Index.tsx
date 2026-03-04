@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Bot, LogOut, Trash2, Settings, Sparkles, Phone } from "lucide-react";
 import AdventCalendar from "@/components/AdventCalendar";
+import LoadingScreen from "@/components/LoadingScreen";
 import VoiceCallModal from "@/components/VoiceCallModal";
 import CallModelSelector from "@/components/CallModelSelector";
 import type { ModelCost } from "@/hooks/useModelCosts";
@@ -164,7 +165,7 @@ const Index = () => {
   };
 
   if (loading || creditsLoading || imageCreditsLoading || callCreditsLoading || modelCostsLoading || conversationsLoading || siteLoading || adminLoading || vipLoading || !user) {
-    return null;
+    return <LoadingScreen />;
   }
 
   // Show maintenance page if site is disabled (admins can bypass)
