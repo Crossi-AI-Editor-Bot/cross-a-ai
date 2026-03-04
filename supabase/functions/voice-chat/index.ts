@@ -64,19 +64,40 @@ serve(async (req) => {
       }
     }
 
-    // Check user credits
+    // Check user CALL credits (not regular credits)
     const { data: creditData, error: creditError } = await supabase
-      .from('user_credits')
+      .from('user_call_credits')
       .select('credits')
       .eq('user_id', user.id)
       .single();
 
-    if (creditError || !creditData || creditData.credits < modelConfig.cost) {
-      return new Response(JSON.stringify({ error: 'Insufficient credits' }), {
+    if (creditError && creditError.code === 'PGRST116') {
+      // No record exists, create one
+      await supabase
+        .from('user_call_credits')
+        .insert({ user_id: user.id, credits: 100 });
+      
+      // Re-fetch
+      const { data: newCreditData } = await supabase
+        .from('user_call_credits')
+        .select('credits')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (!newCreditData || newCreditData.credits < modelConfig.cost) {
+        return new Response(JSON.stringify({ error: 'Insufficient call credits' }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else if (creditError || !creditData || creditData.credits < modelConfig.cost) {
+      return new Response(JSON.stringify({ error: 'Insufficient call credits' }), {
         status: 402,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const currentCredits = creditData?.credits ?? 100;
 
     // Call Lovable AI with GPT-5 Nano
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -92,7 +113,6 @@ serve(async (req) => {
       },
     ];
 
-    // Add conversation history if provided
     if (Array.isArray(history) && history.length > 0) {
       for (const msg of history) {
         if (msg.role && msg.content) {
@@ -101,7 +121,6 @@ serve(async (req) => {
       }
     }
 
-    // Add current message
     aiMessages.push({ role: 'user', content: message });
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -138,16 +157,16 @@ serve(async (req) => {
     const aiData = await aiResponse.json();
     const responseText = aiData.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
 
-    // Deduct credits based on model cost
-    const newCredits = creditData.credits - modelConfig.cost;
+    // Deduct CALL credits
+    const newCredits = currentCredits - modelConfig.cost;
     await supabase
-      .from('user_credits')
+      .from('user_call_credits')
       .update({ credits: newCredits })
       .eq('user_id', user.id);
 
     return new Response(JSON.stringify({ 
       response: responseText,
-      credits: newCredits,
+      callCredits: newCredits,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

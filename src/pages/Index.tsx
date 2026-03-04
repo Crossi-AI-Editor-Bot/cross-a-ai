@@ -29,6 +29,7 @@ import MaintenancePage from "@/components/MaintenancePage";
 import { useChat } from "@/hooks/useChat";
 import { useCredits } from "@/hooks/useCredits";
 import { useImageCredits } from "@/hooks/useImageCredits";
+import { useCallCredits } from "@/hooks/useCallCredits";
 import { useConversations } from "@/hooks/useConversations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useSiteStatus } from "@/hooks/useSiteStatus";
@@ -52,6 +53,7 @@ const Index = () => {
   const { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages } = useChat(currentConversationId, refetchConversations);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const { imageCredits, updateImageCredits, loading: imageCreditsLoading } = useImageCredits();
+  const { callCredits, updateCallCredits, loading: callCreditsLoading } = useCallCredits();
   const { modelCosts, loading: modelCostsLoading } = useModelCosts();
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { isDisabled, disabledUntil, loading: siteLoading } = useSiteStatus();
@@ -161,7 +163,7 @@ const Index = () => {
     await createConversation();
   };
 
-  if (loading || creditsLoading || imageCreditsLoading || modelCostsLoading || conversationsLoading || siteLoading || adminLoading || vipLoading || !user) {
+  if (loading || creditsLoading || imageCreditsLoading || callCreditsLoading || modelCostsLoading || conversationsLoading || siteLoading || adminLoading || vipLoading || !user) {
     return null;
   }
 
@@ -213,6 +215,7 @@ const Index = () => {
               <CreditsDisplay
                 credits={credits}
                 imageCredits={imageCredits}
+                callCredits={callCredits}
                 selectedModelCostId={selectedModelCostId}
                 models={modelCosts}
               />
@@ -331,6 +334,7 @@ const Index = () => {
           }
         }}
         onCreditsUpdate={updateCredits}
+        onCallCreditsUpdate={updateCallCredits}
         selectedModel={selectedCallModel}
         existingConversationId={callConversationId}
       />
