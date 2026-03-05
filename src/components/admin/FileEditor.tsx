@@ -17,8 +17,9 @@ import {
 import { VipTierIcon } from "@/components/VipTierIcon";
 import type { VipTierConfig } from "@/hooks/useVipTiers";
 
-const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-2.5-flash-image-preview'];
+const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
 const NANO_MODEL_ID = 'openai/gpt-5-nano';
+const DELETABLE_MODELS = [NANO_MODEL_ID, ...IMAGE_MODELS];
 
 interface ModelData {
   id: string;
@@ -60,7 +61,7 @@ export const FileEditor = ({
 }: FileEditorProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isImageModel = IMAGE_MODELS.includes(model.model_id);
-  const isNanoModel = model.model_id === NANO_MODEL_ID;
+  const isDeletable = DELETABLE_MODELS.includes(model.model_id);
 
   const handleConfirmDelete = () => {
     setShowDeleteDialog(false);
@@ -74,7 +75,7 @@ export const FileEditor = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete "{model.label}"?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this GPT Nano model configuration.
+              This action cannot be undone. This will permanently delete this model configuration.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -95,7 +96,7 @@ export const FileEditor = ({
           <div className="flex items-center gap-2 px-4 py-2 bg-card border-b-2 border-primary">
             <span className="text-sm font-medium text-primary">{model.label}.txt</span>
           </div>
-          {isNanoModel && onDelete && (
+          {isDeletable && onDelete && (
             <Button
               variant="ghost"
               size="sm"
@@ -237,7 +238,7 @@ export const FileEditor = ({
           })}
 
           {/* System Prompt - only for Nano models */}
-          {isNanoModel && onUpdateSystemPrompt && (
+          {model.model_id === NANO_MODEL_ID && onUpdateSystemPrompt && (
             <>
               <div className="h-px bg-border my-4" />
               <div className="text-muted-foreground mb-2">
