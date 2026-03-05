@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
@@ -86,6 +87,8 @@ export const FileExplorer = ({
   const [dragOverFolder, setDragOverFolder] = useState<string | null | "unsorted">(null);
   const [showAddModel, setShowAddModel] = useState(false);
   const [showAddCallModel, setShowAddCallModel] = useState(false);
+  const [showAddImageModel, setShowAddImageModel] = useState(false);
+  const [selectedImageBase, setSelectedImageBase] = useState<string>(IMAGE_MODELS[0]);
   const [newModelLabel, setNewModelLabel] = useState("");
 
   const folderTree = buildFolderTree(folders);
@@ -93,7 +96,6 @@ export const FileExplorer = ({
   const handleAddModel = (isCallModel: boolean = false) => {
     if (newModelLabel.trim() && onAddModel) {
       if (isCallModel) {
-        // For call models, we pass a special folder prefix
         onAddModel("openai/gpt-5-nano", newModelLabel.trim(), "Call Models");
       } else {
         onAddModel("openai/gpt-5-nano", newModelLabel.trim());
@@ -101,6 +103,15 @@ export const FileExplorer = ({
       setNewModelLabel("");
       setShowAddModel(false);
       setShowAddCallModel(false);
+    }
+  };
+
+  const handleAddImageModel = () => {
+    if (newModelLabel.trim() && onAddModel && selectedImageBase) {
+      onAddModel(selectedImageBase, newModelLabel.trim());
+      setNewModelLabel("");
+      setSelectedImageBase(IMAGE_MODELS[0]);
+      setShowAddImageModel(false);
     }
   };
 
@@ -373,6 +384,16 @@ export const FileExplorer = ({
                 <Plus className="h-3 w-3 mr-1" />
                 Call
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowAddImageModel(true)}
+                title="Add Image Model"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Image
+              </Button>
             </>
           )}
           <Button
@@ -434,6 +455,44 @@ export const FileExplorer = ({
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddCallModel(false)}>
               <X className="h-3 w-3" />
             </Button>
+          </div>
+        )}
+
+        {/* Add new image model input */}
+        {showAddImageModel && (
+          <div className="flex flex-col gap-1 px-2 py-2 bg-purple-500/20 rounded-md mb-2">
+            <div className="flex items-center gap-1">
+              <ImageIcon className="h-4 w-4 text-purple-400 shrink-0" />
+              <span className="text-xs font-medium text-purple-400">New Image Model</span>
+            </div>
+            <Select value={selectedImageBase} onValueChange={setSelectedImageBase}>
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="google/gemini-2.5-flash-image">Nano Banana (2.5 Flash Image)</SelectItem>
+                <SelectItem value="google/gemini-3-pro-image-preview">Crossi 3.0 Image (3 Pro Image)</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1">
+              <Input
+                autoFocus
+                value={newModelLabel}
+                onChange={(e) => setNewModelLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddImageModel();
+                  if (e.key === "Escape") setShowAddImageModel(false);
+                }}
+                className="h-6 text-xs"
+                placeholder="Display name..."
+              />
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddImageModel}>
+                <Save className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddImageModel(false)}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         )}
 
