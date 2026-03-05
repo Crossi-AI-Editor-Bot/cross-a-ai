@@ -136,7 +136,6 @@ interface EditingTier {
   display_name: string;
   daily_credits: number;
   weekly_image_credits: number;
-  weekly_call_credits: number;
   sort_order: number;
   icon_name: string;
   colorPresetIndex: number;
@@ -162,7 +161,6 @@ const VipTierManager = () => {
       display_name: tier.display_name,
       daily_credits: tier.daily_credits,
       weekly_image_credits: (tier as any).weekly_image_credits ?? 30,
-      weekly_call_credits: (tier as any).weekly_call_credits ?? 100,
       sort_order: tier.sort_order,
       icon_name: tier.icon_name,
       colorPresetIndex: findColorPresetIndex(tier),
@@ -177,7 +175,6 @@ const VipTierManager = () => {
       display_name: "",
       daily_credits: 15,
       weekly_image_credits: 30,
-      weekly_call_credits: 100,
       sort_order: (tiers.length + 1) * 10,
       icon_name: "Crown",
       colorPresetIndex: 0,
@@ -195,7 +192,6 @@ const VipTierManager = () => {
       display_name: editingTier.display_name,
       daily_credits: editingTier.daily_credits,
       weekly_image_credits: editingTier.weekly_image_credits,
-      weekly_call_credits: editingTier.weekly_call_credits,
       sort_order: editingTier.sort_order,
       icon_name: editingTier.icon_name,
       color: preset.color,
@@ -290,7 +286,7 @@ const VipTierManager = () => {
                       {tier.display_name}
                       {(tier as any).hidden && <Badge variant="secondary" className="text-[10px] px-1 py-0">Hidden</Badge>}
                     </p>
-                    <p className="text-xs text-muted-foreground">{tier.daily_credits} credits/day · {(tier as any).weekly_image_credits ?? 30} img/wk · {(tier as any).weekly_call_credits ?? 100} call/wk · Order: {tier.sort_order}</p>
+                    <p className="text-xs text-muted-foreground">{tier.daily_credits} credits/day · {(tier as any).weekly_image_credits ?? 30} img/wk · Order: {tier.sort_order}</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -345,15 +341,6 @@ const VipTierManager = () => {
                     type="number"
                     value={editingTier.weekly_image_credits}
                     onChange={(e) => setEditingTier({ ...editingTier, weekly_image_credits: parseInt(e.target.value) || 0 })}
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-muted-foreground">Weekly Call Credits</label>
-                  <Input
-                    type="number"
-                    value={editingTier.weekly_call_credits}
-                    onChange={(e) => setEditingTier({ ...editingTier, weekly_call_credits: parseInt(e.target.value) || 0 })}
                     className="h-8 text-sm"
                   />
                 </div>
