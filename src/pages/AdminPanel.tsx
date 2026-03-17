@@ -453,6 +453,11 @@ const AdminPanel = () => {
           <VipTierManager />
         </div>
 
+        {/* Global Model Instructions */}
+        <div className="mb-6">
+          <GlobalPromptManager />
+        </div>
+
         {/* Default Model Settings */}
         <div className="mb-6">
           <DefaultModelManager models={models} tiers={tiers} />
