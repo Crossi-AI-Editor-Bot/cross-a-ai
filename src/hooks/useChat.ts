@@ -166,6 +166,29 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           
+          if (response.status === 451) {
+            toast({
+              title: "Access Revoked",
+              description: errorData.message || "Your access has been permanently revoked.",
+              variant: "destructive",
+            });
+            setMessages((prev) => prev.slice(0, -1));
+            // Sign out and redirect
+            await supabase.auth.signOut();
+            window.location.href = '/auth';
+            return;
+          }
+
+          if (response.status === 403 && errorData.error === 'jailbreak_detected') {
+            toast({
+              title: "⚠️ Policy Violation",
+              description: errorData.message || "Your message was blocked for violating usage policy.",
+              variant: "destructive",
+            });
+            setMessages((prev) => prev.slice(0, -1));
+            return;
+          }
+
           if (response.status === 429) {
             toast({
               title: "Rate Limit",
