@@ -448,6 +448,11 @@ Deno.serve(async (req) => {
     let systemPrompt = modelCostData.system_prompt || 
       "You are a helpful and friendly AI assistant. Provide clear, concise, and accurate responses. Be conversational and engaging.";
     
+    // Append global extra knowledge if set
+    if (globalExtraKnowledge) {
+      systemPrompt += `\n\nADDITIONAL KNOWLEDGE:\n${globalExtraKnowledge}`;
+    }
+    
     // Check if this model uses crossicon data
     const usesCrossiconData = modelCostData.label?.toLowerCase().includes('crossicon') || 
                                modelCostData.label?.toLowerCase().includes('test');
