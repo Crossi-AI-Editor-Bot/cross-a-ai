@@ -62,6 +62,27 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_ips: {
+        Row: {
+          blocked_at: string
+          id: string
+          ip_address: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_at?: string
+          id?: string
+          ip_address: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_at?: string
+          id?: string
+          ip_address?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -83,6 +104,30 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      jailbreak_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string
+          prompt_snippet: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address: string
+          prompt_snippet?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string
+          prompt_snippet?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
