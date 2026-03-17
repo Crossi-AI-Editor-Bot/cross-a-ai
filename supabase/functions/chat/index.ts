@@ -95,7 +95,15 @@ Deno.serve(async (req) => {
     const model = modelCostData.model_id;
 
     // Check if this is an image generation request
-    const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview';
+    const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview' || model === 'google/gemini-3.1-flash-image-preview';
+
+    // Fetch global prompts from site_settings
+    const [globalKnowledgeRes, globalImageRestrictionsRes] = await Promise.all([
+      supabase.from('site_settings').select('value').eq('key', 'global_extra_knowledge').maybeSingle(),
+      supabase.from('site_settings').select('value').eq('key', 'global_image_restrictions').maybeSingle(),
+    ]);
+    const globalExtraKnowledge = (globalKnowledgeRes.data?.value as any)?.text || '';
+    const globalImageRestrictions = (globalImageRestrictionsRes.data?.value as any)?.text || '';
 
     // Check and deduct credits server-side
     const { data: userCredits, error: creditsError } = await supabase
