@@ -17,6 +17,7 @@ import { NotificationManager } from "@/components/admin/NotificationManager";
 import VipTierManager from "@/components/admin/VipTierManager";
 import DefaultModelManager from "@/components/admin/DefaultModelManager";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
+import GlobalPromptManager from "@/components/admin/GlobalPromptManager";
 
 interface ModelState {
   id: string;
@@ -450,6 +451,11 @@ const AdminPanel = () => {
         {/* VIP Tier Manager */}
         <div className="mb-6">
           <VipTierManager />
+        </div>
+
+        {/* Global Model Instructions */}
+        <div className="mb-6">
+          <GlobalPromptManager />
         </div>
 
         {/* Default Model Settings */}
