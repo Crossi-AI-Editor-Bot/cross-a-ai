@@ -256,7 +256,12 @@ Deno.serve(async (req) => {
     // Handle image generation via Lovable API
     if (isImageGen) {
       const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-      const prompt = lastUserMessage?.content || 'Generate an image';
+      let prompt = lastUserMessage?.content || 'Generate an image';
+      
+      // Prepend image restrictions if set
+      if (globalImageRestrictions) {
+        prompt = `IMPORTANT RESTRICTIONS: ${globalImageRestrictions}\n\nUser request: ${prompt}`;
+      }
       
       const content: any[] = [{ type: "text", text: prompt }];
       
