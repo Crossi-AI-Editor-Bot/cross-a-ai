@@ -31,6 +31,34 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Get client IP address
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                     req.headers.get('x-real-ip') ||
+                     req.headers.get('cf-connecting-ip') ||
+                     'unknown';
+
+    // Create service-role client for IP checks (bypasses RLS)
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Check if IP is blocked
+    if (clientIp !== 'unknown') {
+      const { data: blockedIp } = await serviceClient
+        .from('blocked_ips')
+        .select('id')
+        .eq('ip_address', clientIp)
+        .maybeSingle();
+
+      if (blockedIp) {
+        return new Response(
+          JSON.stringify({ error: 'blocked', message: 'Your access has been permanently revoked due to policy violations.' }),
+          { status: 451, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Verify user authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
