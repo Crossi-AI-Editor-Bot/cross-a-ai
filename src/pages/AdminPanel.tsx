@@ -18,6 +18,7 @@ import VipTierManager from "@/components/admin/VipTierManager";
 import DefaultModelManager from "@/components/admin/DefaultModelManager";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import GlobalPromptManager from "@/components/admin/GlobalPromptManager";
+import BlockedIpsManager from "@/components/admin/BlockedIpsManager";
 
 interface ModelState {
   id: string;
