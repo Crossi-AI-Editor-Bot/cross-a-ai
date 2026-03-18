@@ -18,6 +18,7 @@ import VipTierManager from "@/components/admin/VipTierManager";
 import DefaultModelManager from "@/components/admin/DefaultModelManager";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import GlobalPromptManager from "@/components/admin/GlobalPromptManager";
+import BlockedIpsManager from "@/components/admin/BlockedIpsManager";
 
 interface ModelState {
   id: string;
@@ -461,6 +462,11 @@ const AdminPanel = () => {
         {/* Default Model Settings */}
         <div className="mb-6">
           <DefaultModelManager models={models} tiers={tiers} />
+        </div>
+
+        {/* Security - Blocked IPs & Jailbreak Attempts */}
+        <div className="mb-6">
+          <BlockedIpsManager />
         </div>
 
         {/* Invite Code Manager */}
