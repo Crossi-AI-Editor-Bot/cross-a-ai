@@ -464,6 +464,11 @@ const AdminPanel = () => {
           <DefaultModelManager models={models} tiers={tiers} />
         </div>
 
+        {/* Security - Blocked IPs & Jailbreak Attempts */}
+        <div className="mb-6">
+          <BlockedIpsManager />
+        </div>
+
         {/* Invite Code Manager */}
         <div className="mb-6">
           <InviteCodeManager />
