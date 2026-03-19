@@ -285,6 +285,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          crossatrix_id: string | null
           email: string | null
           id: string
           updated_at: string
@@ -292,6 +293,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          crossatrix_id?: string | null
           email?: string | null
           id?: string
           updated_at?: string
@@ -299,6 +301,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          crossatrix_id?: string | null
           email?: string | null
           id?: string
           updated_at?: string
@@ -530,6 +533,7 @@ export type Database = {
           bg_color: string
           color: string
           created_at: string
+          croin_price: number
           daily_credits: number
           display_name: string
           gradient_from: string
@@ -548,6 +552,7 @@ export type Database = {
           bg_color?: string
           color?: string
           created_at?: string
+          croin_price?: number
           daily_credits?: number
           display_name: string
           gradient_from?: string
@@ -566,6 +571,7 @@ export type Database = {
           bg_color?: string
           color?: string
           created_at?: string
+          croin_price?: number
           daily_credits?: number
           display_name?: string
           gradient_from?: string
