@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.redeem-invite-code]
 verify_jwt = false
+
+[functions.crossatrix-login]
+verify_jwt = false
+
+[functions.croins-proxy]
+verify_jwt = false
+
+[functions.check-ip-ban]
+verify_jwt = false
