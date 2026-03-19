@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Clock, X, Sparkles, Lock, Ticket } from "lucide-react";
+import { ArrowLeft, Check, Clock, X, Sparkles, Lock, Ticket, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,7 @@ import { useVipStatus } from "@/hooks/useVipStatus";
 import { useVipRequests } from "@/hooks/useVipRequests";
 import { useVipTiers } from "@/hooks/useVipTiers";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useCroins } from "@/hooks/useCroins";
 import VipAdminRequests from "@/components/VipAdminRequests";
 import VipTierComparisonChart from "@/components/VipTierComparisonChart";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,12 +32,15 @@ const VipShop = () => {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { userRequests, createRequest, loading: requestsLoading } = useVipRequests(isAdmin);
   const { tiers, tierNames, getRequiredTierFor, loading: tiersLoading } = useVipTiers();
+  const { balance: croinBalance, loading: croinsLoading, debit: debitCroins, refetch: refetchCroins } = useCroins();
   const [requestingTier, setRequestingTier] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [requestMessage, setRequestMessage] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [redeemingCode, setRedeemingCode] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
 
   // Filter out hidden tiers from display
   const visibleTiers = tiers.filter((t) => !(t as any).hidden);
@@ -53,6 +57,52 @@ const VipShop = () => {
     setSelectedTier(tierName);
     setRequestMessage("");
     setDialogOpen(true);
+  };
+
+  const openPurchaseDialog = (tierName: string) => {
+    setSelectedTier(tierName);
+    setPurchaseDialogOpen(true);
+  };
+
+  const handlePurchaseWithCroins = async () => {
+    if (!selectedTier) return;
+    const tier = tiers.find(t => t.name === selectedTier);
+    if (!tier || !(tier as any).croin_price) return;
+
+    setPurchasing(true);
+    try {
+      const success = await debitCroins(
+        (tier as any).croin_price,
+        `VIP ${tier.display_name} purchase`
+      );
+
+      if (!success) {
+        toast({
+          title: "Purchase Failed",
+          description: "Insufficient Croins or payment error.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Activate VIP via admin request (auto-approved for Croin purchases)
+      const result = await createRequest(selectedTier, `Purchased with ${(tier as any).croin_price} Croins`);
+
+      if (result.error) {
+        toast({ title: "Error", description: result.error, variant: "destructive" });
+      } else {
+        toast({
+          title: "VIP Purchased! 🎉",
+          description: `${tier.display_name} tier activated for ¢${(tier as any).croin_price} Croins.`,
+        });
+        await refetchCroins();
+      }
+    } catch {
+      toast({ title: "Error", description: "Purchase failed.", variant: "destructive" });
+    } finally {
+      setPurchasing(false);
+      setPurchaseDialogOpen(false);
+    }
   };
 
   const handleRequestTier = async () => {
@@ -107,7 +157,15 @@ const VipShop = () => {
                 <h1 className="text-xl font-bold">VIP Shop</h1>
               </div>
             </div>
-            {currentTier && <VipTierBadge tier={currentTier} />}
+            <div className="flex items-center gap-2">
+              {croinBalance !== null && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 rounded-lg">
+                  <Coins className="w-4 h-4 text-yellow-500" />
+                  <span className="text-sm font-semibold text-yellow-500">¢{croinBalance}</span>
+                </div>
+              )}
+              {currentTier && <VipTierBadge tier={currentTier} />}
+            </div>
           </div>
         </div>
       </header>
@@ -163,6 +221,8 @@ const VipShop = () => {
             const requiredTier = getRequiredTierFor(tier.name);
             const alreadyHas = hasTierAccess(tier.name);
             const requiredTierConfig = requiredTier ? tiers.find(t => t.name === requiredTier) : null;
+            const croinPrice = (tier as any).croin_price || 0;
+            const canAfford = croinBalance !== null && croinBalance >= croinPrice;
 
             return (
               <Card 
@@ -186,6 +246,12 @@ const VipShop = () => {
                     {tier.daily_credits} credits/day
                     {requiredTierConfig ? ` · Requires ${requiredTierConfig.display_name}` : ' · Entry level'}
                   </CardDescription>
+                  {croinPrice > 0 && (
+                    <div className="flex items-center justify-center gap-1 mt-1">
+                      <Coins className="w-4 h-4 text-yellow-500" />
+                      <span className="text-sm font-bold text-yellow-500">¢{croinPrice}</span>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2 mb-6">
@@ -208,6 +274,26 @@ const VipShop = () => {
                       <Lock className="w-4 h-4 mr-2" />
                       Need {requiredTierConfig?.display_name}
                     </Button>
+                  ) : croinPrice > 0 ? (
+                    <div className="space-y-2">
+                      <Button
+                        className="w-full"
+                        onClick={() => openPurchaseDialog(tier.name)}
+                        disabled={!canAfford || purchasing}
+                      >
+                        <Coins className="w-4 h-4 mr-2" />
+                        {canAfford ? `Buy for ¢${croinPrice}` : `Need ¢${croinPrice}`}
+                      </Button>
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openRequestDialog(tier.name)}
+                        disabled={!!pendingRequest || isPending}
+                      >
+                        {isPending ? "Pending..." : "Request Free"}
+                      </Button>
+                    </div>
                   ) : isPending ? (
                     <Button className="w-full" variant="outline" disabled>
                       <Clock className="w-4 h-4 mr-2" />Pending
@@ -280,6 +366,7 @@ const VipShop = () => {
         {isAdmin && <VipAdminRequests />}
       </main>
 
+      {/* Request Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -306,6 +393,40 @@ const VipShop = () => {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleRequestTier} disabled={requestingTier !== null}>
               {requestingTier ? "Submitting..." : "Submit Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Purchase Confirmation Dialog */}
+      <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Coins className="w-5 h-5 text-yellow-500" />
+              Confirm Purchase
+            </DialogTitle>
+            <DialogDescription>
+              {selectedTier && (() => {
+                const tier = tiers.find(t => t.name === selectedTier);
+                return tier ? (
+                  <>
+                    Purchase <strong>{tier.display_name}</strong> VIP for{" "}
+                    <strong className="text-yellow-500">¢{(tier as any).croin_price}</strong> Croins?
+                    {croinBalance !== null && (
+                      <span className="block mt-1 text-xs">
+                        Your balance: ¢{croinBalance} → ¢{croinBalance - ((tier as any).croin_price || 0)}
+                      </span>
+                    )}
+                  </>
+                ) : null;
+              })()}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPurchaseDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handlePurchaseWithCroins} disabled={purchasing}>
+              {purchasing ? "Processing..." : "Confirm Purchase"}
             </Button>
           </DialogFooter>
         </DialogContent>
