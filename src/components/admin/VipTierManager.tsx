@@ -162,6 +162,7 @@ const VipTierManager = () => {
       display_name: tier.display_name,
       daily_credits: tier.daily_credits,
       weekly_image_credits: (tier as any).weekly_image_credits ?? 30,
+      croin_price: (tier as any).croin_price ?? 0,
       sort_order: tier.sort_order,
       icon_name: tier.icon_name,
       colorPresetIndex: findColorPresetIndex(tier),
