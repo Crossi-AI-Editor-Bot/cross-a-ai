@@ -177,6 +177,7 @@ const VipTierManager = () => {
       display_name: "",
       daily_credits: 15,
       weekly_image_credits: 30,
+      croin_price: 0,
       sort_order: (tiers.length + 1) * 10,
       icon_name: "Crown",
       colorPresetIndex: 0,
