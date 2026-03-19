@@ -349,6 +349,16 @@ const VipTierManager = () => {
                   />
                 </div>
                 <div>
+                  <label className="text-xs text-muted-foreground">Croin Price (¢)</label>
+                  <Input
+                    type="number"
+                    value={editingTier.croin_price}
+                    onChange={(e) => setEditingTier({ ...editingTier, croin_price: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm"
+                    min={0}
+                  />
+                </div>
+                <div>
                   <label className="text-xs text-muted-foreground">Sort Order</label>
                   <Input
                     type="number"
