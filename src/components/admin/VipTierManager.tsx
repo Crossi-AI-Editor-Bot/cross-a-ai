@@ -195,6 +195,7 @@ const VipTierManager = () => {
       display_name: editingTier.display_name,
       daily_credits: editingTier.daily_credits,
       weekly_image_credits: editingTier.weekly_image_credits,
+      croin_price: editingTier.croin_price,
       sort_order: editingTier.sort_order,
       icon_name: editingTier.icon_name,
       color: preset.color,
