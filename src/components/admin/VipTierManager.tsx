@@ -136,6 +136,7 @@ interface EditingTier {
   display_name: string;
   daily_credits: number;
   weekly_image_credits: number;
+  croin_price: number;
   sort_order: number;
   icon_name: string;
   colorPresetIndex: number;
