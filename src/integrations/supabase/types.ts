@@ -107,6 +107,69 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_vip_configs: {
+        Row: {
+          ai_price: number | null
+          ai_reasoning: string | null
+          bg_color: string
+          color_label: string
+          created_at: string
+          daily_credits: number
+          display_name: string
+          expires_at: string | null
+          gradient_from: string
+          gradient_to: string
+          icon_name: string
+          id: string
+          model_access_tier: string
+          status: string
+          text_color: string
+          updated_at: string
+          user_id: string
+          weekly_image_credits: number
+        }
+        Insert: {
+          ai_price?: number | null
+          ai_reasoning?: string | null
+          bg_color?: string
+          color_label?: string
+          created_at?: string
+          daily_credits?: number
+          display_name?: string
+          expires_at?: string | null
+          gradient_from?: string
+          gradient_to?: string
+          icon_name?: string
+          id?: string
+          model_access_tier?: string
+          status?: string
+          text_color?: string
+          updated_at?: string
+          user_id: string
+          weekly_image_credits?: number
+        }
+        Update: {
+          ai_price?: number | null
+          ai_reasoning?: string | null
+          bg_color?: string
+          color_label?: string
+          created_at?: string
+          daily_credits?: number
+          display_name?: string
+          expires_at?: string | null
+          gradient_from?: string
+          gradient_to?: string
+          icon_name?: string
+          id?: string
+          model_access_tier?: string
+          status?: string
+          text_color?: string
+          updated_at?: string
+          user_id?: string
+          weekly_image_credits?: number
+        }
+        Relationships: []
+      }
       jailbreak_attempts: {
         Row: {
           created_at: string
