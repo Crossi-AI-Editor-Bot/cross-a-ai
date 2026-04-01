@@ -202,6 +202,11 @@ const VipShop = () => {
           })}
         </div>
 
+        {/* Custom VIP Builder */}
+        <div className="mb-8">
+          <CustomVipBuilder />
+        </div>
+
         {/* Invite Code Redemption */}
         <Card className="mb-8">
           <CardContent className="pt-6">
