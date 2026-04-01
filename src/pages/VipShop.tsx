@@ -35,6 +35,8 @@ const VipShop = () => {
   const [inviteCode, setInviteCode] = useState("");
   const [redeemingCode, setRedeemingCode] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const visibleTiers = tiers.filter((t) => !(t as any).hidden);
 
