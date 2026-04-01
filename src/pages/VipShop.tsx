@@ -167,9 +167,20 @@ const VipShop = () => {
                   </ul>
 
                   {isCurrentTier ? (
-                    <Button className="w-full" disabled>
-                      Active
-                    </Button>
+                    <div className="space-y-2">
+                      <Button className="w-full" disabled>
+                        Active
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
+                        onClick={() => setCancelDialogOpen(true)}
+                        size="sm"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Cancel Subscription
+                      </Button>
+                    </div>
                   ) : croinPrice > 0 ? (
                     <Button
                       className="w-full"
