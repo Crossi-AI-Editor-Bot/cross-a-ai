@@ -35,6 +35,8 @@ const VipShop = () => {
   const [inviteCode, setInviteCode] = useState("");
   const [redeemingCode, setRedeemingCode] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const visibleTiers = tiers.filter((t) => !(t as any).hidden);
 
@@ -165,9 +167,20 @@ const VipShop = () => {
                   </ul>
 
                   {isCurrentTier ? (
-                    <Button className="w-full" disabled>
-                      Active
-                    </Button>
+                    <div className="space-y-2">
+                      <Button className="w-full" disabled>
+                        Active
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
+                        onClick={() => setCancelDialogOpen(true)}
+                        size="sm"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Cancel Subscription
+                      </Button>
+                    </div>
                   ) : croinPrice > 0 ? (
                     <Button
                       className="w-full"
@@ -234,6 +247,49 @@ const VipShop = () => {
 
         {isAdmin && <VipAdminRequests />}
       </main>
+
+      {/* Cancel Subscription Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <X className="w-5 h-5 text-destructive" />
+              Cancel VIP Subscription
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel your VIP subscription? You'll keep access until the current period expires, but it won't renew.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Keep Subscription</Button>
+            <Button
+              variant="destructive"
+              disabled={cancelling}
+              onClick={async () => {
+                setCancelling(true);
+                try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) throw new Error("Not logged in");
+                  const { error } = await supabase
+                    .from("vip_status")
+                    .delete()
+                    .eq("user_id", user.id);
+                  if (error) throw error;
+                  toast({ title: "Subscription Cancelled", description: "Your VIP has been cancelled. You can re-subscribe anytime." });
+                  setTimeout(() => window.location.reload(), 1000);
+                } catch {
+                  toast({ title: "Error", description: "Failed to cancel subscription.", variant: "destructive" });
+                } finally {
+                  setCancelling(false);
+                  setCancelDialogOpen(false);
+                }
+              }}
+            >
+              {cancelling ? "Cancelling..." : "Yes, Cancel"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Purchase Confirmation Dialog */}
       <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
