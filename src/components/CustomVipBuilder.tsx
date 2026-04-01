@@ -221,40 +221,13 @@ const CustomVipBuilder = () => {
     if (!config.id || !config.ai_price) return;
     setPurchasing(true);
     try {
-      // Use purchase-vip-custom edge function logic inline via croins proxy
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-
-      const { data: profile } = await supabase.from("profiles").select("crossatrix_id").eq("user_id", user.id).maybeSingle();
-      if (!profile?.crossatrix_id) throw new Error("No Crossatrix account linked");
-
-      // Debit croins
-      const { data: debitData, error: debitError } = await supabase.functions.invoke("croins-proxy", {
-        body: { action: "debit", user_id: profile.crossatrix_id, amount: config.ai_price, description: `Custom VIP: ${config.display_name}` },
+      const { data, error } = await supabase.functions.invoke("purchase-custom-vip", {
+        body: { config_id: config.id },
       });
 
-      if (debitError || debitData?.error) throw new Error(debitData?.error || "Insufficient Croins");
-
-      // Activate - set vip_status with custom tier info and update config status
-      // We use the model_access_tier as the effective tier for model access
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      // Delete existing VIP
-      const serviceRes = await supabase.functions.invoke("purchase-vip", {
-        body: { tier_name: config.model_access_tier, custom_config_id: config.id },
-      });
-
-      // Actually, let's just update via a simpler approach - use the custom_vip_configs status
-      // and set vip_status to the model_access_tier
-      // The purchase-vip function already handles the VIP activation, but we need to handle
-      // the custom case differently. Let's update the config status directly.
-
-      // Update custom config to active
-      await supabase
-        .from("custom_vip_configs" as any)
-        .update({ status: "active", expires_at: expiresAt.toISOString() } as any)
-        .eq("id", config.id);
+      if (error || data?.error) {
+        throw new Error(data?.error || "Purchase failed");
+      }
 
       setConfig(prev => ({ ...prev, status: "active" }));
       await refetchCroins();
