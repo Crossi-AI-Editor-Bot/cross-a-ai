@@ -21,6 +21,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useCroins } from "@/hooks/useCroins";
 import VipAdminRequests from "@/components/VipAdminRequests";
 import VipTierComparisonChart from "@/components/VipTierComparisonChart";
+import CustomVipBuilder from "@/components/CustomVipBuilder";
 import { supabase } from "@/integrations/supabase/client";
 
 const VipShop = () => {
