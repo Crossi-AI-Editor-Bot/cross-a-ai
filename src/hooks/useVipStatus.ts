@@ -66,7 +66,6 @@ export const useVipStatus = () => {
   }, [tiers, tiersLoading]);
 
   const hasTierAccess = (requiredTier: string): boolean => {
-    if (isAdmin) return true;
     if (!tier || !requiredTier) return false;
     const tierOrder = tiers.map(t => t.name);
     const currentLevel = tierOrder.indexOf(tier);
