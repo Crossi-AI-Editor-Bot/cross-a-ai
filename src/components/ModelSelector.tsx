@@ -27,7 +27,6 @@ interface ModelSelectorProps {
 
 // Dynamic access check using tier_access map
 const hasModelAccess = (model: ModelCost, tier: VipTier, isAdmin: boolean): boolean => {
-  if (isAdmin) return true;
   if (!tier && model.public_access) return true;
   if (!tier) return false;
   return model.tier_access[tier] ?? model.public_access;

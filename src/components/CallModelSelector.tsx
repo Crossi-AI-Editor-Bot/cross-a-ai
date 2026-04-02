@@ -31,7 +31,6 @@ const CallModelSelector = ({ open, onOpenChange, onSelectModel }: CallModelSelec
   }, [modelCosts]);
 
   const canAccessModel = (model: ModelCost): boolean => {
-    if (isAdmin) return true;
     if (model.public_access) return true;
     if (!userTier) return false;
     
