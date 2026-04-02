@@ -31,11 +31,7 @@ export const useVipStatus = () => {
 
         if (adminData) {
           setIsAdmin(true);
-          // Admins get highest tier
-          const highestTier = tiers.length > 0 ? tiers[tiers.length - 1].name : 'diamond';
-          setTier(highestTier);
-          setLoading(false);
-          return;
+          // Admins must purchase VIP like everyone else - check their vip_status
         }
 
         const { data: vipData } = await supabase
@@ -70,7 +66,6 @@ export const useVipStatus = () => {
   }, [tiers, tiersLoading]);
 
   const hasTierAccess = (requiredTier: string): boolean => {
-    if (isAdmin) return true;
     if (!tier || !requiredTier) return false;
     const tierOrder = tiers.map(t => t.name);
     const currentLevel = tierOrder.indexOf(tier);
@@ -79,7 +74,7 @@ export const useVipStatus = () => {
     return currentLevel >= requiredLevel;
   };
 
-  const isVip = tier !== null || isAdmin;
+  const isVip = tier !== null;
 
   return { tier, isVip, isAdmin, loading: loading || tiersLoading, hasTierAccess };
 };
