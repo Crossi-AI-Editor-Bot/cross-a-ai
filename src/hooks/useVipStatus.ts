@@ -31,11 +31,7 @@ export const useVipStatus = () => {
 
         if (adminData) {
           setIsAdmin(true);
-          // Admins get highest tier
-          const highestTier = tiers.length > 0 ? tiers[tiers.length - 1].name : 'diamond';
-          setTier(highestTier);
-          setLoading(false);
-          return;
+          // Admins must purchase VIP like everyone else - check their vip_status
         }
 
         const { data: vipData } = await supabase
