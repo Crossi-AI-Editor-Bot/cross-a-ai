@@ -74,7 +74,7 @@ export const useVipStatus = () => {
     return currentLevel >= requiredLevel;
   };
 
-  const isVip = tier !== null || isAdmin;
+  const isVip = tier !== null;
 
   return { tier, isVip, isAdmin, loading: loading || tiersLoading, hasTierAccess };
 };
