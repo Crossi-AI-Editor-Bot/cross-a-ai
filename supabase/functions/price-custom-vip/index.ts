@@ -101,7 +101,7 @@ Rules:
 
 Respond with ONLY a JSON object like: {"price": 50, "reasoning": "Brief explanation of pricing logic"}`;
 
-    const aiRes = await fetch("https://api.lovable.dev/v1/chat/completions", {
+    const aiRes = await fetch("https://api.lovable.dev/ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
