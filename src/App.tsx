@@ -33,6 +33,11 @@ const BanGuard = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const ApiErrorInterceptorWrapper = ({ children }: { children: React.ReactNode }) => {
+  useApiErrorInterceptor();
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -40,17 +45,20 @@ const App = () => (
       <Sonner />
       <NotificationPopup />
       <BrowserRouter>
-        <BanGuard>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/vip" element={<VipShop />} />
-            <Route path="/banned" element={<Banned />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BanGuard>
+        <ApiErrorInterceptorWrapper>
+          <BanGuard>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/vip" element={<VipShop />} />
+              <Route path="/banned" element={<Banned />} />
+              <Route path="/error" element={<ErrorPage />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BanGuard>
+        </ApiErrorInterceptorWrapper>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
