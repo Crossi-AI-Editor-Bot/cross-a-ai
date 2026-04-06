@@ -59,9 +59,9 @@ export const useAdventCalendar = () => {
         .select('expires_at')
         .eq('user_id', user.id)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       setVipStatus(data);
     } catch (error) {
       console.error('Error fetching VIP status:', error);
