@@ -15,7 +15,8 @@ export const useApiErrorInterceptor = () => {
       const url = typeof args[0] === "string" ? args[0] : args[0] instanceof Request ? args[0].url : "";
       const isApiCall = url.includes("supabase") || url.includes("functions") || url.includes("lovable");
       
-      if (isApiCall && response.status >= 400 && location.pathname !== "/error" && location.pathname !== "/banned" && isDevModeEnabled()) {
+      // Exclude 406 (PostgREST "no rows" for .single()) as it's handled in app logic
+      if (isApiCall && response.status >= 400 && response.status !== 406 && location.pathname !== "/error" && location.pathname !== "/banned" && isDevModeEnabled()) {
         const cloned = response.clone();
         let bodyText: string;
         try {
