@@ -106,8 +106,14 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
           rows={1}
         />
         <Button
-          type="submit"
-          disabled={(!input.trim() && files.length === 0) || disabled}
+          type="button"
+          onClick={(e) => {
+            handleSendClick();
+            if (input.trim() || files.length > 0) {
+              handleSubmit(e);
+            }
+          }}
+          disabled={disabled}
           className="h-[60px] px-6 bg-gradient-primary hover:opacity-90 transition-opacity shadow-md"
         >
           <Send className="w-5 h-5" />
