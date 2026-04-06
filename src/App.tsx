@@ -8,9 +8,11 @@ import Auth from "./pages/Auth";
 import AdminPanel from "./pages/AdminPanel";
 import VipShop from "./pages/VipShop";
 import Banned from "./pages/Banned";
+import ErrorPage from "./pages/ErrorPage";
 import NotFound from "./pages/NotFound";
 import { NotificationPopup } from "./components/NotificationPopup";
 import { useIpBanCheck } from "./hooks/useIpBanCheck";
+import { useApiErrorInterceptor } from "./hooks/useApiErrorInterceptor";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +33,11 @@ const BanGuard = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const ApiErrorInterceptorWrapper = ({ children }: { children: React.ReactNode }) => {
+  useApiErrorInterceptor();
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -38,17 +45,20 @@ const App = () => (
       <Sonner />
       <NotificationPopup />
       <BrowserRouter>
-        <BanGuard>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/vip" element={<VipShop />} />
-            <Route path="/banned" element={<Banned />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BanGuard>
+        <ApiErrorInterceptorWrapper>
+          <BanGuard>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/vip" element={<VipShop />} />
+              <Route path="/banned" element={<Banned />} />
+              <Route path="/error" element={<ErrorPage />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BanGuard>
+        </ApiErrorInterceptorWrapper>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
