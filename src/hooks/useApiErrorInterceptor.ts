@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { isDevModeEnabled } from "./useDevMode";
 
 export const useApiErrorInterceptor = () => {
   const navigate = useNavigate();
@@ -11,12 +12,10 @@ export const useApiErrorInterceptor = () => {
     window.fetch = async (...args: Parameters<typeof fetch>) => {
       const response = await originalFetch(...args);
 
-      // Only intercept API calls (supabase functions, etc.), not static assets
       const url = typeof args[0] === "string" ? args[0] : args[0] instanceof Request ? args[0].url : "";
       const isApiCall = url.includes("supabase") || url.includes("functions") || url.includes("lovable");
       
-      if (isApiCall && (response.status >= 400) && location.pathname !== "/error" && location.pathname !== "/banned") {
-        // Clone response so the original caller still works
+      if (isApiCall && response.status >= 400 && location.pathname !== "/error" && location.pathname !== "/banned" && isDevModeEnabled()) {
         const cloned = response.clone();
         let bodyText: string;
         try {

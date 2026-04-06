@@ -1,7 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Paperclip, X } from "lucide-react";
+import { useDevMode } from "@/hooks/useDevMode";
+import { toast } from "sonner";
 
 interface ChatInputProps {
   onSend: (message: string, files?: File[]) => void;
@@ -12,6 +14,24 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emptyClickCount = useRef(0);
+  const emptyClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { devMode, toggleDevMode } = useDevMode();
+
+  const handleSendClick = useCallback(() => {
+    if (!input.trim() && files.length === 0) {
+      emptyClickCount.current += 1;
+      if (emptyClickTimer.current) clearTimeout(emptyClickTimer.current);
+      emptyClickTimer.current = setTimeout(() => { emptyClickCount.current = 0; }, 3000);
+
+      if (emptyClickCount.current >= 7) {
+        emptyClickCount.current = 0;
+        const newState = !devMode;
+        toggleDevMode(newState);
+        toast(newState ? "🛠️ Dev Mode activated" : "Dev Mode deactivated");
+      }
+    }
+  }, [input, files, devMode, toggleDevMode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
