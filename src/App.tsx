@@ -8,9 +8,11 @@ import Auth from "./pages/Auth";
 import AdminPanel from "./pages/AdminPanel";
 import VipShop from "./pages/VipShop";
 import Banned from "./pages/Banned";
+import ErrorPage from "./pages/ErrorPage";
 import NotFound from "./pages/NotFound";
 import { NotificationPopup } from "./components/NotificationPopup";
 import { useIpBanCheck } from "./hooks/useIpBanCheck";
+import { useApiErrorInterceptor } from "./hooks/useApiErrorInterceptor";
 
 const queryClient = new QueryClient();
 
