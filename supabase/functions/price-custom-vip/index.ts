@@ -113,7 +113,7 @@ Respond with ONLY a JSON object like: {"price": 50, "reasoning": "Brief explanat
           { role: "system", content: "You are a pricing calculator. Respond only with valid JSON." },
           { role: "user", content: prompt },
         ],
-        temperature: 0.3,
+      }),
       }),
     });
 
