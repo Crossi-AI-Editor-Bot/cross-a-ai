@@ -114,7 +114,6 @@ Respond with ONLY a JSON object like: {"price": 50, "reasoning": "Brief explanat
           { role: "user", content: prompt },
         ],
       }),
-      }),
     });
 
     if (!aiRes.ok) {
