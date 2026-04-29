@@ -5,12 +5,20 @@
 
 export const OPENROUTER_PREFIX = "openrouter/";
 export const PUTER_PREFIX = "puter/";
+export const CROSSI_VIDEO_PREFIX = "crossi-video/";
 
 export const isOpenRouterModel = (modelId: string) =>
   modelId.startsWith(OPENROUTER_PREFIX);
 
 export const isPuterImageModel = (modelId: string) =>
   modelId.startsWith(PUTER_PREFIX);
+
+export const isCrossiVideoModel = (modelId: string) =>
+  modelId.startsWith(CROSSI_VIDEO_PREFIX);
+
+/** Strip "crossi-video/" to get underlying Puter image model id. */
+export const crossiVideoBaseModel = (modelId: string) =>
+  modelId.slice(CROSSI_VIDEO_PREFIX.length);
 
 /**
  * Strip the "puter/" prefix to get the actual model id Puter.js expects.
