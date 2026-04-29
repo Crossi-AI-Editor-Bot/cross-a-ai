@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const requestSchema = z.object({
   modelCostId: z.string().uuid(),
+  multiplier: z.number().int().min(1).max(5).optional(),
 });
 
 /**
@@ -50,7 +51,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { modelCostId } = parsed.data;
+    const { modelCostId, multiplier } = parsed.data;
+    const mult = multiplier ?? 1;
 
     // Fetch model
     const { data: modelData, error: modelErr } = await supabase
@@ -99,7 +101,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const cost = Number(modelData.image_cost) || 0;
+    const cost = (Number(modelData.image_cost) || 0) * mult;
 
     const { data: imgCredits, error: imgErr } = await supabase
       .from('user_image_credits').select('credits')
