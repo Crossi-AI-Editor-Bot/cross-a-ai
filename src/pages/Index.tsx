@@ -309,8 +309,11 @@ const Index = () => {
       <footer className="border-t border-border bg-card/50 backdrop-blur-sm sticky bottom-0 shadow-lg">
         <div className="container max-w-4xl mx-auto px-4 py-4">
           <ChatInput 
-            onSend={(content, files) => sendMessage(content, selectedModelCostId || "", files)} 
-            disabled={isLoading} 
+            onSend={(content, files, options) =>
+              sendMessage(content, selectedModelCostId || "", files, options)
+            }
+            disabled={isLoading}
+            isCrossiVideo={selectedModelRow?.model_id?.startsWith("crossi-video/") ?? false}
           />
         </div>
       </footer>
