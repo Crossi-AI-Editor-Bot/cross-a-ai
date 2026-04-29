@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.check-ip-ban]
 verify_jwt = false
+
+[functions.deduct-image-credits]
+verify_jwt = false
