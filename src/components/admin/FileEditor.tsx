@@ -16,10 +16,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { VipTierIcon } from "@/components/VipTierIcon";
 import type { VipTierConfig } from "@/hooks/useVipTiers";
+import { isPuterImageModel, isOpenRouterModel } from "@/lib/externalModels";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
 const NANO_MODEL_ID = 'openai/gpt-5-nano';
-const DELETABLE_MODELS = [NANO_MODEL_ID, ...IMAGE_MODELS];
+const BUILTIN_DELETABLE = [NANO_MODEL_ID, ...IMAGE_MODELS];
 
 interface ModelData {
   id: string;
@@ -60,8 +61,11 @@ export const FileEditor = ({
   onDelete,
 }: FileEditorProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const isImageModel = IMAGE_MODELS.includes(model.model_id);
-  const isDeletable = DELETABLE_MODELS.includes(model.model_id);
+  const isImageModel = IMAGE_MODELS.includes(model.model_id) || isPuterImageModel(model.model_id);
+  const isDeletable =
+    BUILTIN_DELETABLE.includes(model.model_id) ||
+    isPuterImageModel(model.model_id) ||
+    isOpenRouterModel(model.model_id);
 
   const handleConfirmDelete = () => {
     setShowDeleteDialog(false);
