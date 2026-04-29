@@ -1,18 +1,20 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, X } from "lucide-react";
+import { Send, Paperclip, X, Film } from "lucide-react";
 import { useDevMode } from "@/hooks/useDevMode";
 import { toast } from "sonner";
 
 interface ChatInputProps {
-  onSend: (message: string, files?: File[]) => void;
+  onSend: (message: string, files?: File[], options?: { videoSeconds?: number }) => void;
   disabled?: boolean;
+  isCrossiVideo?: boolean;
 }
 
-const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
+const ChatInput = ({ onSend, disabled, isCrossiVideo }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [videoSeconds, setVideoSeconds] = useState(3);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emptyClickCount = useRef(0);
   const emptyClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -36,7 +38,7 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((input.trim() || files.length > 0) && !disabled) {
-      onSend(input.trim(), files);
+      onSend(input.trim(), files, isCrossiVideo ? { videoSeconds } : undefined);
       setInput("");
       setFiles([]);
     }
@@ -61,6 +63,24 @@ const ChatInput = ({ onSend, disabled }: ChatInputProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
+      {isCrossiVideo && (
+        <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-purple-500/10 border border-purple-500/30 text-xs">
+          <Film className="w-4 h-4 text-purple-400 shrink-0" />
+          <span className="text-purple-300 shrink-0">Length:</span>
+          <input
+            type="range"
+            min={1}
+            max={5}
+            step={1}
+            value={videoSeconds}
+            onChange={(e) => setVideoSeconds(Number(e.target.value))}
+            className="flex-1 accent-purple-500"
+          />
+          <span className="text-purple-200 font-mono shrink-0 w-20 text-right">
+            {videoSeconds}s · {videoSeconds * 5} cr
+          </span>
+        </div>
+      )}
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {files.map((file, index) => (
