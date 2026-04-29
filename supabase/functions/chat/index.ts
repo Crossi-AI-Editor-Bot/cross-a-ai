@@ -549,7 +549,7 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
 
     // Use Lovable AI gateway for all text models (Google and OpenAI)
     const requestBody: any = {
-      model,
+      model: isOpenRouter ? openRouterModelId : model,
       messages: messages.map(msg => {
         if (msg.files && msg.files.length > 0) {
           const content: any[] = [];
@@ -631,11 +631,22 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
       ...requestBody.messages,
     ];
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const gatewayUrl = isOpenRouter
+      ? "https://openrouter.ai/api/v1/chat/completions"
+      : "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const gatewayKey = isOpenRouter ? OPEN_ROUTER_KEY : LOVABLE_API_KEY;
+
+    const response = await fetch(gatewayUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${gatewayKey}`,
         "Content-Type": "application/json",
+        ...(isOpenRouter
+          ? {
+              "HTTP-Referer": "https://cross-a-ai.lovable.app",
+              "X-Title": "Crossi AI",
+            }
+          : {}),
       },
       body: JSON.stringify(requestBody),
     });
