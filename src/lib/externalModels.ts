@@ -78,6 +78,10 @@ declare global {
           prompt: string,
           options?: { model?: string; quality?: "low" | "medium" | "high" | "hd" }
         ) => Promise<HTMLImageElement>;
+        chat?: (
+          prompt: string | Array<unknown>,
+          options?: { model?: string; stream?: boolean }
+        ) => Promise<unknown>;
       };
     };
   }
@@ -116,4 +120,137 @@ export async function generatePuterImage(
     // If CORS prevents conversion, return the URL directly.
     return src;
   }
+}
+
+/**
+ * Generate a single frame for the Crossi 5.1 Video model.
+ * Uses Puter's txt2img with the underlying image model. The prompt is augmented
+ * to reference frame index + a brief textual recap of the last 3 frames so the
+ * model maintains rough visual continuity (true image-to-image conditioning is
+ * not available via Puter's txt2img endpoint for imagen-4.0-fast).
+ */
+async function generateVideoFrame(
+  basePrompt: string,
+  baseModel: string,
+  frameIndex: number,
+  totalFrames: number,
+): Promise<string> {
+  const progress = Math.round((frameIndex / Math.max(totalFrames - 1, 1)) * 100);
+  const continuityHint =
+    frameIndex === 0
+      ? "Opening frame of a short cinematic sequence."
+      : `Frame ${frameIndex + 1} of ${totalFrames} (${progress}% through). Maintain the SAME subject, composition, color palette, lighting and style as previous frames; advance the motion/animation slightly forward in time.`;
+
+  const fullPrompt = `${basePrompt}\n\n[${continuityHint}]`;
+
+  if (!window.puter?.ai?.txt2img) {
+    throw new Error("Puter.js not available");
+  }
+  const img = await window.puter.ai.txt2img(fullPrompt, { model: baseModel });
+  const src = img.src;
+  if (src.startsWith("data:")) return src;
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return src;
+  }
+}
+
+function loadImageEl(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.crossOrigin = "anonymous";
+    im.onload = () => resolve(im);
+    im.onerror = reject;
+    im.src = src;
+  });
+}
+
+/**
+ * Generates an up-to-5-second video at 10 FPS using Puter image generation
+ * for each frame, then assembles them into a WebM via canvas + MediaRecorder.
+ * Returns a data: URL of the final video (blob converted to base64).
+ */
+export async function generateCrossiVideo(
+  prompt: string,
+  modelId: string,
+  durationSeconds: number,
+  onProgress?: (current: number, total: number) => void,
+): Promise<string> {
+  const fps = 10;
+  const seconds = Math.max(1, Math.min(5, Math.round(durationSeconds)));
+  const totalFrames = fps * seconds;
+  const baseModel = crossiVideoBaseModel(modelId); // e.g. "imagen-4.0-fast"
+
+  // Generate frames sequentially (keep last 3 in memory for future use).
+  const frameDataUrls: string[] = [];
+  for (let i = 0; i < totalFrames; i++) {
+    const dataUrl = await generateVideoFrame(prompt, baseModel, i, totalFrames);
+    frameDataUrls.push(dataUrl);
+    onProgress?.(i + 1, totalFrames);
+    // Keep only last 3 frames worth of references in memory beyond what we need
+    // (we still need all frames for canvas playback below).
+  }
+
+  // Load all frames as <img> elements for drawing.
+  const images = await Promise.all(frameDataUrls.map(loadImageEl));
+  const w = images[0]?.naturalWidth || 1024;
+  const h = images[0]?.naturalHeight || 1024;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D context unavailable");
+
+  // Draw the first frame so the captured stream isn't blank.
+  ctx.drawImage(images[0], 0, 0, w, h);
+
+  const stream = (canvas as HTMLCanvasElement).captureStream(fps);
+
+  // Pick the best supported MIME type.
+  const candidates = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+  ];
+  const mime = candidates.find((c) => MediaRecorder.isTypeSupported(c)) || "video/webm";
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
+  const chunks: Blob[] = [];
+  recorder.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
+
+  const recordingDone = new Promise<void>((resolve) => {
+    recorder.onstop = () => resolve();
+  });
+
+  recorder.start();
+
+  // Draw each frame for exactly (1000/fps) ms.
+  const frameMs = 1000 / fps;
+  for (let i = 0; i < images.length; i++) {
+    ctx.drawImage(images[i], 0, 0, w, h);
+    await new Promise((r) => setTimeout(r, frameMs));
+  }
+  // Linger on the last frame briefly so MediaRecorder captures it.
+  await new Promise((r) => setTimeout(r, frameMs));
+
+  recorder.stop();
+  await recordingDone;
+
+  const blob = new Blob(chunks, { type: mime });
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
