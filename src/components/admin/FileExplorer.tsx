@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { PUTER_IMAGE_MODELS, PUTER_PREFIX, OPENROUTER_PREFIX, isPuterImageModel } from "@/lib/externalModels";
+import { PUTER_IMAGE_MODELS, PUTER_PREFIX, OPENROUTER_PREFIX, isPuterImageModel, isCrossiVideoModel } from "@/lib/externalModels";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
 
@@ -27,7 +27,7 @@ const BUILTIN_IMAGE_BASES = [
 ];
 
 const isImageLikeModel = (modelId: string) =>
-  IMAGE_MODELS.includes(modelId) || isPuterImageModel(modelId);
+  IMAGE_MODELS.includes(modelId) || isPuterImageModel(modelId) || isCrossiVideoModel(modelId);
 
 interface ModelFile {
   id: string;
