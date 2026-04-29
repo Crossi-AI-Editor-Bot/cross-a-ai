@@ -224,6 +224,11 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
     // Check if this is an image generation request
     const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview' || model === 'google/gemini-3.1-flash-image-preview';
 
+    // OpenRouter routing: any model with prefix "openrouter/" is sent to
+    // https://openrouter.ai/api/v1 using OPEN_ROUTER_KEY.
+    const isOpenRouter = model.startsWith('openrouter/');
+    const openRouterModelId = isOpenRouter ? model.slice('openrouter/'.length) : '';
+
     // Fetch global prompts from site_settings
     const [globalKnowledgeRes, globalImageRestrictionsRes] = await Promise.all([
       supabase.from('site_settings').select('value').eq('key', 'global_extra_knowledge').maybeSingle(),
@@ -340,16 +345,21 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const REPLICATE_API_KEY = Deno.env.get("REPLICATE_API_KEY");
+    const OPEN_ROUTER_KEY = Deno.env.get("OPEN_ROUTER_KEY");
     
     // Check if this is a video generation request - uses Replicate API
     const isVideoGen = model === 'google/veo-3.1-fast';
     
-    if (!isVideoGen && !LOVABLE_API_KEY) {
+    if (!isVideoGen && !isOpenRouter && !LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
     
     if (isVideoGen && !REPLICATE_API_KEY) {
       throw new Error("REPLICATE_API_KEY is not configured");
+    }
+
+    if (isOpenRouter && !OPEN_ROUTER_KEY) {
+      throw new Error("OPEN_ROUTER_KEY is not configured");
     }
 
     console.log('Processing chat request - User:', user.id, 'Messages:', messages.length, 'Model:', model);
