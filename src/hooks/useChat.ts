@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { isPuterImageModel, generatePuterImage } from "@/lib/externalModels";
 
 interface Message {
   role: "user" | "assistant";
@@ -124,6 +125,77 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     };
 
     try {
+      // === Puter.js client-side image generation path ===
+      // Look up the model to detect Puter image models without requiring extra args.
+      const { data: modelRow } = await supabase
+        .from("model_costs")
+        .select("model_id")
+        .eq("id", modelCostId)
+        .maybeSingle();
+
+      if (modelRow?.model_id && isPuterImageModel(modelRow.model_id)) {
+        // Server-side credit check + deduction (auth, tier access, atomic deduct)
+        const { data: { session: puterSession } } = await supabase.auth.getSession();
+        const puterAuth = puterSession?.access_token;
+        if (!puterAuth) {
+          toast({ title: "Authentication Required", description: "Please log in.", variant: "destructive" });
+          setMessages((prev) => prev.slice(0, -1));
+          return;
+        }
+
+        const deductRes = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deduct-image-credits`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${puterAuth}` },
+            body: JSON.stringify({ modelCostId }),
+          }
+        );
+
+        if (!deductRes.ok) {
+          const err = await deductRes.json().catch(() => ({}));
+          if (deductRes.status === 402) {
+            toast({ title: "Insufficient Image Credits", description: err.error || "Not enough credits.", variant: "destructive" });
+          } else if (deductRes.status === 403) {
+            toast({ title: "Access Denied", description: err.error || "This model requires a higher tier.", variant: "destructive" });
+          } else {
+            toast({ title: "Error", description: err.error || "Failed to start generation.", variant: "destructive" });
+          }
+          setMessages((prev) => prev.slice(0, -1));
+          return;
+        }
+
+        const { credits: remainingImg } = await deductRes.json();
+
+        try {
+          const imageDataUrl = await generatePuterImage(content || "Generate an image", modelRow.model_id);
+          const textResponse = "Here's your generated image:";
+          updateAssistantMessage(textResponse, imageDataUrl);
+          setNewImageCredits(remainingImg);
+
+          await saveMessagesToDatabase([
+            userMessage,
+            { role: "assistant", content: JSON.stringify({ text: textResponse, image: imageDataUrl }) },
+          ]);
+
+          if (messages.length === 0) {
+            generateConversationTitle([userMessage, { role: "assistant", content: textResponse }]);
+          }
+        } catch (puterErr) {
+          console.error("Puter image generation failed:", puterErr);
+          toast({
+            title: "Image generation failed",
+            description: puterErr instanceof Error ? puterErr.message : "Unknown error from Puter.js",
+            variant: "destructive",
+          });
+          setMessages((prev) => prev.slice(0, -1));
+        }
+
+        setIsLoading(false);
+        return;
+      }
+      // === End Puter.js path ===
+
       // Get auth token
       const { data: { session } } = await supabase.auth.getSession();
       const authToken = session?.access_token;

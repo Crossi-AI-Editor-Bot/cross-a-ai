@@ -16,8 +16,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { PUTER_IMAGE_MODELS, PUTER_PREFIX, OPENROUTER_PREFIX, isPuterImageModel } from "@/lib/externalModels";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
+
+// Built-in image bases (Lovable AI Gateway) shown alongside Puter.js options
+const BUILTIN_IMAGE_BASES = [
+  { id: "google/gemini-2.5-flash-image", label: "Nano Banana (2.5 Flash Image)" },
+  { id: "google/gemini-3-pro-image-preview", label: "Crossi 3.0 Image (3 Pro Image)" },
+];
+
+const isImageLikeModel = (modelId: string) =>
+  IMAGE_MODELS.includes(modelId) || isPuterImageModel(modelId);
 
 interface ModelFile {
   id: string;
@@ -88,8 +98,10 @@ export const FileExplorer = ({
   const [showAddModel, setShowAddModel] = useState(false);
   const [showAddCallModel, setShowAddCallModel] = useState(false);
   const [showAddImageModel, setShowAddImageModel] = useState(false);
-  const [selectedImageBase, setSelectedImageBase] = useState<string>(IMAGE_MODELS[0]);
+  const [selectedImageBase, setSelectedImageBase] = useState<string>(BUILTIN_IMAGE_BASES[0].id);
   const [newModelLabel, setNewModelLabel] = useState("");
+  const [showAddOpenRouterModel, setShowAddOpenRouterModel] = useState(false);
+  const [newOpenRouterId, setNewOpenRouterId] = useState("");
 
   const folderTree = buildFolderTree(folders);
 
@@ -110,8 +122,18 @@ export const FileExplorer = ({
     if (newModelLabel.trim() && onAddModel && selectedImageBase) {
       onAddModel(selectedImageBase, newModelLabel.trim());
       setNewModelLabel("");
-      setSelectedImageBase(IMAGE_MODELS[0]);
+      setSelectedImageBase(BUILTIN_IMAGE_BASES[0].id);
       setShowAddImageModel(false);
+    }
+  };
+
+  const handleAddOpenRouterModel = () => {
+    if (newOpenRouterId.trim() && newModelLabel.trim() && onAddModel) {
+      const cleanId = newOpenRouterId.trim().replace(/^openrouter\//, "");
+      onAddModel(`${OPENROUTER_PREFIX}${cleanId}`, newModelLabel.trim());
+      setNewModelLabel("");
+      setNewOpenRouterId("");
+      setShowAddOpenRouterModel(false);
     }
   };
 
@@ -394,6 +416,16 @@ export const FileExplorer = ({
                 <Plus className="h-3 w-3 mr-1" />
                 Image
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowAddOpenRouterModel(true)}
+                title="Add OpenRouter Model"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                OpenRouter
+              </Button>
             </>
           )}
           <Button
@@ -469,9 +501,17 @@ export const FileExplorer = ({
               <SelectTrigger className="h-7 text-xs">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="google/gemini-2.5-flash-image">Nano Banana (2.5 Flash Image)</SelectItem>
-                <SelectItem value="google/gemini-3-pro-image-preview">Crossi 3.0 Image (3 Pro Image)</SelectItem>
+              <SelectContent className="max-h-72">
+                {BUILTIN_IMAGE_BASES.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+                {PUTER_IMAGE_MODELS.map((m) => (
+                  <SelectItem key={`${PUTER_PREFIX}${m.id}`} value={`${PUTER_PREFIX}${m.id}`}>
+                    Puter · {m.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <div className="flex items-center gap-1">
@@ -490,6 +530,41 @@ export const FileExplorer = ({
                 <Save className="h-3 w-3" />
               </Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddImageModel(false)}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Add new OpenRouter model input */}
+        {showAddOpenRouterModel && (
+          <div className="flex flex-col gap-1 px-2 py-2 bg-orange-500/20 rounded-md mb-2">
+            <div className="flex items-center gap-1">
+              <FileText className="h-4 w-4 text-orange-400 shrink-0" />
+              <span className="text-xs font-medium text-orange-400">New OpenRouter Model</span>
+            </div>
+            <Input
+              autoFocus
+              value={newOpenRouterId}
+              onChange={(e) => setNewOpenRouterId(e.target.value)}
+              className="h-6 text-xs font-mono"
+              placeholder="Model ID (e.g. openai/gpt-4o)"
+            />
+            <div className="flex items-center gap-1">
+              <Input
+                value={newModelLabel}
+                onChange={(e) => setNewModelLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddOpenRouterModel();
+                  if (e.key === "Escape") setShowAddOpenRouterModel(false);
+                }}
+                className="h-6 text-xs"
+                placeholder="Display name..."
+              />
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddOpenRouterModel}>
+                <Save className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddOpenRouterModel(false)}>
                 <X className="h-3 w-3" />
               </Button>
             </div>
@@ -567,7 +642,7 @@ interface FileItemProps {
 }
 
 const FileItem = ({ model, isSelected, onSelect, onDragStart, onDragEnd, isDragging, depth }: FileItemProps) => {
-  const isImageModel = IMAGE_MODELS.includes(model.model_id);
+  const isImageModel = isImageLikeModel(model.model_id);
   const displayCost = isImageModel ? (model.image_cost || 0) : model.cost;
   
   return (
