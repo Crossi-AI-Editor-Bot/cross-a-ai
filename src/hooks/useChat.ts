@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { isPuterImageModel, generatePuterImage } from "@/lib/externalModels";
+import {
+  isPuterImageModel,
+  generatePuterImage,
+  isCrossiVideoModel,
+  generateCrossiVideo,
+} from "@/lib/externalModels";
 
 interface Message {
   role: "user" | "assistant";
@@ -63,7 +68,12 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     }
   };
 
-  const sendMessage = async (content: string, modelCostId: string, files?: File[]) => {
+  const sendMessage = async (
+    content: string,
+    modelCostId: string,
+    files?: File[],
+    options?: { videoSeconds?: number },
+  ) => {
     if ((!content.trim() && !files?.length)) return;
     
     if (!conversationId) {
@@ -132,6 +142,104 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         .select("model_id")
         .eq("id", modelCostId)
         .maybeSingle();
+
+      // === Crossi 5.1 Video (client-side frame generation + assembly) ===
+      if (modelRow?.model_id && isCrossiVideoModel(modelRow.model_id)) {
+        const seconds = Math.max(1, Math.min(5, options?.videoSeconds ?? 3));
+
+        const { data: { session: vSession } } = await supabase.auth.getSession();
+        const vAuth = vSession?.access_token;
+        if (!vAuth) {
+          toast({ title: "Authentication Required", description: "Please log in.", variant: "destructive" });
+          setMessages((prev) => prev.slice(0, -1));
+          setIsLoading(false);
+          return;
+        }
+
+        const deductRes = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deduct-image-credits`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${vAuth}` },
+            body: JSON.stringify({ modelCostId, multiplier: seconds }),
+          },
+        );
+
+        if (!deductRes.ok) {
+          const err = await deductRes.json().catch(() => ({}));
+          if (deductRes.status === 402) {
+            toast({ title: "Insufficient Image Credits", description: err.error || `Need ${seconds * 5} image credits.`, variant: "destructive" });
+          } else if (deductRes.status === 403) {
+            toast({ title: "Access Denied", description: err.error || "This model requires a higher tier.", variant: "destructive" });
+          } else {
+            toast({ title: "Error", description: err.error || "Failed to start video.", variant: "destructive" });
+          }
+          setMessages((prev) => prev.slice(0, -1));
+          setIsLoading(false);
+          return;
+        }
+        const { credits: remainingV } = await deductRes.json();
+
+        // Show progressive status as frames are generated.
+        updateAssistantMessage(`🎬 Generating ${seconds * 10} frames at 10 FPS… (this can take a minute)`);
+
+        try {
+          const videoDataUrl = await generateCrossiVideo(
+            content || "A short cinematic clip",
+            modelRow.model_id,
+            seconds,
+            (cur, total) => {
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === "assistant") {
+                  return prev.map((m, i) =>
+                    i === prev.length - 1
+                      ? { ...m, content: `🎬 Generating frame ${cur}/${total}…` }
+                      : m,
+                  );
+                }
+                return prev;
+              });
+            },
+          );
+
+          assistantContent = "Here's your generated video:";
+          assistantVideo = videoDataUrl;
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant") {
+              return prev.map((m, i) =>
+                i === prev.length - 1
+                  ? { ...m, content: assistantContent, video: videoDataUrl }
+                  : m,
+              );
+            }
+            return [...prev, { role: "assistant", content: assistantContent, video: videoDataUrl }];
+          });
+          setNewImageCredits(remainingV);
+
+          await saveMessagesToDatabase([
+            userMessage,
+            { role: "assistant", content: JSON.stringify({ text: assistantContent, video: videoDataUrl }) },
+          ]);
+
+          if (messages.length === 0) {
+            generateConversationTitle([userMessage, { role: "assistant", content: assistantContent }]);
+          }
+        } catch (vErr) {
+          console.error("Crossi video generation failed:", vErr);
+          toast({
+            title: "Video generation failed",
+            description: vErr instanceof Error ? vErr.message : "Unknown error",
+            variant: "destructive",
+          });
+          setMessages((prev) => prev.slice(0, -1));
+        }
+
+        setIsLoading(false);
+        return;
+      }
+      // === End Crossi Video path ===
 
       if (modelRow?.model_id && isPuterImageModel(modelRow.model_id)) {
         // Server-side credit check + deduction (auth, tier access, atomic deduct)
