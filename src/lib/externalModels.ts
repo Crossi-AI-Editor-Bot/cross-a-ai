@@ -171,7 +171,9 @@ async function generateVideoFrame(
   if (cached) return cached;
 
   const promise = (async () => {
+    console.log(`[CrossiVideo] Generating frame ${frameIndex + 1}/${totalFrames} with Puter model:`, baseModel);
     const img = await window.puter!.ai.txt2img(fullPrompt, { model: baseModel });
+    console.log(`[CrossiVideo] Frame ${frameIndex + 1} ready`);
     const src = img.src;
     if (src.startsWith("data:")) return src;
     try {
@@ -215,10 +217,14 @@ export async function generateCrossiVideo(
   durationSeconds: number,
   onProgress?: (current: number, total: number) => void,
 ): Promise<string> {
+  if (typeof window === "undefined" || !window.puter?.ai?.txt2img) {
+    throw new Error("Puter.js failed to load. Refresh the page and try again.");
+  }
   const fps = 10;
   const seconds = Math.max(1, Math.min(5, Math.round(durationSeconds)));
   const totalFrames = fps * seconds;
   const baseModel = crossiVideoBaseModel(modelId); // e.g. "imagen-4.0-fast"
+  console.log(`[CrossiVideo] Starting: ${seconds}s, ${totalFrames} frames, model="${baseModel}"`);
 
   // Generate frames in parallel with a bounded concurrency. Cache hits return
   // instantly without re-billing the upstream API.
@@ -231,9 +237,14 @@ export async function generateCrossiVideo(
     while (true) {
       const i = nextIndex++;
       if (i >= totalFrames) return;
-      frameDataUrls[i] = await generateVideoFrame(prompt, baseModel, i, totalFrames);
-      completed += 1;
-      onProgress?.(completed, totalFrames);
+      try {
+        frameDataUrls[i] = await generateVideoFrame(prompt, baseModel, i, totalFrames);
+        completed += 1;
+        onProgress?.(completed, totalFrames);
+      } catch (e) {
+        console.error(`[CrossiVideo] Frame ${i + 1} failed:`, e);
+        throw e;
+      }
     }
   };
 
