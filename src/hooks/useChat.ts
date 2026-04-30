@@ -194,7 +194,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
                 if (last?.role === "assistant") {
                   return prev.map((m, i) =>
                     i === prev.length - 1
-                      ? { ...m, content: `🎬 Generating frame ${cur}/${total}…` }
+                      ? { ...m, content: `🎬 Generating frames…\n[[VIDEO_PROGRESS:${cur}/${total}]]` }
                       : m,
                   );
                 }
