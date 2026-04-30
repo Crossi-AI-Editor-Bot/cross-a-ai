@@ -1,6 +1,7 @@
 import { Bot, User, Download, Maximize2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -12,6 +13,16 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ role, content, image, video, files }: ChatMessageProps) => {
   const isUser = role === "user";
+
+  // Detect a "[[VIDEO_PROGRESS:cur/total]]" marker emitted during Crossi video
+  // frame generation so we can render a real progress bar instead of raw text.
+  const progressMatch = content.match(/\[\[VIDEO_PROGRESS:(\d+)\/(\d+)\]\]/);
+  const cleanedContent = progressMatch
+    ? content.replace(progressMatch[0], "").trim()
+    : content;
+  const progressCurrent = progressMatch ? Number(progressMatch[1]) : 0;
+  const progressTotal = progressMatch ? Number(progressMatch[2]) : 0;
+  const progressPct = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
 
   const handleDownload = () => {
     if (!image) return;
@@ -56,7 +67,17 @@ const ChatMessage = ({ role, content, image, video, files }: ChatMessageProps) =
           </div>
         )}
         
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{content}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">{cleanedContent}</p>
+
+        {progressMatch && (
+          <div className="mt-3 space-y-1">
+            <Progress value={progressPct} className="h-2" />
+            <div className="flex justify-between text-xs opacity-70">
+              <span>Frame {progressCurrent} / {progressTotal}</span>
+              <span>{progressPct}%</span>
+            </div>
+          </div>
+        )}
         
         {image && (
           <div className="mt-3 space-y-2">

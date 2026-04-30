@@ -20,6 +20,25 @@ export const isCrossiVideoModel = (modelId: string) =>
 export const crossiVideoBaseModel = (modelId: string) =>
   modelId.slice(CROSSI_VIDEO_PREFIX.length);
 
+// ---------- Frame cache ----------
+// In-memory cache keyed by `${baseModel}::${fullPrompt}` so identical frame
+// requests (same prompt + model + frame index + total) reuse a previous
+// generation instead of paying for it again. Survives for the page session.
+const FRAME_CACHE = new Map<string, Promise<string>>();
+const FRAME_CACHE_MAX = 500;
+
+function cacheGet(key: string) {
+  return FRAME_CACHE.get(key);
+}
+function cacheSet(key: string, value: Promise<string>) {
+  if (FRAME_CACHE.size >= FRAME_CACHE_MAX) {
+    // Drop oldest entry (Map preserves insertion order).
+    const firstKey = FRAME_CACHE.keys().next().value;
+    if (firstKey !== undefined) FRAME_CACHE.delete(firstKey);
+  }
+  FRAME_CACHE.set(key, value);
+}
+
 /**
  * Strip the "puter/" prefix to get the actual model id Puter.js expects.
  * e.g. "puter/dall-e-3" -> "dall-e-3"
@@ -146,21 +165,33 @@ async function generateVideoFrame(
   if (!window.puter?.ai?.txt2img) {
     throw new Error("Puter.js not available");
   }
-  const img = await window.puter.ai.txt2img(fullPrompt, { model: baseModel });
-  const src = img.src;
-  if (src.startsWith("data:")) return src;
-  try {
-    const res = await fetch(src);
-    const blob = await res.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return src;
-  }
+
+  const cacheKey = `${baseModel}::${fullPrompt}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  const promise = (async () => {
+    const img = await window.puter!.ai.txt2img(fullPrompt, { model: baseModel });
+    const src = img.src;
+    if (src.startsWith("data:")) return src;
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return src;
+    }
+  })();
+
+  cacheSet(cacheKey, promise);
+  // If generation fails, evict so a retry can succeed next time.
+  promise.catch(() => FRAME_CACHE.delete(cacheKey));
+  return promise;
 }
 
 function loadImageEl(src: string): Promise<HTMLImageElement> {
@@ -189,15 +220,25 @@ export async function generateCrossiVideo(
   const totalFrames = fps * seconds;
   const baseModel = crossiVideoBaseModel(modelId); // e.g. "imagen-4.0-fast"
 
-  // Generate frames sequentially (keep last 3 in memory for future use).
-  const frameDataUrls: string[] = [];
-  for (let i = 0; i < totalFrames; i++) {
-    const dataUrl = await generateVideoFrame(prompt, baseModel, i, totalFrames);
-    frameDataUrls.push(dataUrl);
-    onProgress?.(i + 1, totalFrames);
-    // Keep only last 3 frames worth of references in memory beyond what we need
-    // (we still need all frames for canvas playback below).
-  }
+  // Generate frames in parallel with a bounded concurrency. Cache hits return
+  // instantly without re-billing the upstream API.
+  const CONCURRENCY = 4;
+  const frameDataUrls: string[] = new Array(totalFrames);
+  let completed = 0;
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (true) {
+      const i = nextIndex++;
+      if (i >= totalFrames) return;
+      frameDataUrls[i] = await generateVideoFrame(prompt, baseModel, i, totalFrames);
+      completed += 1;
+      onProgress?.(completed, totalFrames);
+    }
+  };
+
+  const workerCount = Math.min(CONCURRENCY, totalFrames);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
   // Load all frames as <img> elements for drawing.
   const images = await Promise.all(frameDataUrls.map(loadImageEl));
