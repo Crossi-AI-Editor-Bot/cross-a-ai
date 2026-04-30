@@ -18,7 +18,26 @@ export const isCrossiVideoModel = (modelId: string) =>
 
 /** Strip "crossi-video/" to get underlying Puter image model id. */
 export const crossiVideoBaseModel = (modelId: string) =>
-  modelId.slice(CROSSI_VIDEO_PREFIX.length);
+  modelId.slice(CROSSI_VIDEO_PREFIX.length) === "imagen-4.0-fast"
+    ? "google/imagen-4.0-fast"
+    : modelId.slice(CROSSI_VIDEO_PREFIX.length);
+
+const isMobileRuntime = () =>
+  typeof window !== "undefined" &&
+  (window.matchMedia?.("(max-width: 768px)").matches ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`${label} timed out. Please try a shorter video or retry.`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 // ---------- Frame cache ----------
 // In-memory cache keyed by `${baseModel}::${fullPrompt}` so identical frame
@@ -172,7 +191,11 @@ async function generateVideoFrame(
 
   const promise = (async () => {
     console.log(`[CrossiVideo] Generating frame ${frameIndex + 1}/${totalFrames} with Puter model:`, baseModel);
-    const img = await window.puter!.ai.txt2img(fullPrompt, { model: baseModel });
+    const img = await withTimeout(
+      window.puter!.ai.txt2img(fullPrompt, { model: baseModel }),
+      isMobileRuntime() ? 120_000 : 90_000,
+      `Frame ${frameIndex + 1}`,
+    );
     console.log(`[CrossiVideo] Frame ${frameIndex + 1} ready`);
     const src = img.src;
     if (src.startsWith("data:")) return src;
@@ -225,10 +248,11 @@ export async function generateCrossiVideo(
   const totalFrames = fps * seconds;
   const baseModel = crossiVideoBaseModel(modelId); // e.g. "imagen-4.0-fast"
   console.log(`[CrossiVideo] Starting: ${seconds}s, ${totalFrames} frames, model="${baseModel}"`);
+  onProgress?.(0, totalFrames);
 
   // Generate frames in parallel with a bounded concurrency. Cache hits return
   // instantly without re-billing the upstream API.
-  const CONCURRENCY = 4;
+  const CONCURRENCY = isMobileRuntime() ? 1 : 3;
   const frameDataUrls: string[] = new Array(totalFrames);
   let completed = 0;
   let nextIndex = 0;
