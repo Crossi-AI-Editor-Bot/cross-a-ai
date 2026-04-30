@@ -180,8 +180,8 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         }
         const { credits: remainingV } = await deductRes.json();
 
-        // Show progressive status as frames are generated.
-        updateAssistantMessage(`🎬 Generating ${seconds * 10} frames at 10 FPS… (this can take a minute)`);
+        // Show progressive status immediately so mobile users see that work started.
+        updateAssistantMessage(`🎬 Starting video generation…\n[[VIDEO_PROGRESS:0/${seconds * 10}]]`);
 
         try {
           const videoDataUrl = await generateCrossiVideo(
@@ -194,7 +194,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
                 if (last?.role === "assistant") {
                   return prev.map((m, i) =>
                     i === prev.length - 1
-                      ? { ...m, content: `🎬 Generating frames…\n[[VIDEO_PROGRESS:${cur}/${total}]]` }
+                      ? { ...m, content: `${cur === 0 ? "🎬 Connecting to the image generator…" : "🎬 Generating frames…"}\n[[VIDEO_PROGRESS:${cur}/${total}]]` }
                       : m,
                   );
                 }
