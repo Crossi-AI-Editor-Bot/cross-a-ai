@@ -180,27 +180,6 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       if (modelRow?.model_id && isCrossiVideoModel(modelRow.model_id)) {
         const seconds = Math.max(1, Math.min(5, options?.videoSeconds ?? 3));
 
-        try {
-          if (selectedModelId) throw new Error("already-signed-in");
-          updateAssistantMessage("Opening Puter sign-in…");
-          await ensurePuterSignedIn({ interactive: true });
-          removeLastAssistantIfCreated();
-        } catch (puterAuthErr) {
-          if (puterAuthErr instanceof Error && puterAuthErr.message === "already-signed-in") {
-            removeLastAssistantIfCreated();
-          } else {
-          toast({
-            title: "Puter sign-in required",
-            description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
-            variant: "destructive",
-          });
-          removeLastAssistantIfCreated();
-          setMessages((prev) => prev.slice(0, -1));
-          setIsLoading(false);
-          return;
-          }
-        }
-
         const { data: { session: vSession } } = await supabase.auth.getSession();
         const vAuth = vSession?.access_token;
         if (!vAuth) {
@@ -296,27 +275,6 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       // === End Crossi Video path ===
 
       if (modelRow?.model_id && isPuterImageModel(modelRow.model_id)) {
-        try {
-          if (selectedModelId) throw new Error("already-signed-in");
-          updateAssistantMessage("Opening Puter sign-in…");
-          await ensurePuterSignedIn({ interactive: true });
-          removeLastAssistantIfCreated();
-        } catch (puterAuthErr) {
-          if (puterAuthErr instanceof Error && puterAuthErr.message === "already-signed-in") {
-            removeLastAssistantIfCreated();
-          } else {
-          toast({
-            title: "Puter sign-in required",
-            description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
-            variant: "destructive",
-          });
-          removeLastAssistantIfCreated();
-          setMessages((prev) => prev.slice(0, -1));
-          setIsLoading(false);
-          return;
-          }
-        }
-
         // Server-side credit check + deduction (auth, tier access, atomic deduct)
         const { data: { session: puterSession } } = await supabase.auth.getSession();
         const puterAuth = puterSession?.access_token;
