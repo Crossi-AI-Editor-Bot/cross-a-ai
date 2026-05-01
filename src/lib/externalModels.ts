@@ -145,21 +145,30 @@ export async function ensurePuterSignedIn(options: { interactive?: boolean } = {
     : signInState;
   if (signedIn) return;
 
-  if (!options.interactive || !auth.signIn) {
-    throw new Error("Puter sign-in is required before using Puter image models. Tap send again and complete the Puter sign-in popup.");
+  if (!auth.signIn) {
+    throw new Error("Puter auth is unavailable. Please refresh the page and try again.");
   }
 
+  // Silent onboarding: create a temporary Puter user in the background.
+  // No popup, no user gesture required. Puter persists the temp session
+  // in localStorage so subsequent visits skip this entirely.
   try {
-    await withTimeout(auth.signIn(), 60_000, "Puter sign-in");
+    await withTimeout(
+      auth.signIn({ attempt_temp_user_creation: true }),
+      60_000,
+      "Puter sign-in",
+    );
   } catch (error) {
-    console.error("[Puter] Sign-in failed or was cancelled:", error);
-    throw new Error("Puter sign-in was cancelled or blocked. Please allow the popup and try again.");
+    console.error("[Puter] Silent sign-in failed:", error);
+    throw new Error("Could not connect to Puter. Please check your connection and try again.");
   }
 
-  const signedInAfterPopup = await Promise.resolve(auth.isSignedIn());
-  if (!signedInAfterPopup) {
-    throw new Error("Puter sign-in was not completed. Please try again before generating images.");
+  const signedInAfter = await Promise.resolve(auth.isSignedIn());
+  if (!signedInAfter) {
+    throw new Error("Could not connect to Puter. Please try again.");
   }
+  // Mark options as intentionally unused (kept for backward-compat).
+  void options;
 }
 
 /**
