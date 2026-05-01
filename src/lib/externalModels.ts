@@ -137,7 +137,10 @@ export async function ensurePuterSignedIn(options: { interactive?: boolean } = {
   const auth = window.puter.auth;
   if (!auth?.isSignedIn) return;
 
-  const signedIn = await Promise.resolve(auth.isSignedIn());
+  const signInState = auth.isSignedIn();
+  const signedIn = typeof (signInState as Promise<boolean>)?.then === "function"
+    ? await signInState
+    : signInState;
   if (signedIn) return;
 
   if (!options.interactive || !auth.signIn) {
