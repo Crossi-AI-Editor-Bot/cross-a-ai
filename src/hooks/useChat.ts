@@ -6,7 +6,6 @@ import {
   generatePuterImage,
   isCrossiVideoModel,
   generateCrossiVideo,
-  ensurePuterSignedIn,
 } from "@/lib/externalModels";
 
 interface Message {
