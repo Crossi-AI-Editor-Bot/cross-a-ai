@@ -86,6 +86,8 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       return;
     }
 
+    const selectedModelId = options?.selectedModelId;
+
     setIsLoading(true);
     setNewCredits(null);
     setNewImageCredits(null);
