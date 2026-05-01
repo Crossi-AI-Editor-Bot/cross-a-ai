@@ -13,6 +13,8 @@ import NotFound from "./pages/NotFound";
 import { NotificationPopup } from "./components/NotificationPopup";
 import { useIpBanCheck } from "./hooks/useIpBanCheck";
 import { useApiErrorInterceptor } from "./hooks/useApiErrorInterceptor";
+import { useEffect } from "react";
+import { ensurePuterSignedIn } from "./lib/externalModels";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +49,7 @@ const App = () => (
       <BrowserRouter>
         <ApiErrorInterceptorWrapper>
           <BanGuard>
+            <PuterWarmup />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
