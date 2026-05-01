@@ -86,28 +86,9 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       return;
     }
 
-    const selectedModelId = options?.selectedModelId;
-    const needsPuterAuth = selectedModelId
-      ? isPuterImageModel(selectedModelId) || isCrossiVideoModel(selectedModelId)
-      : false;
-
     setIsLoading(true);
     setNewCredits(null);
     setNewImageCredits(null);
-
-    if (needsPuterAuth) {
-      try {
-        await ensurePuterSignedIn({ interactive: true });
-      } catch (puterAuthErr) {
-        toast({
-          title: "Puter sign-in required",
-          description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-    }
 
     // Convert files to base64
     const fileData = files ? await Promise.all(
