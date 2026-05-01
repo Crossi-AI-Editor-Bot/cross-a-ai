@@ -6,6 +6,7 @@ import {
   generatePuterImage,
   isCrossiVideoModel,
   generateCrossiVideo,
+  ensurePuterSignedIn,
 } from "@/lib/externalModels";
 
 interface Message {
@@ -115,6 +116,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     let assistantContent = "";
     let assistantImage: string | undefined = undefined;
     let assistantVideo: string | undefined = undefined;
+    let assistantMessageCreated = false;
 
     const updateAssistantMessage = (chunk: string, imageData?: string, videoData?: string) => {
       assistantContent += chunk;
@@ -130,8 +132,18 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
               : msg
           );
         }
+        assistantMessageCreated = true;
         return [...prev, { role: "assistant", content: assistantContent, image: assistantImage, video: assistantVideo }];
       });
+    };
+
+    const removeLastAssistantIfCreated = () => {
+      if (!assistantMessageCreated) return;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        return last?.role === "assistant" ? prev.slice(0, -1) : prev;
+      });
+      assistantMessageCreated = false;
     };
 
     try {
@@ -146,6 +158,22 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       // === Crossi 5.1 Video (client-side frame generation + assembly) ===
       if (modelRow?.model_id && isCrossiVideoModel(modelRow.model_id)) {
         const seconds = Math.max(1, Math.min(5, options?.videoSeconds ?? 3));
+
+        try {
+          updateAssistantMessage("Opening Puter sign-in…");
+          await ensurePuterSignedIn({ interactive: true });
+          removeLastAssistantIfCreated();
+        } catch (puterAuthErr) {
+          toast({
+            title: "Puter sign-in required",
+            description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
+            variant: "destructive",
+          });
+          removeLastAssistantIfCreated();
+          setMessages((prev) => prev.slice(0, -1));
+          setIsLoading(false);
+          return;
+        }
 
         const { data: { session: vSession } } = await supabase.auth.getSession();
         const vAuth = vSession?.access_token;
@@ -233,7 +261,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             description: vErr instanceof Error ? vErr.message : "Unknown error",
             variant: "destructive",
           });
-          setMessages((prev) => prev.slice(0, -1));
+          removeLastAssistantIfCreated();
         }
 
         setIsLoading(false);
@@ -242,6 +270,22 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       // === End Crossi Video path ===
 
       if (modelRow?.model_id && isPuterImageModel(modelRow.model_id)) {
+        try {
+          updateAssistantMessage("Opening Puter sign-in…");
+          await ensurePuterSignedIn({ interactive: true });
+          removeLastAssistantIfCreated();
+        } catch (puterAuthErr) {
+          toast({
+            title: "Puter sign-in required",
+            description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
+            variant: "destructive",
+          });
+          removeLastAssistantIfCreated();
+          setMessages((prev) => prev.slice(0, -1));
+          setIsLoading(false);
+          return;
+        }
+
         // Server-side credit check + deduction (auth, tier access, atomic deduct)
         const { data: { session: puterSession } } = await supabase.auth.getSession();
         const puterAuth = puterSession?.access_token;
@@ -296,7 +340,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             description: puterErr instanceof Error ? puterErr.message : "Unknown error from Puter.js",
             variant: "destructive",
           });
-          setMessages((prev) => prev.slice(0, -1));
+          removeLastAssistantIfCreated();
         }
 
         setIsLoading(false);
