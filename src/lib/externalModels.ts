@@ -135,7 +135,9 @@ export async function ensurePuterSignedIn(options: { interactive?: boolean } = {
   }
 
   const auth = window.puter.auth;
-  if (!auth?.isSignedIn) return;
+  if (!auth?.isSignedIn) {
+    throw new Error("Puter auth is unavailable. Please refresh the page and try again.");
+  }
 
   const signInState = auth.isSignedIn();
   const signedIn = typeof (signInState as Promise<boolean>)?.then === "function"
