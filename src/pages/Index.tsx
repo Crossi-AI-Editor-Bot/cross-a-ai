@@ -310,7 +310,10 @@ const Index = () => {
         <div className="container max-w-4xl mx-auto px-4 py-4">
           <ChatInput 
             onSend={(content, files, options) =>
-              sendMessage(content, selectedModelCostId || "", files, options)
+              sendMessage(content, selectedModelCostId || "", files, {
+                ...options,
+                selectedModelId: selectedModelRow?.model_id,
+              })
             }
             disabled={isLoading}
             isCrossiVideo={selectedModelRow?.model_id?.startsWith("crossi-video/") ?? false}

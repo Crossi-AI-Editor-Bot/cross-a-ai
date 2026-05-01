@@ -6,6 +6,7 @@ import {
   generatePuterImage,
   isCrossiVideoModel,
   generateCrossiVideo,
+  ensurePuterSignedIn,
 } from "@/lib/externalModels";
 
 interface Message {
@@ -72,7 +73,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     content: string,
     modelCostId: string,
     files?: File[],
-    options?: { videoSeconds?: number },
+    options?: { videoSeconds?: number; selectedModelId?: string },
   ) => {
     if ((!content.trim() && !files?.length)) return;
     
@@ -85,9 +86,28 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       return;
     }
 
+    const selectedModelId = options?.selectedModelId;
+    const needsPuterAuth = selectedModelId
+      ? isPuterImageModel(selectedModelId) || isCrossiVideoModel(selectedModelId)
+      : false;
+
     setIsLoading(true);
     setNewCredits(null);
     setNewImageCredits(null);
+
+    if (needsPuterAuth) {
+      try {
+        await ensurePuterSignedIn({ interactive: true });
+      } catch (puterAuthErr) {
+        toast({
+          title: "Puter sign-in required",
+          description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
 
     // Convert files to base64
     const fileData = files ? await Promise.all(
@@ -115,6 +135,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     let assistantContent = "";
     let assistantImage: string | undefined = undefined;
     let assistantVideo: string | undefined = undefined;
+    let assistantMessageCreated = false;
 
     const updateAssistantMessage = (chunk: string, imageData?: string, videoData?: string) => {
       assistantContent += chunk;
@@ -130,18 +151,30 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
               : msg
           );
         }
+        assistantMessageCreated = true;
         return [...prev, { role: "assistant", content: assistantContent, image: assistantImage, video: assistantVideo }];
       });
+    };
+
+    const removeLastAssistantIfCreated = () => {
+      if (!assistantMessageCreated) return;
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        return last?.role === "assistant" ? prev.slice(0, -1) : prev;
+      });
+      assistantMessageCreated = false;
     };
 
     try {
       // === Puter.js client-side image generation path ===
       // Look up the model to detect Puter image models without requiring extra args.
-      const { data: modelRow } = await supabase
-        .from("model_costs")
-        .select("model_id")
-        .eq("id", modelCostId)
-        .maybeSingle();
+      const { data: modelRow } = selectedModelId
+        ? { data: { model_id: selectedModelId } }
+        : await supabase
+            .from("model_costs")
+            .select("model_id")
+            .eq("id", modelCostId)
+            .maybeSingle();
 
       // === Crossi 5.1 Video (client-side frame generation + assembly) ===
       if (modelRow?.model_id && isCrossiVideoModel(modelRow.model_id)) {
@@ -233,7 +266,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             description: vErr instanceof Error ? vErr.message : "Unknown error",
             variant: "destructive",
           });
-          setMessages((prev) => prev.slice(0, -1));
+          removeLastAssistantIfCreated();
         }
 
         setIsLoading(false);
@@ -296,7 +329,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             description: puterErr instanceof Error ? puterErr.message : "Unknown error from Puter.js",
             variant: "destructive",
           });
-          setMessages((prev) => prev.slice(0, -1));
+          removeLastAssistantIfCreated();
         }
 
         setIsLoading(false);

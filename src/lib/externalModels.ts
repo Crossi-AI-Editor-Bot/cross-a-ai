@@ -111,6 +111,10 @@ export const PUTER_IMAGE_MODELS: { id: string; label: string }[] = [
 declare global {
   interface Window {
     puter?: {
+      auth?: {
+        isSignedIn?: () => boolean | Promise<boolean>;
+        signIn?: (options?: { attempt_temp_user_creation?: boolean }) => Promise<unknown>;
+      };
       ai: {
         txt2img: (
           prompt: string,
@@ -125,6 +129,39 @@ declare global {
   }
 }
 
+export async function ensurePuterSignedIn(options: { interactive?: boolean } = {}): Promise<void> {
+  if (typeof window === "undefined" || !window.puter?.ai?.txt2img) {
+    throw new Error("Puter.js is not loaded. Please refresh the page and try again.");
+  }
+
+  const auth = window.puter.auth;
+  if (!auth?.isSignedIn) {
+    throw new Error("Puter auth is unavailable. Please refresh the page and try again.");
+  }
+
+  const signInState = auth.isSignedIn();
+  const signedIn = typeof (signInState as Promise<boolean>)?.then === "function"
+    ? await signInState
+    : signInState;
+  if (signedIn) return;
+
+  if (!options.interactive || !auth.signIn) {
+    throw new Error("Puter sign-in is required before using Puter image models. Tap send again and complete the Puter sign-in popup.");
+  }
+
+  try {
+    await withTimeout(auth.signIn(), 60_000, "Puter sign-in");
+  } catch (error) {
+    console.error("[Puter] Sign-in failed or was cancelled:", error);
+    throw new Error("Puter sign-in was cancelled or blocked. Please allow the popup and try again.");
+  }
+
+  const signedInAfterPopup = await Promise.resolve(auth.isSignedIn());
+  if (!signedInAfterPopup) {
+    throw new Error("Puter sign-in was not completed. Please try again before generating images.");
+  }
+}
+
 /**
  * Generate an image with Puter.js and return a data URL (base64) so it can be
  * stored/displayed like any other image response from the chat function.
@@ -133,12 +170,14 @@ export async function generatePuterImage(
   prompt: string,
   modelId: string
 ): Promise<string> {
-  if (typeof window === "undefined" || !window.puter?.ai?.txt2img) {
-    throw new Error("Puter.js is not loaded. Please refresh the page and try again.");
-  }
+  await ensurePuterSignedIn({ interactive: false });
 
   const model = puterModelName(modelId);
-  const img = await window.puter.ai.txt2img(prompt, { model });
+  const img = await withTimeout(
+    window.puter!.ai.txt2img(prompt, { model }),
+    isMobileRuntime() ? 120_000 : 90_000,
+    "Image generation",
+  );
 
   // Puter returns an <img> element. Convert to a data URL so it survives storage.
   const src = img.src;
@@ -240,9 +279,7 @@ export async function generateCrossiVideo(
   durationSeconds: number,
   onProgress?: (current: number, total: number) => void,
 ): Promise<string> {
-  if (typeof window === "undefined" || !window.puter?.ai?.txt2img) {
-    throw new Error("Puter.js failed to load. Refresh the page and try again.");
-  }
+  await ensurePuterSignedIn({ interactive: false });
   const fps = 10;
   const seconds = Math.max(1, Math.min(5, Math.round(durationSeconds)));
   const totalFrames = fps * seconds;
