@@ -73,7 +73,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     content: string,
     modelCostId: string,
     files?: File[],
-    options?: { videoSeconds?: number },
+    options?: { videoSeconds?: number; selectedModelId?: string },
   ) => {
     if ((!content.trim() && !files?.length)) return;
     
@@ -86,9 +86,28 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       return;
     }
 
+    const selectedModelId = options?.selectedModelId;
+    const needsPuterAuth = selectedModelId
+      ? isPuterImageModel(selectedModelId) || isCrossiVideoModel(selectedModelId)
+      : false;
+
     setIsLoading(true);
     setNewCredits(null);
     setNewImageCredits(null);
+
+    if (needsPuterAuth) {
+      try {
+        await ensurePuterSignedIn({ interactive: true });
+      } catch (puterAuthErr) {
+        toast({
+          title: "Puter sign-in required",
+          description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
 
     // Convert files to base64
     const fileData = files ? await Promise.all(
@@ -149,21 +168,27 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     try {
       // === Puter.js client-side image generation path ===
       // Look up the model to detect Puter image models without requiring extra args.
-      const { data: modelRow } = await supabase
-        .from("model_costs")
-        .select("model_id")
-        .eq("id", modelCostId)
-        .maybeSingle();
+      const { data: modelRow } = selectedModelId
+        ? { data: { model_id: selectedModelId } }
+        : await supabase
+            .from("model_costs")
+            .select("model_id")
+            .eq("id", modelCostId)
+            .maybeSingle();
 
       // === Crossi 5.1 Video (client-side frame generation + assembly) ===
       if (modelRow?.model_id && isCrossiVideoModel(modelRow.model_id)) {
         const seconds = Math.max(1, Math.min(5, options?.videoSeconds ?? 3));
 
         try {
+          if (selectedModelId) throw new Error("already-signed-in");
           updateAssistantMessage("Opening Puter sign-in…");
           await ensurePuterSignedIn({ interactive: true });
           removeLastAssistantIfCreated();
         } catch (puterAuthErr) {
+          if (puterAuthErr instanceof Error && puterAuthErr.message === "already-signed-in") {
+            removeLastAssistantIfCreated();
+          } else {
           toast({
             title: "Puter sign-in required",
             description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
@@ -173,6 +198,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           setMessages((prev) => prev.slice(0, -1));
           setIsLoading(false);
           return;
+          }
         }
 
         const { data: { session: vSession } } = await supabase.auth.getSession();
@@ -271,10 +297,14 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
 
       if (modelRow?.model_id && isPuterImageModel(modelRow.model_id)) {
         try {
+          if (selectedModelId) throw new Error("already-signed-in");
           updateAssistantMessage("Opening Puter sign-in…");
           await ensurePuterSignedIn({ interactive: true });
           removeLastAssistantIfCreated();
         } catch (puterAuthErr) {
+          if (puterAuthErr instanceof Error && puterAuthErr.message === "already-signed-in") {
+            removeLastAssistantIfCreated();
+          } else {
           toast({
             title: "Puter sign-in required",
             description: puterAuthErr instanceof Error ? puterAuthErr.message : "Please sign in to Puter and try again.",
@@ -284,6 +314,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           setMessages((prev) => prev.slice(0, -1));
           setIsLoading(false);
           return;
+          }
         }
 
         // Server-side credit check + deduction (auth, tier access, atomic deduct)
