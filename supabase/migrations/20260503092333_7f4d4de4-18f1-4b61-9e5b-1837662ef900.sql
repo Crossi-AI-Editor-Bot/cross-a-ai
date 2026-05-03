@@ -1,0 +1,1 @@
+DELETE FROM public.model_costs WHERE model_id LIKE 'puter/%' OR model_id LIKE 'crossi-video/%';
