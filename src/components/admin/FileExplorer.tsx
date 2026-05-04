@@ -620,6 +620,80 @@ export const FileExplorer = ({
           </div>
         )}
 
+        {/* Add new video model input */}
+        {showAddVideoModel && (
+          <div className="flex flex-col gap-1 px-2 py-2 bg-blue-500/20 rounded-md mb-2">
+            <div className="flex items-center gap-1">
+              <ImageIcon className="h-4 w-4 text-blue-400 shrink-0" />
+              <span className="text-xs font-medium text-blue-400">New Video Model</span>
+            </div>
+            <Select value={selectedVideoSlug} onValueChange={setSelectedVideoSlug}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {MAGNIFIC_VIDEO_ENDPOINTS.map((m) => (
+                  <SelectItem key={m.slug} value={m.slug}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1">
+              <Input
+                autoFocus
+                value={newModelLabel}
+                onChange={(e) => setNewModelLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddVideoModel();
+                  if (e.key === "Escape") setShowAddVideoModel(false);
+                }}
+                className="h-6 text-xs"
+                placeholder="Display name..."
+              />
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddVideoModel}>
+                <Save className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddVideoModel(false)}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Add new music model input */}
+        {showAddMusicModel && (
+          <div className="flex flex-col gap-1 px-2 py-2 bg-pink-500/20 rounded-md mb-2">
+            <div className="flex items-center gap-1">
+              <ImageIcon className="h-4 w-4 text-pink-400 shrink-0" />
+              <span className="text-xs font-medium text-pink-400">New Music Model</span>
+            </div>
+            <Select value={selectedMusicSlug} onValueChange={setSelectedMusicSlug}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {MAGNIFIC_MUSIC_ENDPOINTS.map((m) => (
+                  <SelectItem key={m.slug} value={m.slug}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1">
+              <Input
+                autoFocus
+                value={newModelLabel}
+                onChange={(e) => setNewModelLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddMusicModel();
+                  if (e.key === "Escape") setShowAddMusicModel(false);
+                }}
+                className="h-6 text-xs"
+                placeholder="Display name..."
+              />
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddMusicModel}>
+                <Save className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddMusicModel(false)}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* New root folder input */}
         {/* New root folder input */}
         {creatingFolderIn === "__root__" && (
