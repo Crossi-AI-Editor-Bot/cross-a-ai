@@ -76,8 +76,8 @@ export const useImageCredits = () => {
 
     if (imageCredits < amount) {
       toast({
-        title: "Insufficient image credits",
-        description: `You need ${amount} image credits but only have ${imageCredits.toFixed(1)}. Credits reset weekly.`,
+        title: "Insufficient media credits",
+        description: `You need ${amount} media credits but only have ${imageCredits.toFixed(1)}. Credits reset weekly.`,
         variant: "destructive",
       });
       return false;
