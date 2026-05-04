@@ -16,6 +16,15 @@ export const isMagnificMusicModel = (id: string) => id.startsWith(MAGNIFIC_MUSIC
 export const isMagnificModel = (id: string) =>
   isMagnificImageModel(id) || isMagnificVideoModel(id) || isMagnificMusicModel(id);
 
+// Built-in image models served via Lovable AI Gateway (not Magnific).
+export const BUILTIN_IMAGE_MODELS = [
+  "google/gemini-2.5-flash-image",
+  "google/gemini-3-pro-image-preview",
+] as const;
+
+export const isMediaModel = (id: string) =>
+  isMagnificModel(id) || (BUILTIN_IMAGE_MODELS as readonly string[]).includes(id);
+
 export const openRouterModelName = (id: string) => id.slice(OPENROUTER_PREFIX.length);
 export const magnificEndpointSlug = (id: string): string => {
   if (isMagnificImageModel(id)) return id.slice(MAGNIFIC_IMAGE_PREFIX.length);

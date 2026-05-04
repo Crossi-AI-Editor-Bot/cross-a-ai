@@ -8,10 +8,11 @@ interface ChatMessageProps {
   content: string;
   image?: string;
   video?: string;
+  audio?: string;
   files?: Array<{ name: string; type: string; data: string }>;
 }
 
-const ChatMessage = ({ role, content, image, video, files }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, video, audio, files }: ChatMessageProps) => {
   const isUser = role === "user";
 
   // Detect a "[[VIDEO_PROGRESS:cur/total]]" marker emitted during Crossi video
@@ -172,6 +173,12 @@ const ChatMessage = ({ role, content, image, video, files }: ChatMessageProps) =
                 </Button>
               </div>
             </div>
+          </div>
+        )}
+
+        {audio && (
+          <div className="mt-3">
+            <audio src={audio} controls className="w-full" />
           </div>
         )}
       </div>

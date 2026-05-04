@@ -1,18 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import {
-  isPuterImageModel,
-  generatePuterImage,
-  isCrossiVideoModel,
-  generateCrossiVideo,
-} from "@/lib/externalModels";
+import { isMagnificModel } from "@/lib/externalModels";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   image?: string;
   video?: string;
+  audio?: string;
   files?: Array<{ name: string; type: string; data: string }>;
 }
 
@@ -52,7 +48,8 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             role: msg.role,
             content: parsed.text || parsed.content || msg.content,
             image: parsed.image,
-            video: parsed.video
+            video: parsed.video,
+            audio: parsed.audio,
           };
         } catch {
           return {
@@ -148,8 +145,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     };
 
     try {
-      // === Puter.js client-side image generation path ===
-      // Look up the model to detect Puter image models without requiring extra args.
+      // Look up the model_id (or use the one passed in)
       const { data: modelRow } = selectedModelId
         ? { data: { model_id: selectedModelId } }
         : await supabase
@@ -158,166 +154,75 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             .eq("id", modelCostId)
             .maybeSingle();
 
-      // === Crossi 5.1 Video (client-side frame generation + assembly) ===
-      if (modelRow?.model_id && isCrossiVideoModel(modelRow.model_id)) {
-        const seconds = Math.max(1, Math.min(5, options?.videoSeconds ?? 3));
-
-        const { data: { session: vSession } } = await supabase.auth.getSession();
-        const vAuth = vSession?.access_token;
-        if (!vAuth) {
+      // === Magnific generation (image / video / music) ===
+      if (modelRow?.model_id && isMagnificModel(modelRow.model_id)) {
+        const { data: { session: mSession } } = await supabase.auth.getSession();
+        const mAuth = mSession?.access_token;
+        if (!mAuth) {
           toast({ title: "Authentication Required", description: "Please log in.", variant: "destructive" });
           setMessages((prev) => prev.slice(0, -1));
           setIsLoading(false);
           return;
         }
 
-        const deductRes = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deduct-image-credits`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${vAuth}` },
-            body: JSON.stringify({ modelCostId, multiplier: seconds }),
-          },
-        );
-
-        if (!deductRes.ok) {
-          const err = await deductRes.json().catch(() => ({}));
-          if (deductRes.status === 402) {
-            toast({ title: "Insufficient Image Credits", description: err.error || `Need ${seconds * 5} image credits.`, variant: "destructive" });
-          } else if (deductRes.status === 403) {
-            toast({ title: "Access Denied", description: err.error || "This model requires a higher tier.", variant: "destructive" });
-          } else {
-            toast({ title: "Error", description: err.error || "Failed to start video.", variant: "destructive" });
-          }
-          setMessages((prev) => prev.slice(0, -1));
-          setIsLoading(false);
-          return;
-        }
-        const { credits: remainingV } = await deductRes.json();
-
-        // Show progressive status immediately so mobile users see that work started.
-        updateAssistantMessage(`🎬 Starting video generation…\n[[VIDEO_PROGRESS:0/${seconds * 10}]]`);
+        updateAssistantMessage("⏳ Generating with Magnific…");
 
         try {
-          const videoDataUrl = await generateCrossiVideo(
-            content || "A short cinematic clip",
-            modelRow.model_id,
-            seconds,
-            (cur, total) => {
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === "assistant") {
-                  return prev.map((m, i) =>
-                    i === prev.length - 1
-                      ? { ...m, content: `${cur === 0 ? "🎬 Connecting to the image generator…" : "🎬 Generating frames…"}\n[[VIDEO_PROGRESS:${cur}/${total}]]` }
-                      : m,
-                  );
-                }
-                return prev;
-              });
+          const res = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/magnific-generate`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${mAuth}` },
+              body: JSON.stringify({ modelCostId, prompt: content || "Generate" }),
             },
           );
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            removeLastAssistantIfCreated();
+            if (res.status === 402) {
+              toast({ title: "Insufficient Media Credits", description: data.error || "Not enough credits.", variant: "destructive" });
+            } else if (res.status === 403) {
+              toast({ title: "Access Denied", description: data.error || "This model requires a higher tier.", variant: "destructive" });
+            } else {
+              toast({ title: "Error", description: data.error || "Failed to generate.", variant: "destructive" });
+            }
+            setMessages((prev) => prev.slice(0, -1));
+            setIsLoading(false);
+            return;
+          }
 
-          assistantContent = "Here's your generated video:";
-          assistantVideo = videoDataUrl;
+          const text = data.text || (data.video ? "Here's your generated video:" : data.audio ? "Here's your generated audio:" : "Here's your generated image:");
+          assistantContent = text;
+          assistantImage = data.image;
+          assistantVideo = data.video;
           setMessages((prev) => {
             const last = prev[prev.length - 1];
+            const newMsg = { role: "assistant" as const, content: text, image: data.image, video: data.video, audio: data.audio } as any;
             if (last?.role === "assistant") {
-              return prev.map((m, i) =>
-                i === prev.length - 1
-                  ? { ...m, content: assistantContent, video: videoDataUrl }
-                  : m,
-              );
+              return prev.map((m, i) => (i === prev.length - 1 ? newMsg : m));
             }
-            return [...prev, { role: "assistant", content: assistantContent, video: videoDataUrl }];
+            return [...prev, newMsg];
           });
-          setNewImageCredits(remainingV);
+          if (typeof data.credits === "number") setNewImageCredits(data.credits);
 
           await saveMessagesToDatabase([
             userMessage,
-            { role: "assistant", content: JSON.stringify({ text: assistantContent, video: videoDataUrl }) },
+            { role: "assistant", content: JSON.stringify({ text, image: data.image, video: data.video, audio: data.audio }) },
           ]);
 
           if (messages.length === 0) {
-            generateConversationTitle([userMessage, { role: "assistant", content: assistantContent }]);
+            generateConversationTitle([userMessage, { role: "assistant", content: text }]);
           }
-        } catch (vErr) {
-          console.error("Crossi video generation failed:", vErr);
-          toast({
-            title: "Video generation failed",
-            description: vErr instanceof Error ? vErr.message : "Unknown error",
-            variant: "destructive",
-          });
+        } catch (mErr) {
+          console.error("Magnific generation failed:", mErr);
+          toast({ title: "Generation failed", description: mErr instanceof Error ? mErr.message : "Unknown error", variant: "destructive" });
           removeLastAssistantIfCreated();
         }
 
         setIsLoading(false);
         return;
       }
-      // === End Crossi Video path ===
-
-      if (modelRow?.model_id && isPuterImageModel(modelRow.model_id)) {
-        // Server-side credit check + deduction (auth, tier access, atomic deduct)
-        const { data: { session: puterSession } } = await supabase.auth.getSession();
-        const puterAuth = puterSession?.access_token;
-        if (!puterAuth) {
-          toast({ title: "Authentication Required", description: "Please log in.", variant: "destructive" });
-          setMessages((prev) => prev.slice(0, -1));
-          return;
-        }
-
-        const deductRes = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deduct-image-credits`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${puterAuth}` },
-            body: JSON.stringify({ modelCostId }),
-          }
-        );
-
-        if (!deductRes.ok) {
-          const err = await deductRes.json().catch(() => ({}));
-          if (deductRes.status === 402) {
-            toast({ title: "Insufficient Image Credits", description: err.error || "Not enough credits.", variant: "destructive" });
-          } else if (deductRes.status === 403) {
-            toast({ title: "Access Denied", description: err.error || "This model requires a higher tier.", variant: "destructive" });
-          } else {
-            toast({ title: "Error", description: err.error || "Failed to start generation.", variant: "destructive" });
-          }
-          setMessages((prev) => prev.slice(0, -1));
-          return;
-        }
-
-        const { credits: remainingImg } = await deductRes.json();
-
-        try {
-          const imageDataUrl = await generatePuterImage(content || "Generate an image", modelRow.model_id);
-          const textResponse = "Here's your generated image:";
-          updateAssistantMessage(textResponse, imageDataUrl);
-          setNewImageCredits(remainingImg);
-
-          await saveMessagesToDatabase([
-            userMessage,
-            { role: "assistant", content: JSON.stringify({ text: textResponse, image: imageDataUrl }) },
-          ]);
-
-          if (messages.length === 0) {
-            generateConversationTitle([userMessage, { role: "assistant", content: textResponse }]);
-          }
-        } catch (puterErr) {
-          console.error("Puter image generation failed:", puterErr);
-          toast({
-            title: "Image generation failed",
-            description: puterErr instanceof Error ? puterErr.message : "Unknown error from Puter.js",
-            variant: "destructive",
-          });
-          removeLastAssistantIfCreated();
-        }
-
-        setIsLoading(false);
-        return;
-      }
-      // === End Puter.js path ===
+      // === End Magnific path ===
 
       // Get auth token
       const { data: { session } } = await supabase.auth.getSession();

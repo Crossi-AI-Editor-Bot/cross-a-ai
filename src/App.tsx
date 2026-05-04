@@ -13,8 +13,6 @@ import NotFound from "./pages/NotFound";
 import { NotificationPopup } from "./components/NotificationPopup";
 import { useIpBanCheck } from "./hooks/useIpBanCheck";
 import { useApiErrorInterceptor } from "./hooks/useApiErrorInterceptor";
-import { useEffect } from "react";
-import { ensurePuterSignedIn } from "./lib/externalModels";
 
 const queryClient = new QueryClient();
 
@@ -40,33 +38,6 @@ const ApiErrorInterceptorWrapper = ({ children }: { children: React.ReactNode })
   return <>{children}</>;
 };
 
-const PuterWarmup = () => {
-  useEffect(() => {
-    // Wait briefly for puter.js script to load, then silently provision
-    // a temporary Puter user in the background. No popup, no UI.
-    let cancelled = false;
-    const tryWarm = async (attempt = 0) => {
-      if (cancelled) return;
-      if (typeof window === "undefined") return;
-      if (!window.puter?.auth?.isSignedIn) {
-        if (attempt < 20) setTimeout(() => tryWarm(attempt + 1), 500);
-        return;
-      }
-      try {
-        await ensurePuterSignedIn();
-      } catch (e) {
-        // Silent: will retry lazily on first generation.
-        console.warn("[Puter] Background warm-up failed:", e);
-      }
-    };
-    tryWarm();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return null;
-};
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -76,7 +47,6 @@ const App = () => (
       <BrowserRouter>
         <ApiErrorInterceptorWrapper>
           <BanGuard>
-            <PuterWarmup />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />

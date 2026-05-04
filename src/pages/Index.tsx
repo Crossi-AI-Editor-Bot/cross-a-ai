@@ -294,6 +294,7 @@ const Index = () => {
                 content={message.content}
                 image={message.image}
                 video={message.video}
+                audio={(message as any).audio}
                 files={message.files}
               />
             ))}
@@ -316,7 +317,7 @@ const Index = () => {
               })
             }
             disabled={isLoading}
-            isCrossiVideo={selectedModelRow?.model_id?.startsWith("crossi-video/") ?? false}
+            isCrossiVideo={false}
           />
         </div>
       </footer>
