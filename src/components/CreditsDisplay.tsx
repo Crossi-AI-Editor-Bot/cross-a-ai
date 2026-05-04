@@ -1,6 +1,7 @@
-import { Coins, Crown, ImageIcon } from "lucide-react";
+import { Coins, Crown, Sparkles } from "lucide-react";
 import { useVipStatus } from "@/hooks/useVipStatus";
 import type { ModelCost } from "@/hooks/useModelCosts";
+import { isMediaModel } from "@/lib/externalModels";
 
 interface CreditsDisplayProps {
   credits: number;
@@ -8,8 +9,6 @@ interface CreditsDisplayProps {
   selectedModelCostId?: string;
   models: ModelCost[];
 }
-
-const IMAGE_MODELS = ["google/gemini-2.5-flash-image", "google/gemini-3-pro-image-preview"] as const;
 
 const formatCredits = (value: number): string => {
   if (Number.isInteger(value)) return value.toString();
@@ -23,7 +22,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
   const modelData = selectedModelCostId ? models.find((m) => m.id === selectedModelCostId) : null;
   const modelId = modelData?.model_id;
 
-  const isImageModel = modelId ? IMAGE_MODELS.includes(modelId as any) : false;
+  const isImageModel = modelId ? isMediaModel(modelId) : false;
 
   const modelCost = modelData?.cost || 0;
   const imageCost = (modelData as any)?.image_cost || 0;
@@ -39,10 +38,10 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         </div>
       )}
 
-      {/* Show image credits only when image model is selected */}
+      {/* Show media credits when an image / video / music model is selected */}
       {isImageModel && imageCredits !== undefined && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
-          <ImageIcon className="w-4 h-4 text-purple-400" />
+          <Sparkles className="w-4 h-4 text-purple-400" />
           <span className="text-sm font-medium text-purple-300">
             {formatCredits(imageCredits)} {imageCost > 0 && `(-${imageCost})`}
           </span>

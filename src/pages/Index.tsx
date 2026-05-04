@@ -316,7 +316,7 @@ const Index = () => {
               })
             }
             disabled={isLoading}
-            isCrossiVideo={selectedModelRow?.model_id?.startsWith("crossi-video/") ?? false}
+            isCrossiVideo={false}
           />
         </div>
       </footer>
