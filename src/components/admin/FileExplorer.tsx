@@ -556,9 +556,9 @@ export const FileExplorer = ({
                     {m.label}
                   </SelectItem>
                 ))}
-                {PUTER_IMAGE_MODELS.map((m) => (
-                  <SelectItem key={`${PUTER_PREFIX}${m.id}`} value={`${PUTER_PREFIX}${m.id}`}>
-                    Puter · {m.label}
+                {MAGNIFIC_IMAGE_ENDPOINTS.map((m) => (
+                  <SelectItem key={`${MAGNIFIC_IMAGE_PREFIX}${m.slug}`} value={`${MAGNIFIC_IMAGE_PREFIX}${m.slug}`}>
+                    Magnific · {m.label}
                   </SelectItem>
                 ))}
               </SelectContent>
