@@ -16,18 +16,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { PUTER_IMAGE_MODELS, PUTER_PREFIX, OPENROUTER_PREFIX, isPuterImageModel, isCrossiVideoModel } from "@/lib/externalModels";
+import {
+  OPENROUTER_PREFIX,
+  MAGNIFIC_IMAGE_PREFIX,
+  MAGNIFIC_VIDEO_PREFIX,
+  MAGNIFIC_MUSIC_PREFIX,
+  MAGNIFIC_IMAGE_ENDPOINTS,
+  MAGNIFIC_VIDEO_ENDPOINTS,
+  MAGNIFIC_MUSIC_ENDPOINTS,
+  isMagnificModel,
+} from "@/lib/externalModels";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
 
-// Built-in image bases (Lovable AI Gateway) shown alongside Puter.js options
+// Built-in image bases (Lovable AI Gateway)
 const BUILTIN_IMAGE_BASES = [
   { id: "google/gemini-2.5-flash-image", label: "Nano Banana (2.5 Flash Image)" },
   { id: "google/gemini-3-pro-image-preview", label: "Crossi 3.0 Image (3 Pro Image)" },
 ];
 
 const isImageLikeModel = (modelId: string) =>
-  IMAGE_MODELS.includes(modelId) || isPuterImageModel(modelId) || isCrossiVideoModel(modelId);
+  IMAGE_MODELS.includes(modelId) || isMagnificModel(modelId);
 
 interface ModelFile {
   id: string;
@@ -102,6 +111,10 @@ export const FileExplorer = ({
   const [newModelLabel, setNewModelLabel] = useState("");
   const [showAddOpenRouterModel, setShowAddOpenRouterModel] = useState(false);
   const [newOpenRouterId, setNewOpenRouterId] = useState("");
+  const [showAddVideoModel, setShowAddVideoModel] = useState(false);
+  const [selectedVideoSlug, setSelectedVideoSlug] = useState<string>(MAGNIFIC_VIDEO_ENDPOINTS[0].slug);
+  const [showAddMusicModel, setShowAddMusicModel] = useState(false);
+  const [selectedMusicSlug, setSelectedMusicSlug] = useState<string>(MAGNIFIC_MUSIC_ENDPOINTS[0].slug);
 
   const folderTree = buildFolderTree(folders);
 
@@ -134,6 +147,22 @@ export const FileExplorer = ({
       setNewModelLabel("");
       setNewOpenRouterId("");
       setShowAddOpenRouterModel(false);
+    }
+  };
+
+  const handleAddVideoModel = () => {
+    if (newModelLabel.trim() && onAddModel && selectedVideoSlug) {
+      onAddModel(`${MAGNIFIC_VIDEO_PREFIX}${selectedVideoSlug}`, newModelLabel.trim());
+      setNewModelLabel("");
+      setShowAddVideoModel(false);
+    }
+  };
+
+  const handleAddMusicModel = () => {
+    if (newModelLabel.trim() && onAddModel && selectedMusicSlug) {
+      onAddModel(`${MAGNIFIC_MUSIC_PREFIX}${selectedMusicSlug}`, newModelLabel.trim());
+      setNewModelLabel("");
+      setShowAddMusicModel(false);
     }
   };
 
@@ -415,6 +444,26 @@ export const FileExplorer = ({
               >
                 <Plus className="h-3 w-3 mr-1" />
                 Image
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowAddVideoModel(true)}
+                title="Add Video Model"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Video
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowAddMusicModel(true)}
+                title="Add Music Model"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Music
               </Button>
               <Button
                 variant="ghost"
