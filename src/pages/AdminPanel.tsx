@@ -263,10 +263,19 @@ const AdminPanel = () => {
   const handleDeleteModel = async (id: string) => {
     try {
       const modelToDelete = models.find((m) => m.id === id);
-      if (!modelToDelete || modelToDelete.model_id !== 'openai/gpt-5-nano') {
+      // Allow deleting Nano models, OpenRouter models, and any Magnific models.
+      const mid = modelToDelete?.model_id || "";
+      const allowed =
+        !!modelToDelete &&
+        (mid === 'openai/gpt-5-nano' ||
+          mid.startsWith('openrouter/') ||
+          mid.startsWith('magnific-image/') ||
+          mid.startsWith('magnific-video/') ||
+          mid.startsWith('magnific-music/'));
+      if (!allowed) {
         toast({
           title: "Cannot delete",
-          description: "Only GPT Nano models can be deleted.",
+          description: "This model cannot be removed.",
           variant: "destructive",
         });
         return;
