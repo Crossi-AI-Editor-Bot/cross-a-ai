@@ -294,6 +294,7 @@ const Index = () => {
                 content={message.content}
                 image={message.image}
                 video={message.video}
+                audio={(message as any).audio}
                 files={message.files}
               />
             ))}

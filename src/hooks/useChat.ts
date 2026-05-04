@@ -8,6 +8,7 @@ interface Message {
   content: string;
   image?: string;
   video?: string;
+  audio?: string;
   files?: Array<{ name: string; type: string; data: string }>;
 }
 
@@ -47,7 +48,8 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             role: msg.role,
             content: parsed.text || parsed.content || msg.content,
             image: parsed.image,
-            video: parsed.video
+            video: parsed.video,
+            audio: parsed.audio,
           };
         } catch {
           return {
