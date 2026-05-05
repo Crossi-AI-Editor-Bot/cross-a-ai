@@ -173,7 +173,9 @@ Deno.serve(async (req) => {
       }
       if (status === 'FAILED' || status === 'ERROR') {
         await supabase.from('user_image_credits').update({ credits: Number(imgCredits.credits) }).eq('user_id', user.id);
-        return json(502, { error: 'Magnific generation failed' });
+        console.error('Magnific poll failed payload:', JSON.stringify(pj));
+        const reason = pj?.data?.error || pj?.data?.message || pj?.error || pj?.message || 'Magnific generation failed';
+        return json(502, { error: typeof reason === 'string' ? reason : JSON.stringify(reason) });
       }
     }
     if (!generated) return json(504, { error: 'Magnific generation timed out' });
