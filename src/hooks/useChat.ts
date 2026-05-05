@@ -173,7 +173,11 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${mAuth}` },
-              body: JSON.stringify({ modelCostId, prompt: content || "Generate" }),
+              body: JSON.stringify({
+                modelCostId,
+                prompt: content || "Generate",
+                image: fileData.find((f) => f.type?.startsWith("image/"))?.data,
+              }),
             },
           );
           const data = await res.json().catch(() => ({}));
