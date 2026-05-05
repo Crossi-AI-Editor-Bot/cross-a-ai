@@ -13,6 +13,7 @@ const MAGNIFIC_MUSIC_PREFIX = 'magnific-music/';
 const requestSchema = z.object({
   modelCostId: z.string().uuid(),
   prompt: z.string().min(1).max(4000),
+  image: z.string().optional(),
 });
 
 const json = (status: number, body: unknown) =>
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
 
     const parsed = requestSchema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json(400, { error: 'Invalid request' });
-    const { modelCostId, prompt } = parsed.data;
+    const { modelCostId, prompt, image } = parsed.data;
 
     // Fetch the model
     const { data: modelData, error: modelErr } = await supabase
@@ -127,6 +128,18 @@ Deno.serve(async (req) => {
     let body: Record<string, unknown> = { prompt };
     if (kind === 'image') body = { prompt, num_images: 1 };
     if (kind === 'music') body = { prompt, music_length_seconds: 30 };
+    if (kind === 'video') {
+      const isImageToVideo = endpointSlug.startsWith('image-to-video/');
+      if (isImageToVideo) {
+        if (!image) {
+          await supabase.from('user_image_credits').update({ credits: Number(imgCredits.credits) }).eq('user_id', user.id);
+          return json(400, { error: 'This video model requires an uploaded source image. Please attach an image and try again.' });
+        }
+        body = { prompt, image };
+      } else {
+        body = { prompt };
+      }
+    }
 
     const url = `https://api.magnific.com/v1/ai/${endpointSlug}`;
     const createRes = await fetch(url, {
