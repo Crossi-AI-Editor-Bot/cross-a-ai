@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.magnific-generate]
 verify_jwt = false
+
+[functions.public-api]
+verify_jwt = false
