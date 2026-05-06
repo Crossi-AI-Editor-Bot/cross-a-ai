@@ -65,6 +65,9 @@ export const useVipStatus = () => {
     return () => subscription.unsubscribe();
   }, [tiers, tiersLoading]);
 
+  const currentTierConfig = tier ? tiers.find(t => t.name === tier) : null;
+  const isUnlimited = !!(currentTierConfig as any)?.unlimited;
+
   const hasTierAccess = (requiredTier: string): boolean => {
     if (!tier || !requiredTier) return false;
     const tierOrder = tiers.map(t => t.name);
@@ -76,7 +79,7 @@ export const useVipStatus = () => {
 
   const isVip = tier !== null;
 
-  return { tier, isVip, isAdmin, loading: loading || tiersLoading, hasTierAccess };
+  return { tier, isVip, isAdmin, isUnlimited, loading: loading || tiersLoading, hasTierAccess };
 };
 
 // Legacy exports for compatibility

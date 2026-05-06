@@ -14,6 +14,7 @@ export interface VipTierConfig {
   text_color: string;
   bg_color: string;
   hidden: boolean;
+  unlimited?: boolean;
   created_at: string;
   updated_at: string;
 }

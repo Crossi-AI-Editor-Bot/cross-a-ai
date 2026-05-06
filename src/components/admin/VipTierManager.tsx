@@ -141,6 +141,7 @@ interface EditingTier {
   icon_name: string;
   colorPresetIndex: number;
   hidden: boolean;
+  unlimited: boolean;
 }
 
 const VipTierManager = () => {
@@ -167,6 +168,7 @@ const VipTierManager = () => {
       icon_name: tier.icon_name,
       colorPresetIndex: findColorPresetIndex(tier),
       hidden: tier.hidden || false,
+      unlimited: (tier as any).unlimited === true,
     });
     setIsCreating(false);
   };
@@ -182,6 +184,7 @@ const VipTierManager = () => {
       icon_name: "Crown",
       colorPresetIndex: 0,
       hidden: false,
+      unlimited: false,
     });
     setIsCreating(true);
   };
@@ -204,6 +207,7 @@ const VipTierManager = () => {
       text_color: preset.text_color,
       bg_color: preset.bg_color,
       hidden: editingTier.hidden,
+      unlimited: editingTier.unlimited,
     };
 
     try {
@@ -421,6 +425,20 @@ const VipTierManager = () => {
                 <label htmlFor="tier-hidden" className="text-xs text-muted-foreground flex items-center gap-1">
                   <EyeOff className="w-3 h-3" />
                   Hidden (invite code only)
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="tier-unlimited"
+                  checked={editingTier.unlimited}
+                  onChange={(e) => setEditingTier({ ...editingTier, unlimited: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="tier-unlimited" className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Infinity className="w-3 h-3" />
+                  Unlimited (no credit or media credit limits)
                 </label>
               </div>
               </div>

@@ -17,7 +17,7 @@ const formatCredits = (value: number): string => {
 };
 
 const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: CreditsDisplayProps) => {
-  const { isVip } = useVipStatus();
+  const { isVip, isUnlimited } = useVipStatus();
 
   const modelData = selectedModelCostId ? models.find((m) => m.id === selectedModelCostId) : null;
   const modelId = modelData?.model_id;
@@ -43,7 +43,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
           <Sparkles className="w-4 h-4 text-purple-400" />
           <span className="text-sm font-medium text-purple-300">
-            {formatCredits(imageCredits)} {imageCost > 0 && `(-${imageCost})`}
+            {isUnlimited ? "∞" : `${formatCredits(imageCredits)} ${imageCost > 0 ? `(-${imageCost})` : ""}`}
           </span>
         </div>
       )}
@@ -53,7 +53,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg">
           <Coins className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium text-foreground">
-            {formatCredits(credits)} / {maxCredits} {modelData && `(-${modelCost})`}
+            {isUnlimited ? "∞" : `${formatCredits(credits)} / ${maxCredits} ${modelData ? `(-${modelCost})` : ""}`}
           </span>
         </div>
       )}
