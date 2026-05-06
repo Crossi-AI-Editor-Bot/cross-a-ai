@@ -62,6 +62,30 @@ export type Database = {
         }
         Relationships: []
       }
+      api_keys: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          key: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key: string
+          label?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key?: string
+          label?: string
+        }
+        Relationships: []
+      }
       blocked_ips: {
         Row: {
           blocked_at: string
