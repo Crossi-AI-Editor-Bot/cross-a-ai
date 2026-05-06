@@ -111,18 +111,36 @@ Deno.serve(async (req) => {
       if (!hasAccess) return json(403, { error: 'This model requires a higher VIP tier' });
     }
 
+    // Determine if user has unlimited VIP tier (bypasses credit limits)
+    let isUnlimited = false;
+    {
+      const { data: vipRow } = await supabase
+        .from('vip_status').select('tier, expires_at')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      if (vipRow) {
+        const { data: tierRow } = await supabase
+          .from('vip_tiers').select('unlimited')
+          .eq('name', vipRow.tier).maybeSingle();
+        if (tierRow && (tierRow as any).unlimited === true) isUnlimited = true;
+      }
+    }
+
     // Credit check + deduction (single Media Credits pool: user_image_credits)
     const cost = Number(modelData.image_cost) || 0;
     const { data: imgCredits, error: imgErr } = await supabase
       .from('user_image_credits').select('credits')
       .eq('user_id', user.id).single();
     if (imgErr || !imgCredits) return json(500, { error: 'Unable to verify media credits' });
-    if (imgCredits.credits < cost) return json(402, { error: 'Insufficient media credits' });
+    if (!isUnlimited && imgCredits.credits < cost) return json(402, { error: 'Insufficient media credits' });
 
-    const newCredits = Number(imgCredits.credits) - cost;
-    const { error: updErr } = await supabase
-      .from('user_image_credits').update({ credits: newCredits }).eq('user_id', user.id);
-    if (updErr) return json(500, { error: 'Failed to deduct credits' });
+    const newCredits = isUnlimited ? Number(imgCredits.credits) : Number(imgCredits.credits) - cost;
+    if (!isUnlimited) {
+      const { error: updErr } = await supabase
+        .from('user_image_credits').update({ credits: newCredits }).eq('user_id', user.id);
+      if (updErr) return json(500, { error: 'Failed to deduct credits' });
+    }
 
     // Build payload
     let body: Record<string, unknown> = { prompt };
