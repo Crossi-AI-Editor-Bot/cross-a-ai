@@ -631,6 +631,7 @@ export type Database = {
           name: string
           sort_order: number
           text_color: string
+          unlimited: boolean
           updated_at: string
           weekly_call_credits: number
           weekly_image_credits: number
@@ -650,6 +651,7 @@ export type Database = {
           name: string
           sort_order?: number
           text_color?: string
+          unlimited?: boolean
           updated_at?: string
           weekly_call_credits?: number
           weekly_image_credits?: number
@@ -669,6 +671,7 @@ export type Database = {
           name?: string
           sort_order?: number
           text_color?: string
+          unlimited?: boolean
           updated_at?: string
           weekly_call_credits?: number
           weekly_image_credits?: number
