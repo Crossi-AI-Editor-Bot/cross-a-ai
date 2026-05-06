@@ -237,6 +237,25 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
     const globalExtraKnowledge = (globalKnowledgeRes.data?.value as any)?.text || '';
     const globalImageRestrictions = (globalImageRestrictionsRes.data?.value as any)?.text || '';
 
+    // Check if user has an unlimited VIP tier (bypasses all credit limits)
+    let isUnlimited = false;
+    {
+      const { data: vipRow } = await supabase
+        .from('vip_status')
+        .select('tier, expires_at')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
+      if (vipRow) {
+        const { data: tierRow } = await supabase
+          .from('vip_tiers')
+          .select('unlimited')
+          .eq('name', vipRow.tier)
+          .maybeSingle();
+        if (tierRow && (tierRow as any).unlimited === true) isUnlimited = true;
+      }
+    }
+
     // Check and deduct credits server-side
     const { data: userCredits, error: creditsError } = await supabase
       .from('user_credits')
@@ -269,7 +288,7 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
       userImageCredits = imgCredits;
     }
 
-    if (!isImageGen && userCredits.credits < 0.1) {
+    if (!isUnlimited && !isImageGen && userCredits.credits < 0.1) {
       return new Response(
         JSON.stringify({ error: 'Insufficient credits' }),
         { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -327,7 +346,9 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
     const initialImageCredits = userImageCredits?.credits || 0;
 
     // Validate sufficient credits based on model type
-    if (isImageGen) {
+    if (isUnlimited) {
+      // Unlimited tier: skip all credit validation
+    } else if (isImageGen) {
       if (initialImageCredits < imageCreditCost) {
         return new Response(
           JSON.stringify({ error: 'Insufficient image credits' }),
@@ -364,11 +385,13 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
 
     console.log('Processing chat request - User:', user.id, 'Messages:', messages.length, 'Model:', model);
 
-    // Deduct credits before API call
+    // Deduct credits before API call (skip if unlimited tier)
     let newCredits = initialCredits;
     let newImageCredits = initialImageCredits;
-    
-    if (isImageGen) {
+
+    if (isUnlimited) {
+      // No deduction
+    } else if (isImageGen) {
       newImageCredits = initialImageCredits - imageCreditCost;
       const { error: deductError } = await supabase
         .from('user_image_credits')
