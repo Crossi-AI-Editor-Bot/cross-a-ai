@@ -19,6 +19,7 @@ import DefaultModelManager from "@/components/admin/DefaultModelManager";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import GlobalPromptManager from "@/components/admin/GlobalPromptManager";
 import BlockedIpsManager from "@/components/admin/BlockedIpsManager";
+import ApiKeyManager from "@/components/admin/ApiKeyManager";
 
 interface ModelState {
   id: string;
@@ -481,6 +482,11 @@ const AdminPanel = () => {
         {/* Invite Code Manager */}
         <div className="mb-6">
           <InviteCodeManager />
+        </div>
+
+        {/* External API Keys */}
+        <div className="mb-6">
+          <ApiKeyManager />
         </div>
 
         {/* File Explorer Layout */}
