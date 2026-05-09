@@ -34,6 +34,7 @@ interface ModelData {
   system_prompt?: string | null;
   is_fake?: boolean;
   fake_error_message?: string | null;
+  fake_corrupted_output?: boolean;
   tier_access: Record<string, boolean>;
 }
 
@@ -49,6 +50,7 @@ interface FileEditorProps {
   onUpdateSystemPrompt?: (value: string) => void;
   onUpdateIsFake?: (value: boolean) => void;
   onUpdateFakeErrorMessage?: (value: string) => void;
+  onUpdateFakeCorruptedOutput?: (value: boolean) => void;
   onDelete?: () => void;
 }
 
@@ -64,6 +66,7 @@ export const FileEditor = ({
   onUpdateSystemPrompt,
   onUpdateIsFake,
   onUpdateFakeErrorMessage,
+  onUpdateFakeCorruptedOutput,
   onDelete,
 }: FileEditorProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -284,7 +287,21 @@ export const FileEditor = ({
                 <span className="text-purple-400">is_fake</span>
                 <Switch checked={!!model.is_fake} onCheckedChange={(v) => onUpdateIsFake(v)} />
               </div>
-              {model.is_fake && onUpdateFakeErrorMessage && (
+              {model.is_fake && onUpdateFakeCorruptedOutput && (
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-purple-400">corrupted_output</span>
+                  <Switch
+                    checked={!!model.fake_corrupted_output}
+                    onCheckedChange={(v) => onUpdateFakeCorruptedOutput(v)}
+                  />
+                </div>
+              )}
+              {model.is_fake && model.fake_corrupted_output && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  Returns scrambled letters / corrupted media instead of an error.
+                </div>
+              )}
+              {model.is_fake && !model.fake_corrupted_output && onUpdateFakeErrorMessage && (
                 <div className="flex flex-col gap-2 mt-2">
                   <span className="text-purple-400">fake_error_message</span>
                   <span className="text-muted-foreground">=</span>
