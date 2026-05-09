@@ -257,6 +257,7 @@ export type Database = {
           cost: number
           diamond_access: boolean
           enabled: boolean
+          fake_corrupted_output: boolean
           fake_error_message: string | null
           folder: string | null
           gold_access: boolean
@@ -278,6 +279,7 @@ export type Database = {
           cost: number
           diamond_access?: boolean
           enabled?: boolean
+          fake_corrupted_output?: boolean
           fake_error_message?: string | null
           folder?: string | null
           gold_access?: boolean
@@ -299,6 +301,7 @@ export type Database = {
           cost?: number
           diamond_access?: boolean
           enabled?: boolean
+          fake_corrupted_output?: boolean
           fake_error_message?: string | null
           folder?: string | null
           gold_access?: boolean

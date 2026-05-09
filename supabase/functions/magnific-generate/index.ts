@@ -64,14 +64,11 @@ Deno.serve(async (req) => {
     // Fetch the model
     const { data: modelData, error: modelErr } = await supabase
       .from('model_costs')
-      .select('model_id, image_cost, enabled, public_access, is_fake, fake_error_message')
+      .select('model_id, image_cost, enabled, public_access, is_fake, fake_error_message, fake_corrupted_output')
       .eq('id', modelCostId)
       .single();
     if (modelErr || !modelData) return json(404, { error: 'Model not found' });
     if (!modelData.enabled) return json(403, { error: 'Model is disabled' });
-    if ((modelData as any).is_fake) {
-      return json(503, { error: (modelData as any).fake_error_message || 'This model is currently unavailable.' });
-    }
 
     const modelId: string = modelData.model_id;
     let kind: 'image' | 'video' | 'music' | null = null;
@@ -88,6 +85,38 @@ Deno.serve(async (req) => {
       endpointSlug = `audio/${modelId.slice(MAGNIFIC_MUSIC_PREFIX.length)}`;
     } else {
       return json(400, { error: 'Not a Magnific model' });
+    }
+
+    // Fake model handling: either return error or scrambled/corrupted output.
+    if ((modelData as any).is_fake) {
+      if (!(modelData as any).fake_corrupted_output) {
+        return json(503, { error: (modelData as any).fake_error_message || 'This model is currently unavailable.' });
+      }
+      const randStr = (n: number) => {
+        const cs = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+        let s = ''; for (let i = 0; i < n; i++) s += cs[Math.floor(Math.random() * cs.length)]; return s;
+      };
+      const randBytes = (n: number) => {
+        const b = new Uint8Array(n);
+        crypto.getRandomValues(b);
+        let bin = '';
+        for (let i = 0; i < b.length; i++) bin += String.fromCharCode(b[i]);
+        return btoa(bin);
+      };
+      const payload: Record<string, unknown> = { credits: Number((await supabase.from('user_image_credits').select('credits').eq('user_id', user.id).single()).data?.credits ?? 0) };
+      if (kind === 'image') {
+        const lines: string[] = [];
+        for (let i = 0; i < 14; i++) {
+          lines.push(`<text x="20" y="${30 + i * 28}" font-family="monospace" font-size="20" fill="hsl(${Math.random() * 360},80%,55%)">${randStr(40).replace(/[<>&]/g, '?')}</text>`);
+        }
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="100%" height="100%" fill="#0a0a0a"/>${lines.join('')}</svg>`;
+        payload.image = `data:image/svg+xml;base64,${btoa(svg)}`;
+      } else if (kind === 'music') {
+        payload.audio = `data:audio/wav;base64,${randBytes(8000)}`;
+      } else if (kind === 'video') {
+        payload.video = `data:video/mp4;base64,${randBytes(8000)}`;
+      }
+      return json(200, payload);
     }
 
     // Tier access

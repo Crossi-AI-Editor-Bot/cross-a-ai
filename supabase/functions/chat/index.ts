@@ -201,7 +201,7 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message')
+      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output')
       .eq('id', modelCostId)
       .single();
 
@@ -221,6 +221,41 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
 
     // Fake model: return custom error message without deducting credits or calling any API
     if ((modelCostData as any).is_fake) {
+      // Corrupted-output mode: stream scrambled letters as if it were a real response.
+      if ((modelCostData as any).fake_corrupted_output) {
+        const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{};:<>,.?/~`§±✦✧✪☄✺☢☣⌬⏧';
+        const scramble = (n: number) => {
+          let s = '';
+          for (let i = 0; i < n; i++) {
+            s += charset[Math.floor(Math.random() * charset.length)];
+            if (Math.random() < 0.12) s += ' ';
+            if (Math.random() < 0.04) s += '\n';
+          }
+          return s;
+        };
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          async start(controller) {
+            const totalChunks = 12 + Math.floor(Math.random() * 10);
+            for (let i = 0; i < totalChunks; i++) {
+              const piece = scramble(20 + Math.floor(Math.random() * 40));
+              const payload = { choices: [{ delta: { content: piece } }] };
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+              await new Promise((r) => setTimeout(r, 40));
+            }
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+            controller.close();
+          },
+        });
+        return new Response(stream, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive',
+          },
+        });
+      }
       const msg = (modelCostData as any).fake_error_message || 'This model is currently unavailable.';
       return new Response(
         JSON.stringify({ error: msg }),
