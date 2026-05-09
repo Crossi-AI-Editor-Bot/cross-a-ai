@@ -257,10 +257,12 @@ export type Database = {
           cost: number
           diamond_access: boolean
           enabled: boolean
+          fake_error_message: string | null
           folder: string | null
           gold_access: boolean
           id: string
           image_cost: number | null
+          is_fake: boolean
           label: string
           model_id: string
           platinum_access: boolean
@@ -276,10 +278,12 @@ export type Database = {
           cost: number
           diamond_access?: boolean
           enabled?: boolean
+          fake_error_message?: string | null
           folder?: string | null
           gold_access?: boolean
           id?: string
           image_cost?: number | null
+          is_fake?: boolean
           label: string
           model_id: string
           platinum_access?: boolean
@@ -295,10 +299,12 @@ export type Database = {
           cost?: number
           diamond_access?: boolean
           enabled?: boolean
+          fake_error_message?: string | null
           folder?: string | null
           gold_access?: boolean
           id?: string
           image_cost?: number | null
+          is_fake?: boolean
           label?: string
           model_id?: string
           platinum_access?: boolean

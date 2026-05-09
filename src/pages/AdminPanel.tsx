@@ -31,6 +31,8 @@ interface ModelState {
   folder: string | null;
   image_cost: number;
   system_prompt: string | null;
+  is_fake: boolean;
+  fake_error_message: string | null;
   tier_access: Record<string, boolean>;
 }
 
@@ -108,6 +110,8 @@ const AdminPanel = () => {
       folder: model.folder || null,
       image_cost: model.image_cost || 0,
       system_prompt: model.system_prompt || null,
+      is_fake: !!model.is_fake,
+      fake_error_message: model.fake_error_message ?? null,
       tier_access: { ...model.tier_access },
     }));
     setModels(initialModels);
@@ -236,6 +240,8 @@ const AdminPanel = () => {
           folder: data.folder,
           image_cost: data.image_cost || 0,
           system_prompt: data.system_prompt || null,
+          is_fake: false,
+          fake_error_message: null,
           tier_access: defaultTierAccess,
         };
         setModels((prev) => [...prev, newModel]);
@@ -325,6 +331,8 @@ const AdminPanel = () => {
             folder: model.folder,
             image_cost: model.image_cost,
             system_prompt: model.system_prompt,
+            is_fake: model.is_fake,
+            fake_error_message: model.fake_error_message,
           })
           .eq("id", model.id);
 
@@ -518,6 +526,8 @@ const AdminPanel = () => {
                 onUpdateTierAccess={(tierName, value) => updateTierAccess(selectedModel.id, tierName, value)}
                 onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
+                onUpdateIsFake={(value) => updateModel(selectedModel.id, { is_fake: value })}
+                onUpdateFakeErrorMessage={(value) => updateModel(selectedModel.id, { fake_error_message: value })}
                 onDelete={() => handleDeleteModel(selectedModel.id)}
               />
             ) : (

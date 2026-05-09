@@ -64,11 +64,14 @@ Deno.serve(async (req) => {
     // Fetch the model
     const { data: modelData, error: modelErr } = await supabase
       .from('model_costs')
-      .select('model_id, image_cost, enabled, public_access')
+      .select('model_id, image_cost, enabled, public_access, is_fake, fake_error_message')
       .eq('id', modelCostId)
       .single();
     if (modelErr || !modelData) return json(404, { error: 'Model not found' });
     if (!modelData.enabled) return json(403, { error: 'Model is disabled' });
+    if ((modelData as any).is_fake) {
+      return json(503, { error: (modelData as any).fake_error_message || 'This model is currently unavailable.' });
+    }
 
     const modelId: string = modelData.model_id;
     let kind: 'image' | 'video' | 'music' | null = null;

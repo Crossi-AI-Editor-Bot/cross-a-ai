@@ -32,6 +32,8 @@ interface ModelData {
   folder: string | null;
   image_cost: number;
   system_prompt?: string | null;
+  is_fake?: boolean;
+  fake_error_message?: string | null;
   tier_access: Record<string, boolean>;
 }
 
@@ -45,6 +47,8 @@ interface FileEditorProps {
   onUpdateTierAccess: (tierName: string, value: boolean) => void;
   onUpdateImageCost?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
+  onUpdateIsFake?: (value: boolean) => void;
+  onUpdateFakeErrorMessage?: (value: string) => void;
   onDelete?: () => void;
 }
 
@@ -58,6 +62,8 @@ export const FileEditor = ({
   onUpdateTierAccess,
   onUpdateImageCost,
   onUpdateSystemPrompt,
+  onUpdateIsFake,
+  onUpdateFakeErrorMessage,
   onDelete,
 }: FileEditorProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -263,6 +269,33 @@ export const FileEditor = ({
                   className="min-h-[100px] text-sm font-mono bg-background"
                 />
               </div>
+            </>
+          )}
+
+          {/* Fake model toggle - admins can mark a model as non-functional with a custom error */}
+          {onUpdateIsFake && (
+            <>
+              <div className="h-px bg-border my-4" />
+              <div className="text-muted-foreground mb-2">
+                <span className="text-green-500">{"// "}</span>
+                <span>Fake Model (returns custom error, no credits drained)</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-purple-400">is_fake</span>
+                <Switch checked={!!model.is_fake} onCheckedChange={(v) => onUpdateIsFake(v)} />
+              </div>
+              {model.is_fake && onUpdateFakeErrorMessage && (
+                <div className="flex flex-col gap-2 mt-2">
+                  <span className="text-purple-400">fake_error_message</span>
+                  <span className="text-muted-foreground">=</span>
+                  <Textarea
+                    value={model.fake_error_message || ""}
+                    onChange={(e) => onUpdateFakeErrorMessage(e.target.value)}
+                    placeholder="e.g. This model is currently overloaded. Please try again later."
+                    className="min-h-[80px] text-sm font-mono bg-background"
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
