@@ -14,6 +14,7 @@ export interface ModelCost {
   system_prompt: string | null;
   is_fake: boolean;
   fake_error_message: string | null;
+  fake_corrupted_output: boolean;
   // Dynamic tier access map: { copper: true, bronze: false, ... }
   tier_access: Record<string, boolean>;
 }
@@ -28,7 +29,7 @@ export const useModelCosts = () => {
       const [modelsRes, accessRes] = await Promise.all([
         supabase
           .from("model_costs")
-          .select("id, model_id, label, cost, enabled, public_access, image_cost, folder, system_prompt, is_fake, fake_error_message")
+          .select("id, model_id, label, cost, enabled, public_access, image_cost, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output")
           .order("cost", { ascending: false }),
         supabase
           .from("model_tier_access" as any)
@@ -58,6 +59,7 @@ export const useModelCosts = () => {
         system_prompt: m.system_prompt,
         is_fake: !!m.is_fake,
         fake_error_message: m.fake_error_message ?? null,
+        fake_corrupted_output: !!m.fake_corrupted_output,
         tier_access: accessMap.get(m.id) || {},
       }));
 
