@@ -240,6 +240,8 @@ const AdminPanel = () => {
           folder: data.folder,
           image_cost: data.image_cost || 0,
           system_prompt: data.system_prompt || null,
+          is_fake: false,
+          fake_error_message: null,
           tier_access: defaultTierAccess,
         };
         setModels((prev) => [...prev, newModel]);
