@@ -331,6 +331,8 @@ const AdminPanel = () => {
             folder: model.folder,
             image_cost: model.image_cost,
             system_prompt: model.system_prompt,
+            is_fake: model.is_fake,
+            fake_error_message: model.fake_error_message,
           })
           .eq("id", model.id);
 
