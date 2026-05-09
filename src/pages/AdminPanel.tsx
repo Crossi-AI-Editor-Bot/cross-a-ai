@@ -31,6 +31,8 @@ interface ModelState {
   folder: string | null;
   image_cost: number;
   system_prompt: string | null;
+  is_fake: boolean;
+  fake_error_message: string | null;
   tier_access: Record<string, boolean>;
 }
 
@@ -108,6 +110,8 @@ const AdminPanel = () => {
       folder: model.folder || null,
       image_cost: model.image_cost || 0,
       system_prompt: model.system_prompt || null,
+      is_fake: !!model.is_fake,
+      fake_error_message: model.fake_error_message ?? null,
       tier_access: { ...model.tier_access },
     }));
     setModels(initialModels);
