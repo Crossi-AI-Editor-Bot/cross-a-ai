@@ -201,7 +201,7 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt')
+      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message')
       .eq('id', modelCostId)
       .single();
 
@@ -216,6 +216,15 @@ Respond with ONLY a JSON object: {"jailbreak": true} or {"jailbreak": false}. No
       return new Response(
         JSON.stringify({ error: 'Model is disabled' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Fake model: return custom error message without deducting credits or calling any API
+    if ((modelCostData as any).is_fake) {
+      const msg = (modelCostData as any).fake_error_message || 'This model is currently unavailable.';
+      return new Response(
+        JSON.stringify({ error: msg }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
