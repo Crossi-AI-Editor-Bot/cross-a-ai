@@ -32,6 +32,8 @@ interface ModelData {
   folder: string | null;
   image_cost: number;
   system_prompt?: string | null;
+  is_fake?: boolean;
+  fake_error_message?: string | null;
   tier_access: Record<string, boolean>;
 }
 
@@ -45,6 +47,8 @@ interface FileEditorProps {
   onUpdateTierAccess: (tierName: string, value: boolean) => void;
   onUpdateImageCost?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
+  onUpdateIsFake?: (value: boolean) => void;
+  onUpdateFakeErrorMessage?: (value: string) => void;
   onDelete?: () => void;
 }
 
@@ -58,6 +62,8 @@ export const FileEditor = ({
   onUpdateTierAccess,
   onUpdateImageCost,
   onUpdateSystemPrompt,
+  onUpdateIsFake,
+  onUpdateFakeErrorMessage,
   onDelete,
 }: FileEditorProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
