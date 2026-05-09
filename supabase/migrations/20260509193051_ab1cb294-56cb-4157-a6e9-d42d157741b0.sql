@@ -1,0 +1,1 @@
+ALTER TABLE public.model_costs ADD COLUMN IF NOT EXISTS fake_corrupted_output boolean NOT NULL DEFAULT false;
