@@ -33,6 +33,7 @@ interface ModelState {
   system_prompt: string | null;
   is_fake: boolean;
   fake_error_message: string | null;
+  fake_corrupted_output: boolean;
   tier_access: Record<string, boolean>;
 }
 
@@ -112,6 +113,7 @@ const AdminPanel = () => {
       system_prompt: model.system_prompt || null,
       is_fake: !!model.is_fake,
       fake_error_message: model.fake_error_message ?? null,
+      fake_corrupted_output: !!(model as any).fake_corrupted_output,
       tier_access: { ...model.tier_access },
     }));
     setModels(initialModels);
@@ -242,6 +244,7 @@ const AdminPanel = () => {
           system_prompt: data.system_prompt || null,
           is_fake: false,
           fake_error_message: null,
+          fake_corrupted_output: false,
           tier_access: defaultTierAccess,
         };
         setModels((prev) => [...prev, newModel]);
@@ -333,6 +336,7 @@ const AdminPanel = () => {
             system_prompt: model.system_prompt,
             is_fake: model.is_fake,
             fake_error_message: model.fake_error_message,
+            fake_corrupted_output: model.fake_corrupted_output,
           })
           .eq("id", model.id);
 
@@ -528,6 +532,7 @@ const AdminPanel = () => {
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
                 onUpdateIsFake={(value) => updateModel(selectedModel.id, { is_fake: value })}
                 onUpdateFakeErrorMessage={(value) => updateModel(selectedModel.id, { fake_error_message: value })}
+                onUpdateFakeCorruptedOutput={(value) => updateModel(selectedModel.id, { fake_corrupted_output: value })}
                 onDelete={() => handleDeleteModel(selectedModel.id)}
               />
             ) : (
