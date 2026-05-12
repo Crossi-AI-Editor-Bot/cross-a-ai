@@ -43,21 +43,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const OPEN_ROUTER_KEY = Deno.env.get("OPEN_ROUTER_KEY");
+
+    if (!OPEN_ROUTER_KEY) {
+      throw new Error("OPEN_ROUTER_KEY is not configured");
     }
 
-    // Use GPT Nano to generate a title based on first 2 messages
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Use Llama 3.2 3B (free) via OpenRouter to generate a title from first 2 messages
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPEN_ROUTER_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-nano",
+        model: "meta-llama/llama-3.2-3b-instruct:free",
         messages: [
           {
             role: "system",
