@@ -283,16 +283,6 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             return;
           }
 
-          if (response.status === 403 && errorData.error === 'jailbreak_detected') {
-            toast({
-              title: "⚠️ Policy Violation",
-              description: errorData.message || "Your message was blocked for violating usage policy.",
-              variant: "destructive",
-            });
-            setMessages((prev) => prev.slice(0, -1));
-            return;
-          }
-
           if (response.status === 429) {
             toast({
               title: "Rate Limit",
@@ -374,16 +364,6 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           setMessages((prev) => prev.slice(0, -1));
           await supabase.auth.signOut();
           window.location.href = '/auth';
-          return;
-        }
-
-        if (response.status === 403 && errorData.error === 'jailbreak_detected') {
-          toast({
-            title: "⚠️ Policy Violation",
-            description: errorData.message || "Your message was blocked for violating usage policy.",
-            variant: "destructive",
-          });
-          setMessages((prev) => prev.slice(0, -1));
           return;
         }
 
