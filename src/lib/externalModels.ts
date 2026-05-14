@@ -16,7 +16,8 @@ export const isMagnificMusicModel = (id: string) => id.startsWith(MAGNIFIC_MUSIC
 export const isMagnificModel = (id: string) =>
   isMagnificImageModel(id) || isMagnificVideoModel(id) || isMagnificMusicModel(id);
 
-// Built-in image models served via Lovable AI Gateway (not Magnific).
+// Built-in image models. gemini-2.5-flash-image uses Crossatrix API;
+// gemini-3-pro-image-preview and gemini-3.1-flash-image-preview use Lovable AI Gateway.
 export const BUILTIN_IMAGE_MODELS = [
   "google/gemini-2.5-flash-image",
   "google/gemini-3-pro-image-preview",
