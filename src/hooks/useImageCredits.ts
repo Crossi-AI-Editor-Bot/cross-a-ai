@@ -5,11 +5,13 @@ import { useVipStatus } from "@/hooks/useVipStatus";
 
 export const useImageCredits = () => {
   const [imageCredits, setImageCredits] = useState<number>(30);
+  const [videoCredits, setVideoCredits] = useState<number>(5);
+  const [audioCredits, setAudioCredits] = useState<number>(10);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { isUnlimited } = useVipStatus();
 
-  const fetchImageCredits = async () => {
+  const fetchAllCredits = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -17,81 +19,70 @@ export const useImageCredits = () => {
         return;
       }
 
-      // Try to reset weekly credits first
+      // Resets ausführen
       try {
         await supabase.rpc('reset_weekly_image_credits', { p_user_id: user.id });
-      } catch {
-        // Ignore errors from reset
+        await supabase.rpc('reset_monthly_video_credits', { p_user_id: user.id });
+        await supabase.rpc('reset_weekly_audio_credits', { p_user_id: user.id });
+      } catch { /* Resets ignorieren falls Fehler */ }
+
+      // 1. Image Credits
+      const { data: imgData } = await supabase.from('user_image_credits').select('credits').eq('user_id', user.id).maybeSingle();
+      if (imgData) setImageCredits(imgData.credits);
+
+      // 2. Video Credits
+      const { data: vidData } = await supabase.from('user_video_credits').select('credits').eq('user_id', user.id).maybeSingle();
+      if (vidData) {
+        setVideoCredits(vidData.credits);
+      } else {
+        await supabase.from('user_video_credits').insert({ user_id: user.id, credits: 5 });
       }
 
-      const { data, error } = await supabase
-        .from('user_image_credits')
-        .select('credits, last_reset_date')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        // If no record exists, create one
-        if (error.code === 'PGRST116') {
-          const { data: newData, error: insertError } = await supabase
-            .from('user_image_credits')
-            .insert({ user_id: user.id, credits: 30 })
-            .select('credits')
-            .single();
-
-          if (!insertError && newData) {
-            setImageCredits(newData.credits);
-          }
-        }
-      } else if (data) {
-        setImageCredits(data.credits);
+      // 3. Audio Credits
+      const { data: audData } = await supabase.from('user_audio_credits').select('credits').eq('user_id', user.id).maybeSingle();
+      if (audData) {
+        setAudioCredits(audData.credits);
+      } else {
+        await supabase.from('user_audio_credits').insert({ user_id: user.id, credits: 10 });
       }
+
     } catch (error) {
-      console.error('Error fetching image credits:', error);
+      console.error('Error fetching media credits:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchImageCredits();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-      fetchImageCredits();
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    fetchAllCredits();
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => { fetchAllCredits(); });
+    return () => { authListener.subscription.unsubscribe(); };
   }, []);
 
-  const deductImageCredits = async (amount: number): Promise<boolean> => {
+  const deductMediaCredits = async (kind: 'image' | 'video' | 'audio', amount: number): Promise<boolean> => {
     if (isUnlimited) return true;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    
+    let currentCredits = imageCredits;
+    if (kind === 'video') currentCredits = videoCredits;
+    if (kind === 'audio') currentCredits = audioCredits;
+
+    if (currentCredits < amount) {
       toast({
-        title: "Login required",
-        description: "Please log in to use image generation.",
+        title: "Ungenügend Credits",
+        description: `Du brauchst ${amount} ${kind} Credits, hast aber nur ${currentCredits.toFixed(1)}.`,
         variant: "destructive",
       });
       return false;
     }
-
-    if (imageCredits < amount) {
-      toast({
-        title: "Insufficient media credits",
-        description: `You need ${amount} media credits but only have ${imageCredits.toFixed(1)}. Credits reset weekly.`,
-        variant: "destructive",
-      });
-      return false;
-    }
-
     return true;
   };
 
-  const updateImageCredits = (newCredits: number) => {
-    setImageCredits(newCredits);
+  return { 
+    imageCredits, 
+    videoCredits, 
+    audioCredits, 
+    deductMediaCredits, 
+    loading, 
+    refetch: fetchAllCredits 
   };
-
-  return { imageCredits, deductImageCredits, loading, updateImageCredits, refetch: fetchImageCredits };
 };
