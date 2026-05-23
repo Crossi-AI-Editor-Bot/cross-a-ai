@@ -67,8 +67,7 @@ const ICON_OPTIONS = [
   { value: "Hash", label: "Hash" }, { value: "Infinity", label: "Infinity" }, { value: "Joystick", label: "Joystick" },
   { value: "Landmark", label: "Landmark" }, { value: "Laugh", label: "Laugh" }, { value: "Magnet", label: "Magnet" },
   { value: "Megaphone", label: "Megaphone" }, { value: "Mountain", label: "Mountain" }, { value: "Paintbrush", label: "Paintbrush" },
-  { value: "PartyPopper", label: "PartyPopper" }, { value: "Pencil", label: "Pencil" }, { value: "PiggyBank", label: "PiggyBank" },
-  { value: "Pizza", label: "Pizza" }, { value: "Plug", label: "Plug" }, { value: "Popcorn", label: "Popcorn" },
+  { value: "PartyPopper", label: "PartyPopper" }, { value: "Pencil", label: "Pencil" }, { value: "PiggyBank", legacyKey: "PiggyBank" }, { value: "Pizza", label: "Pizza" }, { value: "Plug", label: "Plug" }, { value: "Popcorn", label: "Popcorn" },
   { value: "Puzzle", label: "Puzzle" }, { value: "Rainbow", label: "Rainbow" }, { value: "Receipt", label: "Receipt" },
   { value: "ScanFace", label: "ScanFace" }, { value: "Shell", label: "Shell" }, { value: "Ship", label: "Ship" },
   { value: "Skull", label: "Skull" }, { value: "Snowflake", label: "Snowflake" }, { value: "Sparkle", label: "Sparkle" },
@@ -136,6 +135,8 @@ interface EditingTier {
   display_name: string;
   daily_credits: number;
   weekly_image_credits: number;
+  monthly_video_credits: number;
+  weekly_audio_credits: number;
   croin_price: number;
   sort_order: number;
   icon_name: string;
@@ -163,6 +164,8 @@ const VipTierManager = () => {
       display_name: tier.display_name,
       daily_credits: tier.daily_credits,
       weekly_image_credits: (tier as any).weekly_image_credits ?? 30,
+      monthly_video_credits: (tier as any).monthly_video_credits ?? 5,
+      weekly_audio_credits: (tier as any).weekly_audio_credits ?? 10,
       croin_price: (tier as any).croin_price ?? 0,
       sort_order: tier.sort_order,
       icon_name: tier.icon_name,
@@ -179,6 +182,8 @@ const VipTierManager = () => {
       display_name: "",
       daily_credits: 15,
       weekly_image_credits: 30,
+      monthly_video_credits: 5,
+      weekly_audio_credits: 10,
       croin_price: 0,
       sort_order: (tiers.length + 1) * 10,
       icon_name: "Crown",
@@ -198,6 +203,8 @@ const VipTierManager = () => {
       display_name: editingTier.display_name,
       daily_credits: editingTier.daily_credits,
       weekly_image_credits: editingTier.weekly_image_credits,
+      monthly_video_credits: editingTier.monthly_video_credits,
+      weekly_audio_credits: editingTier.weekly_audio_credits,
       croin_price: editingTier.croin_price,
       sort_order: editingTier.sort_order,
       icon_name: editingTier.icon_name,
@@ -294,7 +301,9 @@ const VipTierManager = () => {
                       {tier.display_name}
                       {(tier as any).hidden && <Badge variant="secondary" className="text-[10px] px-1 py-0">Hidden</Badge>}
                     </p>
-                    <p className="text-xs text-muted-foreground">{tier.daily_credits} credits/day · {(tier as any).weekly_image_credits ?? 30} img/wk · Order: {tier.sort_order}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tier.daily_credits} cr/day · {(tier as any).weekly_image_credits ?? 30} img/wk · {(tier as any).monthly_video_credits ?? 5} vid/mo · {(tier as any).weekly_audio_credits ?? 10} aud/wk · Order: {tier.sort_order}
+                    </p>
                   </div>
                   <Button
                     variant="ghost"
@@ -335,7 +344,7 @@ const VipTierManager = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Daily Credits</label>
+                  <label className="text-xs text-muted-foreground">Daily Chat Credits</label>
                   <Input
                     type="number"
                     value={editingTier.daily_credits}
@@ -349,6 +358,24 @@ const VipTierManager = () => {
                     type="number"
                     value={editingTier.weekly_image_credits}
                     onChange={(e) => setEditingTier({ ...editingTier, weekly_image_credits: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Monthly Video Credits</label>
+                  <Input
+                    type="number"
+                    value={editingTier.monthly_video_credits}
+                    onChange={(e) => setEditingTier({ ...editingTier, monthly_video_credits: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Weekly Audio Credits</label>
+                  <Input
+                    type="number"
+                    value={editingTier.weekly_audio_credits}
+                    onChange={(e) => setEditingTier({ ...editingTier, weekly_audio_credits: parseInt(e.target.value) || 0 })}
                     className="h-8 text-sm"
                   />
                 </div>
@@ -412,35 +439,37 @@ const VipTierManager = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="tier-hidden"
-                  checked={editingTier.hidden}
-                  onChange={(e) => setEditingTier({ ...editingTier, hidden: e.target.checked })}
-                  className="rounded"
-                />
-                <label htmlFor="tier-hidden" className="text-xs text-muted-foreground flex items-center gap-1">
-                  <EyeOff className="w-3 h-3" />
-                  Hidden (invite code only)
-                </label>
-              </div>
+              <div className="flex flex-col gap-2 pt-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="tier-hidden"
+                    checked={editingTier.hidden}
+                    onChange={(e) => setEditingTier({ ...editingTier, hidden: e.target.checked })}
+                    className="rounded text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="tier-hidden" className="text-xs text-muted-foreground flex items-center gap-1 cursor-pointer">
+                    <EyeOff className="w-3 h-3" />
+                    Hidden (invite code only)
+                  </label>
+                </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="tier-unlimited"
-                  checked={editingTier.unlimited}
-                  onChange={(e) => setEditingTier({ ...editingTier, unlimited: e.target.checked })}
-                  className="rounded"
-                />
-                <label htmlFor="tier-unlimited" className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Infinity className="w-3 h-3" />
-                  Unlimited (no credit or media credit limits)
-                </label>
-              </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="tier-unlimited"
+                    checked={editingTier.unlimited}
+                    onChange={(e) => setEditingTier({ ...editingTier, unlimited: e.target.checked })}
+                    className="rounded text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="tier-unlimited" className="text-xs text-muted-foreground flex items-center gap-1 cursor-pointer">
+                    <Infinity className="w-3 h-3" />
+                    Unlimited (no credit or media credit limits)
+                  </label>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">
