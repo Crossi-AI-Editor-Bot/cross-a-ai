@@ -33,8 +33,14 @@ verify_jwt = false
 [functions.deduct-image-credits]
 verify_jwt = false
 
-[functions.magnific-generate]
+[functions.public-api]
 verify_jwt = false
 
-[functions.public-api]
+[functions.magic-hour-generate]
+verify_jwt = false
+
+[functions.queue-join]
+verify_jwt = false
+
+[functions.queue-worker]
 verify_jwt = false

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2, GripVertical, Save, Crown, Gem, Star, Award, Coins, Hexagon, Shield, Zap, Heart, Flame, Diamond, Sparkles, Trophy, Medal, Rocket, Target, Sun, Moon, Globe, Key, Lock, Unlock, Bell, Bookmark, Camera, Clock, Cloud, Compass, Coffee, Eye, Feather, Flag, Gift, Headphones, Home, Layers, Leaf, LifeBuoy, Link, Map, MapPin, MessageCircle, Mic, Monitor, Music, Package, Palette, PenTool, Phone, Plane, Power, Radio, RefreshCw, Scissors, Search, Send, Server, Settings, ShieldCheck, ShoppingBag, ShoppingCart, Sliders, Smartphone, Speaker, Swords, Tag, Terminal, ThumbsUp, Truck, Tv, Umbrella, Upload, Users, Video, Wifi, Wind, Wrench, X, Activity, Airplay, AlertTriangle, Anchor, Archive, AtSign, BarChart, Battery, BellRing, Bluetooth, Bold, Box, Briefcase, Bug, Building, Cake, Calculator, Calendar, Cat, Check, ChevronRight, CircleDot, Clapperboard, CloudLightning, Code, Cpu, CreditCard, Database, Dog, Fingerprint, Fish, FlaskConical, Flower, Footprints, Gamepad, Glasses, Grape, Guitar, Hammer, HandMetal, Hash, Infinity, Joystick, Landmark, Laugh, Magnet, Megaphone, Mountain, Paintbrush, PartyPopper, Pencil, PiggyBank, Pizza, Plug, Popcorn, Puzzle, Rainbow, Receipt, ScanFace, Shell, Ship, Skull, Snowflake, Sparkle, Stamp, Stethoscope, Sunrise, Telescope, Tent, Timer, ToyBrick, TreePine, UtensilsCrossed, Wand2, Waves, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,6 +136,8 @@ interface EditingTier {
   display_name: string;
   daily_credits: number;
   weekly_image_credits: number;
+  weekly_audio_credits: number;
+  monthly_video_credits: number;
   croin_price: number;
   sort_order: number;
   icon_name: string;
@@ -150,6 +152,27 @@ const VipTierManager = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingTier, setEditingTier] = useState<EditingTier | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'vip' | 'free'>('vip');
+  const [freeDefaults, setFreeDefaults] = useState({ daily_credits: 15, weekly_image: 30, weekly_audio: 10, monthly_video: 5 });
+  const [savingFree, setSavingFree] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await (await import('@/integrations/supabase/client')).supabase
+        .from('site_settings').select('value').eq('key', 'free_tier_defaults').maybeSingle();
+      if (data?.value) setFreeDefaults({ daily_credits: 15, weekly_image: 30, weekly_audio: 10, monthly_video: 5, ...(data.value as any) });
+    };
+    load();
+  }, []);
+
+  const saveFreeDefaults = async () => {
+    setSavingFree(true);
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { error } = await supabase.from('site_settings').upsert({ key: 'free_tier_defaults', value: freeDefaults as any } as any, { onConflict: 'key' });
+    setSavingFree(false);
+    if (error) toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    else toast({ title: 'Saved', description: 'Free user defaults updated.' });
+  };
 
   const findColorPresetIndex = (tier: VipTierConfig): number => {
     const idx = COLOR_PRESETS.findIndex(p => p.gradient_from === tier.gradient_from);
@@ -163,6 +186,8 @@ const VipTierManager = () => {
       display_name: tier.display_name,
       daily_credits: tier.daily_credits,
       weekly_image_credits: (tier as any).weekly_image_credits ?? 30,
+      weekly_audio_credits: (tier as any).weekly_audio_credits ?? 10,
+      monthly_video_credits: (tier as any).monthly_video_credits ?? 5,
       croin_price: (tier as any).croin_price ?? 0,
       sort_order: tier.sort_order,
       icon_name: tier.icon_name,
@@ -179,6 +204,8 @@ const VipTierManager = () => {
       display_name: "",
       daily_credits: 15,
       weekly_image_credits: 30,
+      weekly_audio_credits: 10,
+      monthly_video_credits: 5,
       croin_price: 0,
       sort_order: (tiers.length + 1) * 10,
       icon_name: "Crown",
@@ -198,6 +225,8 @@ const VipTierManager = () => {
       display_name: editingTier.display_name,
       daily_credits: editingTier.daily_credits,
       weekly_image_credits: editingTier.weekly_image_credits,
+      weekly_audio_credits: editingTier.weekly_audio_credits,
+      monthly_video_credits: editingTier.monthly_video_credits,
       croin_price: editingTier.croin_price,
       sort_order: editingTier.sort_order,
       icon_name: editingTier.icon_name,
@@ -265,15 +294,48 @@ const VipTierManager = () => {
                 <Crown className="w-5 h-5" />
                 VIP Tier Management
               </CardTitle>
-              <CardDescription>Add, edit, or remove VIP tiers</CardDescription>
+              <CardDescription>Add, edit, or remove VIP tiers. Configure free user defaults in the Free Users tab.</CardDescription>
             </div>
-            <Button size="sm" onClick={handleStartCreate}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add Tier
-            </Button>
+            {activeTab === 'vip' && (
+              <Button size="sm" onClick={handleStartCreate}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add Tier
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Button size="sm" variant={activeTab === 'vip' ? 'default' : 'outline'} onClick={() => setActiveTab('vip')}>VIP Tiers</Button>
+            <Button size="sm" variant={activeTab === 'free' ? 'default' : 'outline'} onClick={() => setActiveTab('free')}>Free Users</Button>
           </div>
         </CardHeader>
         <CardContent>
+        {activeTab === 'free' ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">These defaults apply to users without an active VIP tier.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Daily Credits</label>
+                <Input type="number" value={freeDefaults.daily_credits} onChange={(e) => setFreeDefaults({ ...freeDefaults, daily_credits: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Weekly Image Credits</label>
+                <Input type="number" value={freeDefaults.weekly_image} onChange={(e) => setFreeDefaults({ ...freeDefaults, weekly_image: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Weekly Audio Credits</label>
+                <Input type="number" value={freeDefaults.weekly_audio} onChange={(e) => setFreeDefaults({ ...freeDefaults, weekly_audio: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Monthly Video Credits</label>
+                <Input type="number" value={freeDefaults.monthly_video} onChange={(e) => setFreeDefaults({ ...freeDefaults, monthly_video: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
+            </div>
+            <Button size="sm" onClick={saveFreeDefaults} disabled={savingFree}>
+              <Save className="w-4 h-4 mr-1" /> {savingFree ? 'Saving…' : 'Save Free Defaults'}
+            </Button>
+          </div>
+        ) : (
+        <>
           <div className="space-y-2">
             {tiers.map((tier) => {
               const Icon = iconMap[tier.icon_name] || Crown;
@@ -351,6 +413,18 @@ const VipTierManager = () => {
                     onChange={(e) => setEditingTier({ ...editingTier, weekly_image_credits: parseInt(e.target.value) || 0 })}
                     className="h-8 text-sm"
                   />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Weekly Audio Credits</label>
+                  <Input type="number" value={editingTier.weekly_audio_credits}
+                    onChange={(e) => setEditingTier({ ...editingTier, weekly_audio_credits: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Monthly Video Credits</label>
+                  <Input type="number" value={editingTier.monthly_video_credits}
+                    onChange={(e) => setEditingTier({ ...editingTier, monthly_video_credits: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm" />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Croin Price (¢)</label>
@@ -454,6 +528,8 @@ const VipTierManager = () => {
               </div>
             </div>
           )}
+        </>
+        )}
         </CardContent>
       </Card>
     </>

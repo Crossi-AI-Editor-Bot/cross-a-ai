@@ -196,36 +196,60 @@ export type Database = {
       }
       generation_queue: {
         Row: {
-          chat_id: string | null
+          conversation_id: string | null
           created_at: string
-          generation_type: string
+          duration: number | null
+          error: string | null
           id: string
+          image_input: string | null
+          kind: string
+          last_attempt_at: string | null
           model_cost_id: string
           position: number
           prompt: string
-          status: string | null
+          result_audio: string | null
+          result_image: string | null
+          result_video: string | null
+          status: string
+          updated_at: string
           user_id: string
         }
         Insert: {
-          chat_id?: string | null
+          conversation_id?: string | null
           created_at?: string
-          generation_type: string
+          duration?: number | null
+          error?: string | null
           id?: string
+          image_input?: string | null
+          kind: string
+          last_attempt_at?: string | null
           model_cost_id: string
           position?: number
           prompt: string
-          status?: string | null
+          result_audio?: string | null
+          result_image?: string | null
+          result_video?: string | null
+          status?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
-          chat_id?: string | null
+          conversation_id?: string | null
           created_at?: string
-          generation_type?: string
+          duration?: number | null
+          error?: string | null
           id?: string
+          image_input?: string | null
+          kind?: string
+          last_attempt_at?: string | null
           model_cost_id?: string
           position?: number
           prompt?: string
-          status?: string | null
+          result_audio?: string | null
+          result_image?: string | null
+          result_video?: string | null
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -251,6 +275,33 @@ export type Database = {
           ip_address?: string
           prompt_snippet?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      magic_hour_keys: {
+        Row: {
+          category: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          last_402_at: string | null
+          secret_name: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_402_at?: string | null
+          secret_name: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_402_at?: string | null
+          secret_name?: string
         }
         Relationships: []
       }
@@ -301,6 +352,7 @@ export type Database = {
           id: string
           image_cost: number | null
           is_fake: boolean
+          kind: string
           label: string
           model_id: string
           platinum_access: boolean
@@ -325,6 +377,7 @@ export type Database = {
           id?: string
           image_cost?: number | null
           is_fake?: boolean
+          kind?: string
           label: string
           model_id: string
           platinum_access?: boolean
@@ -349,6 +402,7 @@ export type Database = {
           id?: string
           image_cost?: number | null
           is_fake?: boolean
+          kind?: string
           label?: string
           model_id?: string
           platinum_access?: boolean
@@ -717,11 +771,13 @@ export type Database = {
           hidden: boolean
           icon_name: string
           id: string
+          monthly_video_credits: number
           name: string
           sort_order: number
           text_color: string
           unlimited: boolean
           updated_at: string
+          weekly_audio_credits: number
           weekly_call_credits: number
           weekly_image_credits: number
         }
@@ -739,11 +795,13 @@ export type Database = {
           hidden?: boolean
           icon_name?: string
           id?: string
+          monthly_video_credits?: number
           name: string
           sort_order?: number
           text_color?: string
           unlimited?: boolean
           updated_at?: string
+          weekly_audio_credits?: number
           weekly_call_credits?: number
           weekly_image_credits?: number
         }
@@ -761,11 +819,13 @@ export type Database = {
           hidden?: boolean
           icon_name?: string
           id?: string
+          monthly_video_credits?: number
           name?: string
           sort_order?: number
           text_color?: string
           unlimited?: boolean
           updated_at?: string
+          weekly_audio_credits?: number
           weekly_call_credits?: number
           weekly_image_credits?: number
         }

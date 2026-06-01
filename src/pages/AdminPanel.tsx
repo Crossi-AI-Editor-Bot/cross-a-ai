@@ -19,6 +19,7 @@ import DefaultModelManager from "@/components/admin/DefaultModelManager";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import GlobalPromptManager from "@/components/admin/GlobalPromptManager";
 import ApiKeyManager from "@/components/admin/ApiKeyManager";
+import MagicHourKeyManager from "@/components/admin/MagicHourKeyManager";
 
 interface ModelState {
   id: string;
@@ -278,9 +279,9 @@ const AdminPanel = () => {
         !!modelToDelete &&
         (mid === 'openai/gpt-5-nano' ||
           mid.startsWith('openrouter/') ||
-          mid.startsWith('magnific-image/') ||
-          mid.startsWith('magnific-video/') ||
-          mid.startsWith('magnific-music/'));
+          mid.startsWith('magic-hour-image/') ||
+          mid.startsWith('magic-hour-video/') ||
+          mid.startsWith('magic-hour-audio/'));
       if (!allowed) {
         toast({
           title: "Cannot delete",
@@ -493,6 +494,11 @@ const AdminPanel = () => {
         {/* External API Keys */}
         <div className="mb-6">
           <ApiKeyManager />
+        </div>
+
+        {/* Magic Hour Keys */}
+        <div className="mb-6">
+          <MagicHourKeyManager />
         </div>
 
         {/* File Explorer Layout */}

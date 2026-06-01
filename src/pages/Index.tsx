@@ -28,6 +28,7 @@ import { useModelCosts } from "@/hooks/useModelCosts";
 import ConversationsList from "@/components/ConversationsList";
 import MaintenancePage from "@/components/MaintenancePage";
 import { useChat } from "@/hooks/useChat";
+import { useQueueWatcher } from "@/hooks/useQueueWatcher";
 import { useCredits } from "@/hooks/useCredits";
 import { useImageCredits } from "@/hooks/useImageCredits";
 
@@ -51,7 +52,8 @@ const Index = () => {
     loading: conversationsLoading,
     refetch: refetchConversations,
   } = useConversations();
-  const { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages } = useChat(currentConversationId, refetchConversations);
+  const { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages, refetchMessages } = useChat(currentConversationId, refetchConversations);
+  useQueueWatcher(refetchMessages);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const { imageCredits, updateImageCredits, loading: imageCreditsLoading } = useImageCredits();
   
