@@ -52,8 +52,8 @@ const Index = () => {
     loading: conversationsLoading,
     refetch: refetchConversations,
   } = useConversations();
-  const { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages } = useChat(currentConversationId, refetchConversations);
-  useQueueWatcher();
+  const { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages, refetchMessages } = useChat(currentConversationId, refetchConversations);
+  useQueueWatcher(refetchMessages);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const { imageCredits, updateImageCredits, loading: imageCreditsLoading } = useImageCredits();
   
