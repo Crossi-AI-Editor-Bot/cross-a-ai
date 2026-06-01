@@ -35,7 +35,7 @@ async function toDataUrl(url: string): Promise<string> {
 }
 
 // Returns { ok: true, url } | { ok: false, status, body }
-export async function callMagicHour(opts: {
+async function callMagicHour(opts: {
   kind: 'image' | 'video' | 'audio';
   endpoint: string; // e.g. 'ai-image-generator'
   apiKey: string;
@@ -78,7 +78,7 @@ export async function callMagicHour(opts: {
   return { ok: false, status: 504, body: { error: 'Timeout' } };
 }
 
-export function buildBody(kind: string, endpoint: string, prompt: string, image?: string, duration?: number) {
+function buildBody(kind: string, endpoint: string, prompt: string, image?: string, duration?: number) {
   if (kind === 'image') {
     return {
       image_count: 1,

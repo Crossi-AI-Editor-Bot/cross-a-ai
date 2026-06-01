@@ -1,5 +1,53 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { callMagicHour, buildBody } from '../magic-hour-generate/index.ts';
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function callMagicHour(opts: {
+  kind: 'image' | 'video' | 'audio';
+  endpoint: string;
+  apiKey: string;
+  body: Record<string, unknown>;
+}): Promise<{ ok: true; url: string } | { ok: false; status: number; body: any }> {
+  const base = 'https://api.magichour.ai/v1';
+  const createRes = await fetch(`${base}/${opts.endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${opts.apiKey}` },
+    body: JSON.stringify(opts.body),
+  });
+  const createBody = await createRes.json().catch(() => ({}));
+  if (!createRes.ok) return { ok: false, status: createRes.status, body: createBody };
+  const id = createBody?.id;
+  if (!id) return { ok: false, status: 502, body: { error: 'No id returned' } };
+  const project = opts.kind === 'image' ? 'image-projects' : opts.kind === 'video' ? 'video-projects' : 'audio-projects';
+  for (let i = 0; i < 60; i++) {
+    await sleep(3000);
+    const pr = await fetch(`${base}/${project}/${id}`, { headers: { Authorization: `Bearer ${opts.apiKey}` } });
+    const pj = await pr.json().catch(() => ({}));
+    const status = pj?.status;
+    if (status === 'complete') {
+      const downloads = pj?.downloads || [];
+      const url = Array.isArray(downloads) && downloads[0]?.url;
+      if (url) return { ok: true, url };
+      return { ok: false, status: 502, body: pj };
+    }
+    if (status === 'error' || status === 'canceled') return { ok: false, status: 502, body: pj };
+  }
+  return { ok: false, status: 504, body: { error: 'Timeout' } };
+}
+
+function buildBody(kind: string, endpoint: string, prompt: string, image?: string, duration?: number) {
+  if (kind === 'image') {
+    return { image_count: 1, style: { prompt, tool: 'ai-image-generator' }, aspect_ratio: '1:1', orientation: 'square' };
+  }
+  if (kind === 'audio') return { style: { prompt, voice_name: 'Elizabeth' } };
+  if (kind === 'video') {
+    if (endpoint === 'image-to-video') {
+      return { end_seconds: duration ?? 5, style: { prompt, quality_mode: 'standard' }, assets: { image_file_path: image } };
+    }
+    return { end_seconds: duration ?? 5, orientation: 'landscape', style: { prompt, quality_mode: 'standard' } };
+  }
+  return { prompt };
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
