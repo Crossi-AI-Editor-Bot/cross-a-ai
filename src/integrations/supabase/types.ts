@@ -194,6 +194,42 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_queue: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          generation_type: string
+          id: string
+          model_cost_id: string
+          position: number
+          prompt: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          generation_type: string
+          id?: string
+          model_cost_id: string
+          position?: number
+          prompt: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          generation_type?: string
+          id?: string
+          model_cost_id?: string
+          position?: number
+          prompt?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       jailbreak_attempts: {
         Row: {
           created_at: string
@@ -252,6 +288,7 @@ export type Database = {
       }
       model_costs: {
         Row: {
+          audio_credits_per_second: number | null
           bronze_access: boolean
           copper_access: boolean
           cost: number
@@ -272,8 +309,10 @@ export type Database = {
           system_prompt: string | null
           updated_at: string
           updated_by: string | null
+          video_credits_per_second: number | null
         }
         Insert: {
+          audio_credits_per_second?: number | null
           bronze_access?: boolean
           copper_access?: boolean
           cost: number
@@ -294,8 +333,10 @@ export type Database = {
           system_prompt?: string | null
           updated_at?: string
           updated_by?: string | null
+          video_credits_per_second?: number | null
         }
         Update: {
+          audio_credits_per_second?: number | null
           bronze_access?: boolean
           copper_access?: boolean
           cost?: number
@@ -316,6 +357,7 @@ export type Database = {
           system_prompt?: string | null
           updated_at?: string
           updated_by?: string | null
+          video_credits_per_second?: number | null
         }
         Relationships: []
       }
@@ -429,6 +471,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_audio_credits: {
+        Row: {
+          credits: number
+          last_reset_date: string
+          user_id: string
+        }
+        Insert: {
+          credits?: number
+          last_reset_date?: string
+          user_id: string
+        }
+        Update: {
+          credits?: number
+          last_reset_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_call_credits: {
         Row: {
           created_at: string
@@ -527,6 +587,24 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_video_credits: {
+        Row: {
+          credits: number
+          last_reset_date: string
+          user_id: string
+        }
+        Insert: {
+          credits?: number
+          last_reset_date?: string
+          user_id: string
+        }
+        Update: {
+          credits?: number
+          last_reset_date?: string
           user_id?: string
         }
         Relationships: []
@@ -631,6 +709,8 @@ export type Database = {
           created_at: string
           croin_price: number
           daily_credits: number
+          default_audio_credits: number | null
+          default_video_credits: number | null
           display_name: string
           gradient_from: string
           gradient_to: string
@@ -651,6 +731,8 @@ export type Database = {
           created_at?: string
           croin_price?: number
           daily_credits?: number
+          default_audio_credits?: number | null
+          default_video_credits?: number | null
           display_name: string
           gradient_from?: string
           gradient_to?: string
@@ -671,6 +753,8 @@ export type Database = {
           created_at?: string
           croin_price?: number
           daily_credits?: number
+          default_audio_credits?: number | null
+          default_video_credits?: number | null
           display_name?: string
           gradient_from?: string
           gradient_to?: string
@@ -700,6 +784,14 @@ export type Database = {
         Returns: boolean
       }
       reset_daily_credits: { Args: { p_user_id: string }; Returns: undefined }
+      reset_monthly_video_credits: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      reset_weekly_audio_credits: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       reset_weekly_call_credits: {
         Args: { p_user_id: string }
         Returns: undefined
