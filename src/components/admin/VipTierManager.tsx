@@ -294,15 +294,48 @@ const VipTierManager = () => {
                 <Crown className="w-5 h-5" />
                 VIP Tier Management
               </CardTitle>
-              <CardDescription>Add, edit, or remove VIP tiers</CardDescription>
+              <CardDescription>Add, edit, or remove VIP tiers. Configure free user defaults in the Free Users tab.</CardDescription>
             </div>
-            <Button size="sm" onClick={handleStartCreate}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add Tier
-            </Button>
+            {activeTab === 'vip' && (
+              <Button size="sm" onClick={handleStartCreate}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add Tier
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2 mt-3">
+            <Button size="sm" variant={activeTab === 'vip' ? 'default' : 'outline'} onClick={() => setActiveTab('vip')}>VIP Tiers</Button>
+            <Button size="sm" variant={activeTab === 'free' ? 'default' : 'outline'} onClick={() => setActiveTab('free')}>Free Users</Button>
           </div>
         </CardHeader>
         <CardContent>
+        {activeTab === 'free' ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">These defaults apply to users without an active VIP tier.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Daily Credits</label>
+                <Input type="number" value={freeDefaults.daily_credits} onChange={(e) => setFreeDefaults({ ...freeDefaults, daily_credits: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Weekly Image Credits</label>
+                <Input type="number" value={freeDefaults.weekly_image} onChange={(e) => setFreeDefaults({ ...freeDefaults, weekly_image: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Weekly Audio Credits</label>
+                <Input type="number" value={freeDefaults.weekly_audio} onChange={(e) => setFreeDefaults({ ...freeDefaults, weekly_audio: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Monthly Video Credits</label>
+                <Input type="number" value={freeDefaults.monthly_video} onChange={(e) => setFreeDefaults({ ...freeDefaults, monthly_video: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
+            </div>
+            <Button size="sm" onClick={saveFreeDefaults} disabled={savingFree}>
+              <Save className="w-4 h-4 mr-1" /> {savingFree ? 'Saving…' : 'Save Free Defaults'}
+            </Button>
+          </div>
+        ) : (
+        <>
           <div className="space-y-2">
             {tiers.map((tier) => {
               const Icon = iconMap[tier.icon_name] || Crown;
@@ -380,6 +413,18 @@ const VipTierManager = () => {
                     onChange={(e) => setEditingTier({ ...editingTier, weekly_image_credits: parseInt(e.target.value) || 0 })}
                     className="h-8 text-sm"
                   />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Weekly Audio Credits</label>
+                  <Input type="number" value={editingTier.weekly_audio_credits}
+                    onChange={(e) => setEditingTier({ ...editingTier, weekly_audio_credits: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Monthly Video Credits</label>
+                  <Input type="number" value={editingTier.monthly_video_credits}
+                    onChange={(e) => setEditingTier({ ...editingTier, monthly_video_credits: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm" />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">Croin Price (¢)</label>
