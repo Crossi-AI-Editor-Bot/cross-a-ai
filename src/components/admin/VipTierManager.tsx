@@ -136,6 +136,8 @@ interface EditingTier {
   display_name: string;
   daily_credits: number;
   weekly_image_credits: number;
+  weekly_audio_credits: number;
+  monthly_video_credits: number;
   croin_price: number;
   sort_order: number;
   icon_name: string;
@@ -150,6 +152,27 @@ const VipTierManager = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingTier, setEditingTier] = useState<EditingTier | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'vip' | 'free'>('vip');
+  const [freeDefaults, setFreeDefaults] = useState({ daily_credits: 15, weekly_image: 30, weekly_audio: 10, monthly_video: 5 });
+  const [savingFree, setSavingFree] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await (await import('@/integrations/supabase/client')).supabase
+        .from('site_settings').select('value').eq('key', 'free_tier_defaults').maybeSingle();
+      if (data?.value) setFreeDefaults({ daily_credits: 15, weekly_image: 30, weekly_audio: 10, monthly_video: 5, ...(data.value as any) });
+    };
+    load();
+  }, []);
+
+  const saveFreeDefaults = async () => {
+    setSavingFree(true);
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { error } = await supabase.from('site_settings').upsert({ key: 'free_tier_defaults', value: freeDefaults as any } as any, { onConflict: 'key' });
+    setSavingFree(false);
+    if (error) toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    else toast({ title: 'Saved', description: 'Free user defaults updated.' });
+  };
 
   const findColorPresetIndex = (tier: VipTierConfig): number => {
     const idx = COLOR_PRESETS.findIndex(p => p.gradient_from === tier.gradient_from);
@@ -163,6 +186,8 @@ const VipTierManager = () => {
       display_name: tier.display_name,
       daily_credits: tier.daily_credits,
       weekly_image_credits: (tier as any).weekly_image_credits ?? 30,
+      weekly_audio_credits: (tier as any).weekly_audio_credits ?? 10,
+      monthly_video_credits: (tier as any).monthly_video_credits ?? 5,
       croin_price: (tier as any).croin_price ?? 0,
       sort_order: tier.sort_order,
       icon_name: tier.icon_name,
@@ -179,6 +204,8 @@ const VipTierManager = () => {
       display_name: "",
       daily_credits: 15,
       weekly_image_credits: 30,
+      weekly_audio_credits: 10,
+      monthly_video_credits: 5,
       croin_price: 0,
       sort_order: (tiers.length + 1) * 10,
       icon_name: "Crown",
@@ -198,6 +225,8 @@ const VipTierManager = () => {
       display_name: editingTier.display_name,
       daily_credits: editingTier.daily_credits,
       weekly_image_credits: editingTier.weekly_image_credits,
+      weekly_audio_credits: editingTier.weekly_audio_credits,
+      monthly_video_credits: editingTier.monthly_video_credits,
       croin_price: editingTier.croin_price,
       sort_order: editingTier.sort_order,
       icon_name: editingTier.icon_name,
