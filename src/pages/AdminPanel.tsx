@@ -19,6 +19,7 @@ import DefaultModelManager from "@/components/admin/DefaultModelManager";
 import InviteCodeManager from "@/components/admin/InviteCodeManager";
 import GlobalPromptManager from "@/components/admin/GlobalPromptManager";
 import ApiKeyManager from "@/components/admin/ApiKeyManager";
+import MagicHourKeyManager from "@/components/admin/MagicHourKeyManager";
 
 interface ModelState {
   id: string;
@@ -493,6 +494,11 @@ const AdminPanel = () => {
         {/* External API Keys */}
         <div className="mb-6">
           <ApiKeyManager />
+        </div>
+
+        {/* Magic Hour Keys */}
+        <div className="mb-6">
+          <MagicHourKeyManager />
         </div>
 
         {/* File Explorer Layout */}
