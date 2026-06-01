@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { VipTierIcon } from "@/components/VipTierIcon";
 import type { VipTierConfig } from "@/hooks/useVipTiers";
-import { isOpenRouterModel, isMagnificModel, isMagnificImageModel, isMagnificVideoModel, isMagnificMusicModel } from "@/lib/externalModels";
+import { isOpenRouterModel, isMagicHourModel, isMagicHourImage, isMagicHourVideo, isMagicHourAudio } from "@/lib/externalModels";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
 const NANO_MODEL_ID = 'openai/gpt-5-nano';
@@ -72,12 +72,12 @@ export const FileEditor = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isImageModel =
     IMAGE_MODELS.includes(model.model_id) ||
-    isMagnificImageModel(model.model_id) ||
-    isMagnificVideoModel(model.model_id) ||
-    isMagnificMusicModel(model.model_id);
+    isMagicHourImage(model.model_id) ||
+    isMagicHourVideo(model.model_id) ||
+    isMagicHourAudio(model.model_id);
   const isDeletable =
     BUILTIN_DELETABLE.includes(model.model_id) ||
-    isMagnificModel(model.model_id) ||
+    isMagicHourModel(model.model_id) ||
     isOpenRouterModel(model.model_id);
 
   const handleConfirmDelete = () => {

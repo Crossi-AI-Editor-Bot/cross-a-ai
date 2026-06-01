@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { isMagnificModel } from "@/lib/externalModels";
+import { isMagicHourModel, magicHourKind } from "@/lib/externalModels";
 
 interface Message {
   role: "user" | "assistant";
@@ -154,8 +154,9 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             .eq("id", modelCostId)
             .maybeSingle();
 
-      // === Magnific generation (image / video / music) ===
-      if (modelRow?.model_id && isMagnificModel(modelRow.model_id)) {
+      // === Magic Hour generation (image / video / audio) ===
+      if (modelRow?.model_id && isMagicHourModel(modelRow.model_id)) {
+        const kind = magicHourKind(modelRow.model_id);
         const { data: { session: mSession } } = await supabase.auth.getSession();
         const mAuth = mSession?.access_token;
         if (!mAuth) {
@@ -165,11 +166,11 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           return;
         }
 
-        updateAssistantMessage("⏳ Generating with Magnific…");
+        updateAssistantMessage("⏳ Generating with Magic Hour…");
 
         try {
           const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/magnific-generate`,
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/magic-hour-generate`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${mAuth}` },
@@ -177,14 +178,50 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
                 modelCostId,
                 prompt: content || "Generate",
                 image: fileData.find((f) => f.type?.startsWith("image/"))?.data,
+                duration: options?.videoSeconds,
               }),
             },
           );
           const data = await res.json().catch(() => ({}));
+
+          // Queue-offer flow: all keys returned 402
+          if (res.ok && (data as any).status === 'queue_offer') {
+            removeLastAssistantIfCreated();
+            setMessages((prev) => prev.slice(0, -1));
+            setIsLoading(false);
+            const accept = window.confirm(
+              "All Magic Hour generation slots are busy right now. Join the queue? You'll see the result here when it's ready."
+            );
+            if (accept) {
+              const qRes = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/queue-join`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: `Bearer ${mAuth}` },
+                  body: JSON.stringify({
+                    modelCostId,
+                    conversationId,
+                    prompt: content || "Generate",
+                    kind,
+                    image: fileData.find((f) => f.type?.startsWith("image/"))?.data,
+                    duration: options?.videoSeconds,
+                  }),
+                },
+              );
+              const qData = await qRes.json().catch(() => ({}));
+              if (qRes.ok) {
+                toast({ title: "Added to queue", description: `Position #${qData.position}. You'll see the result in chat when ready.` });
+              } else {
+                toast({ title: "Queue error", description: qData.error || "Could not join queue", variant: "destructive" });
+              }
+            }
+            return;
+          }
+
           if (!res.ok) {
             removeLastAssistantIfCreated();
             if (res.status === 402) {
-              toast({ title: "Insufficient Media Credits", description: data.error || "Not enough credits.", variant: "destructive" });
+              toast({ title: "Insufficient Credits", description: data.error || "Not enough credits.", variant: "destructive" });
             } else if (res.status === 403) {
               toast({ title: "Access Denied", description: data.error || "This model requires a higher tier.", variant: "destructive" });
             } else {
@@ -218,7 +255,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
             generateConversationTitle([userMessage, { role: "assistant", content: text }]);
           }
         } catch (mErr) {
-          console.error("Magnific generation failed:", mErr);
+          console.error("Magic Hour generation failed:", mErr);
           toast({ title: "Generation failed", description: mErr instanceof Error ? mErr.message : "Unknown error", variant: "destructive" });
           removeLastAssistantIfCreated();
         }
@@ -226,7 +263,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         setIsLoading(false);
         return;
       }
-      // === End Magnific path ===
+      // === End Magic Hour path ===
 
       // Get auth token
       const { data: { session } } = await supabase.auth.getSession();

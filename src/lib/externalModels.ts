@@ -34,3 +34,14 @@ export const isMediaModel = (id: string) =>
   isMagicHourModel(id) || (BUILTIN_IMAGE_MODELS as readonly string[]).includes(id);
 
 export const openRouterModelName = (id: string) => id.slice(OPENROUTER_PREFIX.length);
+
+export const MAGIC_HOUR_IMAGE_ENDPOINTS: { slug: string; label: string }[] = [
+  { slug: "ai-image-generator", label: "AI Image Generator" },
+];
+export const MAGIC_HOUR_VIDEO_ENDPOINTS: { slug: string; label: string }[] = [
+  { slug: "text-to-video", label: "Text to Video" },
+  { slug: "image-to-video", label: "Image to Video (Video Extend)" },
+];
+export const MAGIC_HOUR_AUDIO_ENDPOINTS: { slug: string; label: string }[] = [
+  { slug: "ai-voice-generator", label: "AI Voice (TTS)" },
+];
