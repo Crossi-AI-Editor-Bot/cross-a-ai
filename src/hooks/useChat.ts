@@ -608,5 +608,5 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     }
   };
 
-  return { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages };
+  return { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages, refetchMessages: loadMessages };
 };
