@@ -528,6 +528,8 @@ const VipTierManager = () => {
               </div>
             </div>
           )}
+        </>
+        )}
         </CardContent>
       </Card>
     </>
