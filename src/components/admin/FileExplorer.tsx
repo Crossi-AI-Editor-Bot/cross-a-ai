@@ -18,13 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import {
   OPENROUTER_PREFIX,
-  MAGNIFIC_IMAGE_PREFIX,
-  MAGNIFIC_VIDEO_PREFIX,
-  MAGNIFIC_MUSIC_PREFIX,
-  MAGNIFIC_IMAGE_ENDPOINTS,
-  MAGNIFIC_VIDEO_ENDPOINTS,
-  MAGNIFIC_MUSIC_ENDPOINTS,
-  isMagnificModel,
+  MAGIC_HOUR_IMAGE_PREFIX,
+  MAGIC_HOUR_VIDEO_PREFIX,
+  MAGIC_HOUR_AUDIO_PREFIX,
+  MAGIC_HOUR_IMAGE_ENDPOINTS,
+  MAGIC_HOUR_VIDEO_ENDPOINTS,
+  MAGIC_HOUR_AUDIO_ENDPOINTS,
+  isMagicHourModel,
 } from "@/lib/externalModels";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
@@ -36,7 +36,7 @@ const BUILTIN_IMAGE_BASES = [
 ];
 
 const isImageLikeModel = (modelId: string) =>
-  IMAGE_MODELS.includes(modelId) || isMagnificModel(modelId);
+  IMAGE_MODELS.includes(modelId) || isMagicHourModel(modelId);
 
 interface ModelFile {
   id: string;
@@ -112,9 +112,9 @@ export const FileExplorer = ({
   const [showAddOpenRouterModel, setShowAddOpenRouterModel] = useState(false);
   const [newOpenRouterId, setNewOpenRouterId] = useState("");
   const [showAddVideoModel, setShowAddVideoModel] = useState(false);
-  const [selectedVideoSlug, setSelectedVideoSlug] = useState<string>(MAGNIFIC_VIDEO_ENDPOINTS[0].slug);
-  const [showAddMusicModel, setShowAddMusicModel] = useState(false);
-  const [selectedMusicSlug, setSelectedMusicSlug] = useState<string>(MAGNIFIC_MUSIC_ENDPOINTS[0].slug);
+  const [selectedVideoSlug, setSelectedVideoSlug] = useState<string>(MAGIC_HOUR_VIDEO_ENDPOINTS[0].slug);
+  const [showAddAudioModel, setShowAddMusicModel] = useState(false);
+  const [selectedAudioSlug, setSelectedMusicSlug] = useState<string>(MAGIC_HOUR_AUDIO_ENDPOINTS[0].slug);
 
   const folderTree = buildFolderTree(folders);
 
@@ -152,15 +152,15 @@ export const FileExplorer = ({
 
   const handleAddVideoModel = () => {
     if (newModelLabel.trim() && onAddModel && selectedVideoSlug) {
-      onAddModel(`${MAGNIFIC_VIDEO_PREFIX}${selectedVideoSlug}`, newModelLabel.trim());
+      onAddModel(`${MAGIC_HOUR_VIDEO_PREFIX}${selectedVideoSlug}`, newModelLabel.trim());
       setNewModelLabel("");
       setShowAddVideoModel(false);
     }
   };
 
-  const handleAddMusicModel = () => {
-    if (newModelLabel.trim() && onAddModel && selectedMusicSlug) {
-      onAddModel(`${MAGNIFIC_MUSIC_PREFIX}${selectedMusicSlug}`, newModelLabel.trim());
+  const handleAddAudioModel = () => {
+    if (newModelLabel.trim() && onAddModel && selectedAudioSlug) {
+      onAddModel(`${MAGIC_HOUR_AUDIO_PREFIX}${selectedAudioSlug}`, newModelLabel.trim());
       setNewModelLabel("");
       setShowAddMusicModel(false);
     }
@@ -460,7 +460,7 @@ export const FileExplorer = ({
                 size="sm"
                 className="h-7 px-2 text-xs"
                 onClick={() => setShowAddMusicModel(true)}
-                title="Add Music Model"
+                title="Add Audio Model"
               >
                 <Plus className="h-3 w-3 mr-1" />
                 Music
@@ -556,9 +556,9 @@ export const FileExplorer = ({
                     {m.label}
                   </SelectItem>
                 ))}
-                {MAGNIFIC_IMAGE_ENDPOINTS.map((m) => (
-                  <SelectItem key={`${MAGNIFIC_IMAGE_PREFIX}${m.slug}`} value={`${MAGNIFIC_IMAGE_PREFIX}${m.slug}`}>
-                    Magnific · {m.label}
+                {MAGIC_HOUR_IMAGE_ENDPOINTS.map((m) => (
+                  <SelectItem key={`${MAGIC_HOUR_IMAGE_PREFIX}${m.slug}`} value={`${MAGIC_HOUR_IMAGE_PREFIX}${m.slug}`}>
+                    Magic Hour · {m.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -630,7 +630,7 @@ export const FileExplorer = ({
             <Select value={selectedVideoSlug} onValueChange={setSelectedVideoSlug}>
               <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent className="max-h-72">
-                {MAGNIFIC_VIDEO_ENDPOINTS.map((m) => (
+                {MAGIC_HOUR_VIDEO_ENDPOINTS.map((m) => (
                   <SelectItem key={m.slug} value={m.slug}>{m.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -658,16 +658,16 @@ export const FileExplorer = ({
         )}
 
         {/* Add new music model input */}
-        {showAddMusicModel && (
+        {showAddAudioModel && (
           <div className="flex flex-col gap-1 px-2 py-2 bg-pink-500/20 rounded-md mb-2">
             <div className="flex items-center gap-1">
               <ImageIcon className="h-4 w-4 text-pink-400 shrink-0" />
               <span className="text-xs font-medium text-pink-400">New Music Model</span>
             </div>
-            <Select value={selectedMusicSlug} onValueChange={setSelectedMusicSlug}>
+            <Select value={selectedAudioSlug} onValueChange={setSelectedMusicSlug}>
               <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent className="max-h-72">
-                {MAGNIFIC_MUSIC_ENDPOINTS.map((m) => (
+                {MAGIC_HOUR_AUDIO_ENDPOINTS.map((m) => (
                   <SelectItem key={m.slug} value={m.slug}>{m.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -678,13 +678,13 @@ export const FileExplorer = ({
                 value={newModelLabel}
                 onChange={(e) => setNewModelLabel(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddMusicModel();
+                  if (e.key === "Enter") handleAddAudioModel();
                   if (e.key === "Escape") setShowAddMusicModel(false);
                 }}
                 className="h-6 text-xs"
                 placeholder="Display name..."
               />
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddMusicModel}>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddAudioModel}>
                 <Save className="h-3 w-3" />
               </Button>
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddMusicModel(false)}>
