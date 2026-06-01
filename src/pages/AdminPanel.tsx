@@ -279,9 +279,9 @@ const AdminPanel = () => {
         !!modelToDelete &&
         (mid === 'openai/gpt-5-nano' ||
           mid.startsWith('openrouter/') ||
-          mid.startsWith('magnific-image/') ||
-          mid.startsWith('magnific-video/') ||
-          mid.startsWith('magnific-music/'));
+          mid.startsWith('magic-hour-image/') ||
+          mid.startsWith('magic-hour-video/') ||
+          mid.startsWith('magic-hour-audio/'));
       if (!allowed) {
         toast({
           title: "Cannot delete",
