@@ -28,6 +28,7 @@ import { useModelCosts } from "@/hooks/useModelCosts";
 import ConversationsList from "@/components/ConversationsList";
 import MaintenancePage from "@/components/MaintenancePage";
 import { useChat } from "@/hooks/useChat";
+import { useQueueWatcher } from "@/hooks/useQueueWatcher";
 import { useCredits } from "@/hooks/useCredits";
 import { useImageCredits } from "@/hooks/useImageCredits";
 
