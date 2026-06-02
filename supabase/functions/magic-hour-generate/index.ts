@@ -188,33 +188,23 @@ Deno.serve(async (req) => {
       if (!hasAccess) return json(403, { error: 'This model requires a higher VIP tier' });
     }
 
-    // Unlimited check
-    let isUnlimited = false;
-    {
-      const { data: vipRow } = await supabase
-        .from('vip_status').select('tier, expires_at')
-        .eq('user_id', user.id).gt('expires_at', new Date().toISOString()).maybeSingle();
-      if (vipRow) {
-        const { data: tierRow } = await supabase
-          .from('vip_tiers').select('unlimited').eq('name', vipRow.tier).maybeSingle();
-        if (tierRow && (tierRow as any).unlimited === true) isUnlimited = true;
-      }
-    }
-
-    // Compute cost
+    // Compute cost (unlimited VIPs still consume image/video/audio credits)
     const dur = duration ?? 5;
+    const wordCount = (prompt || '').trim().split(/\s+/).filter(Boolean).length;
     let creditTable = '';
     let cost = 0;
     if (kind === 'image') {
       creditTable = 'user_image_credits'; cost = Number(modelData.image_cost) || 1;
     } else if (kind === 'audio') {
-      creditTable = 'user_audio_credits'; cost = (Number(modelData.audio_credits_per_second) || 1) * dur;
+      // Audio: cost per 3 words (rounded up) of the prompt
+      creditTable = 'user_audio_credits';
+      cost = (Number(modelData.audio_credits_per_second) || 1) * Math.max(1, Math.ceil(wordCount / 3));
     } else {
       creditTable = 'user_video_credits'; cost = (Number(modelData.video_credits_per_second) || 1) * dur;
     }
 
     let currentCredits = 0;
-    if (!isUnlimited) {
+    {
       const { data: cRow } = await service.from(creditTable).select('credits').eq('user_id', user.id).maybeSingle();
       if (!cRow) {
         // Auto-init row for audio/video tables
@@ -252,11 +242,8 @@ Deno.serve(async (req) => {
       const result = await callMagicHour({ kind, endpoint, apiKey: secret, body });
       if (result.ok) {
         // Deduct credits
-        let newCredits = currentCredits;
-        if (!isUnlimited) {
-          newCredits = currentCredits - cost;
-          await service.from(creditTable).update({ credits: newCredits }).eq('user_id', user.id);
-        }
+        const newCredits = currentCredits - cost;
+        await service.from(creditTable).update({ credits: newCredits }).eq('user_id', user.id);
         const dataUrl = await toDataUrl(result.url);
         const payload: Record<string, unknown> = { credits: newCredits };
         if (kind === 'image') payload.image = dataUrl;
