@@ -290,17 +290,16 @@ Deno.serve(async (req) => {
     const initialCredits = userCredits.credits;
     const initialImageCredits = userImageCredits?.credits || 0;
 
-    // Validate sufficient credits based on model type
-    if (isUnlimited) {
-      // Unlimited tier: skip all credit validation
-    } else if (isImageGen) {
+    // Validate sufficient credits based on model type.
+    // Note: unlimited VIPs still consume image/audio/video credits — only text is unlimited.
+    if (isImageGen) {
       if (initialImageCredits < imageCreditCost) {
         return new Response(
           JSON.stringify({ error: 'Insufficient image credits' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-    } else {
+    } else if (!isUnlimited) {
       if (initialCredits < creditCost) {
         return new Response(
           JSON.stringify({ error: 'Insufficient credits' }),
@@ -334,9 +333,7 @@ Deno.serve(async (req) => {
     let newCredits = initialCredits;
     let newImageCredits = initialImageCredits;
 
-    if (isUnlimited) {
-      // No deduction
-    } else if (isImageGen) {
+    if (isImageGen) {
       newImageCredits = initialImageCredits - imageCreditCost;
       const { error: deductError } = await supabase
         .from('user_image_credits')
@@ -346,7 +343,7 @@ Deno.serve(async (req) => {
       if (deductError) {
         console.error('Failed to deduct image credits:', deductError);
       }
-    } else {
+    } else if (!isUnlimited) {
       newCredits = initialCredits - creditCost;
       const { error: deductError } = await supabase
         .from('user_credits')
