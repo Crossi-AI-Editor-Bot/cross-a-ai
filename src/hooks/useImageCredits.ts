@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useVipStatus } from "@/hooks/useVipStatus";
 
 export const useImageCredits = () => {
   const [imageCredits, setImageCredits] = useState<number>(30);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { isUnlimited } = useVipStatus();
 
   const fetchImageCredits = async () => {
     try {
@@ -66,7 +64,6 @@ export const useImageCredits = () => {
   }, []);
 
   const deductImageCredits = async (amount: number): Promise<boolean> => {
-    if (isUnlimited) return true;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast({

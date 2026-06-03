@@ -34,7 +34,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
   const modelCost = modelData?.cost || 0;
   const imageCost = (modelData as any)?.image_cost || 0;
   const videoPerSec = (modelData as any)?.video_credits_per_second || 1;
-  const audioPerSec = (modelData as any)?.audio_credits_per_second || 1;
+  const audioPerThreeWords = (modelData as any)?.audio_credits_per_second || 1;
 
   const maxCredits = isVip ? 20 : 15;
 
@@ -52,7 +52,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
           <Sparkles className="w-4 h-4 text-purple-400" />
           <span className="text-sm font-medium text-purple-300">
-            {isUnlimited ? "∞" : `${formatCredits(imageCredits)} ${imageCost > 0 ? `(-${imageCost})` : ""}`}
+            {`${formatCredits(imageCredits)} ${imageCost > 0 ? `(-${imageCost})` : ""}`}
           </span>
         </div>
       )}
@@ -62,7 +62,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-sky-500/10 to-cyan-500/10 border border-sky-500/30 rounded-lg">
           <Video className="w-4 h-4 text-sky-300" />
           <span className="text-sm font-medium text-sky-300">
-            {isUnlimited ? "∞" : `${formatCredits(videoCredits)} ${videoPerSec > 0 ? `(-${videoPerSec}/s)` : ""}`}
+            {`${formatCredits(videoCredits)} ${videoPerSec > 0 ? `(-${videoPerSec}/s)` : ""}`}
           </span>
         </div>
       )}
@@ -72,7 +72,7 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
         <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/30 rounded-lg">
           <Mic className="w-4 h-4 text-orange-300" />
           <span className="text-sm font-medium text-orange-300">
-            {isUnlimited ? "∞" : `${formatCredits(audioCredits)} ${audioPerSec > 0 ? `(-${audioPerSec}/s)` : ""}`}
+            {`${formatCredits(audioCredits)} ${audioPerThreeWords > 0 ? `(-${audioPerThreeWords}/3w)` : ""}`}
           </span>
         </div>
       )}
