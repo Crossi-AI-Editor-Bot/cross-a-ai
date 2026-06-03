@@ -512,7 +512,7 @@ const VipTierManager = () => {
                 />
                 <label htmlFor="tier-unlimited" className="text-xs text-muted-foreground flex items-center gap-1">
                   <Infinity className="w-3 h-3" />
-                  Unlimited text credits (media credits stay limited)
+                  Unlimited (no credit or media credit limits)
                 </label>
               </div>
               </div>

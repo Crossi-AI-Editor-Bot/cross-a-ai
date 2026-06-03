@@ -87,10 +87,7 @@ serve(async (req) => {
     // Debit Croins
     const croinsRes = await fetch(CROINS_API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": Deno.env.get("CROINKEY") ?? "",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "debit",
         user_id: profile.crossatrix_id,
