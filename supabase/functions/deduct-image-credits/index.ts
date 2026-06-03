@@ -101,22 +101,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Unlimited tier bypass
-    let isUnlimited = false;
-    {
-      const { data: vipRow } = await supabase
-        .from('vip_status').select('tier, expires_at')
-        .eq('user_id', user.id)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
-      if (vipRow) {
-        const { data: tierRow } = await supabase
-          .from('vip_tiers').select('unlimited')
-          .eq('name', vipRow.tier).maybeSingle();
-        if (tierRow && (tierRow as any).unlimited === true) isUnlimited = true;
-      }
-    }
-
+    // Unlimited VIPs still consume image/audio/video credits — only text is unlimited.
     const cost = (Number(modelData.image_cost) || 0) * mult;
 
     const { data: imgCredits, error: imgErr } = await supabase
@@ -129,19 +114,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!isUnlimited && imgCredits.credits < cost) {
+    if (imgCredits.credits < cost) {
       return new Response(JSON.stringify({ error: 'Insufficient image credits' }), {
         status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const newCredits = isUnlimited ? Number(imgCredits.credits) : Number(imgCredits.credits) - cost;
-    const { error: updateErr } = isUnlimited
-      ? { error: null } as any
-      : await supabase
-          .from('user_image_credits')
-          .update({ credits: newCredits })
-          .eq('user_id', user.id);
+    const newCredits = Number(imgCredits.credits) - cost;
+    const { error: updateErr } = await supabase
+      .from('user_image_credits')
+      .update({ credits: newCredits })
+      .eq('user_id', user.id);
 
     if (updateErr) {
       console.error('Failed to deduct image credits:', updateErr);
