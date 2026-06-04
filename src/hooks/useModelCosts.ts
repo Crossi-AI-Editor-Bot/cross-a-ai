@@ -10,6 +10,8 @@ export interface ModelCost {
   enabled: boolean;
   public_access: boolean;
   image_cost: number;
+  video_credits_per_second: number;
+  audio_credits_per_second: number;
   folder: string | null;
   system_prompt: string | null;
   is_fake: boolean;
@@ -29,7 +31,7 @@ export const useModelCosts = () => {
       const [modelsRes, accessRes] = await Promise.all([
         supabase
           .from("model_costs")
-          .select("id, model_id, label, cost, enabled, public_access, image_cost, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output")
+          .select("id, model_id, label, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output")
           .order("cost", { ascending: false }),
         supabase
           .from("model_tier_access" as any)
@@ -55,6 +57,8 @@ export const useModelCosts = () => {
         enabled: m.enabled,
         public_access: m.public_access,
         image_cost: m.image_cost || 0,
+        video_credits_per_second: Number(m.video_credits_per_second ?? 1),
+        audio_credits_per_second: Number(m.audio_credits_per_second ?? 1),
         folder: m.folder,
         system_prompt: m.system_prompt,
         is_fake: !!m.is_fake,
