@@ -31,6 +31,8 @@ interface ModelData {
   public_access: boolean;
   folder: string | null;
   image_cost: number;
+  video_credits_per_second?: number;
+  audio_credits_per_second?: number;
   system_prompt?: string | null;
   is_fake?: boolean;
   fake_error_message?: string | null;
@@ -47,6 +49,8 @@ interface FileEditorProps {
   onUpdatePublicAccess: (value: boolean) => void;
   onUpdateTierAccess: (tierName: string, value: boolean) => void;
   onUpdateImageCost?: (value: number) => void;
+  onUpdateVideoCostPerSecond?: (value: number) => void;
+  onUpdateAudioCostPer3Words?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
   onUpdateIsFake?: (value: boolean) => void;
   onUpdateFakeErrorMessage?: (value: string) => void;
@@ -63,6 +67,8 @@ export const FileEditor = ({
   onUpdatePublicAccess,
   onUpdateTierAccess,
   onUpdateImageCost,
+  onUpdateVideoCostPerSecond,
+  onUpdateAudioCostPer3Words,
   onUpdateSystemPrompt,
   onUpdateIsFake,
   onUpdateFakeErrorMessage,
@@ -70,11 +76,10 @@ export const FileEditor = ({
   onDelete,
 }: FileEditorProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const isImageModel =
-    IMAGE_MODELS.includes(model.model_id) ||
-    isMagicHourImage(model.model_id) ||
-    isMagicHourVideo(model.model_id) ||
-    isMagicHourAudio(model.model_id);
+  const isImageCostModel =
+    IMAGE_MODELS.includes(model.model_id) || isMagicHourImage(model.model_id);
+  const isVideoModel = isMagicHourVideo(model.model_id);
+  const isAudioModel = isMagicHourAudio(model.model_id);
   const isDeletable =
     BUILTIN_DELETABLE.includes(model.model_id) ||
     isMagicHourModel(model.model_id) ||
@@ -173,7 +178,7 @@ export const FileEditor = ({
           </div>
 
           {/* Image Cost */}
-          {isImageModel && onUpdateImageCost && (
+          {isImageCostModel && onUpdateImageCost && (
             <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-purple-400" />
               <span className="text-purple-400">image_credit_cost</span>
@@ -184,6 +189,36 @@ export const FileEditor = ({
                 min="0"
                 value={model.image_cost}
                 onChange={(e) => onUpdateImageCost(parseFloat(e.target.value) || 0)}
+                className="h-7 w-24 text-sm font-mono bg-background text-purple-400"
+              />
+            </div>
+          )}
+
+          {isVideoModel && onUpdateVideoCostPerSecond && (
+            <div className="flex items-center gap-2">
+              <span className="text-purple-400">video_credits_per_second</span>
+              <span className="text-muted-foreground">=</span>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                value={model.video_credits_per_second ?? 1}
+                onChange={(e) => onUpdateVideoCostPerSecond(parseFloat(e.target.value) || 0)}
+                className="h-7 w-24 text-sm font-mono bg-background text-purple-400"
+              />
+            </div>
+          )}
+
+          {isAudioModel && onUpdateAudioCostPer3Words && (
+            <div className="flex items-center gap-2">
+              <span className="text-purple-400">audio_credits_per_3_words</span>
+              <span className="text-muted-foreground">=</span>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                value={model.audio_credits_per_second ?? 1}
+                onChange={(e) => onUpdateAudioCostPer3Words(parseFloat(e.target.value) || 0)}
                 className="h-7 w-24 text-sm font-mono bg-background text-purple-400"
               />
             </div>
