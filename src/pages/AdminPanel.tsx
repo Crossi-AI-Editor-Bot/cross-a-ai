@@ -30,6 +30,8 @@ interface ModelState {
   public_access: boolean;
   folder: string | null;
   image_cost: number;
+  video_credits_per_second: number;
+  audio_credits_per_second: number;
   system_prompt: string | null;
   is_fake: boolean;
   fake_error_message: string | null;
