@@ -30,6 +30,8 @@ interface ModelState {
   public_access: boolean;
   folder: string | null;
   image_cost: number;
+  video_credits_per_second: number;
+  audio_credits_per_second: number;
   system_prompt: string | null;
   is_fake: boolean;
   fake_error_message: string | null;
@@ -110,6 +112,8 @@ const AdminPanel = () => {
       public_access: model.public_access,
       folder: model.folder || null,
       image_cost: model.image_cost || 0,
+      video_credits_per_second: model.video_credits_per_second ?? 1,
+      audio_credits_per_second: model.audio_credits_per_second ?? 1,
       system_prompt: model.system_prompt || null,
       is_fake: !!model.is_fake,
       fake_error_message: model.fake_error_message ?? null,
@@ -241,6 +245,8 @@ const AdminPanel = () => {
           public_access: data.public_access,
           folder: data.folder,
           image_cost: data.image_cost || 0,
+          video_credits_per_second: Number((data as any).video_credits_per_second ?? 1),
+          audio_credits_per_second: Number((data as any).audio_credits_per_second ?? 1),
           system_prompt: data.system_prompt || null,
           is_fake: false,
           fake_error_message: null,
@@ -333,6 +339,8 @@ const AdminPanel = () => {
             public_access: model.public_access,
             folder: model.folder,
             image_cost: model.image_cost,
+            video_credits_per_second: model.video_credits_per_second,
+            audio_credits_per_second: model.audio_credits_per_second,
             system_prompt: model.system_prompt,
             is_fake: model.is_fake,
             fake_error_message: model.fake_error_message,
@@ -529,6 +537,8 @@ const AdminPanel = () => {
                 onUpdatePublicAccess={(value) => updateModel(selectedModel.id, { public_access: value })}
                 onUpdateTierAccess={(tierName, value) => updateTierAccess(selectedModel.id, tierName, value)}
                 onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
+                onUpdateVideoCostPerSecond={(value) => updateModel(selectedModel.id, { video_credits_per_second: value })}
+                onUpdateAudioCostPer3Words={(value) => updateModel(selectedModel.id, { audio_credits_per_second: value })}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
                 onUpdateIsFake={(value) => updateModel(selectedModel.id, { is_fake: value })}
                 onUpdateFakeErrorMessage={(value) => updateModel(selectedModel.id, { fake_error_message: value })}
