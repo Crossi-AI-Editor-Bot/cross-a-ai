@@ -82,8 +82,8 @@ function buildBody(kind: string, endpoint: string, prompt: string, image?: strin
   if (kind === 'image') {
     return {
       image_count: 1,
-      style: { prompt, tool: 'ai-image-generator' },
-      aspect_ratio: '1:1',
+      model: 'z-image-turbo',
+      style: { prompt },
       orientation: 'square',
     };
   }
@@ -94,14 +94,18 @@ function buildBody(kind: string, endpoint: string, prompt: string, image?: strin
     if (endpoint === 'image-to-video') {
       return {
         end_seconds: duration ?? 5,
-        style: { prompt, quality_mode: 'standard' },
+        model: 'ltx-2',
+        resolution: '720p',
+        style: { prompt },
         assets: { image_file_path: image },
       };
     }
     return {
       end_seconds: duration ?? 5,
-      orientation: 'landscape',
-      style: { prompt, quality_mode: 'standard' },
+      aspect_ratio: '16:9',
+      resolution: '720p',
+      model: 'ltx-2',
+      style: { prompt },
     };
   }
   return { prompt };
