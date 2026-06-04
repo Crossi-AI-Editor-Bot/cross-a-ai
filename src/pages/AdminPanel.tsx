@@ -537,6 +537,8 @@ const AdminPanel = () => {
                 onUpdatePublicAccess={(value) => updateModel(selectedModel.id, { public_access: value })}
                 onUpdateTierAccess={(tierName, value) => updateTierAccess(selectedModel.id, tierName, value)}
                 onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
+                onUpdateVideoCostPerSecond={(value) => updateModel(selectedModel.id, { video_credits_per_second: value })}
+                onUpdateAudioCostPer3Words={(value) => updateModel(selectedModel.id, { audio_credits_per_second: value })}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
                 onUpdateIsFake={(value) => updateModel(selectedModel.id, { is_fake: value })}
                 onUpdateFakeErrorMessage={(value) => updateModel(selectedModel.id, { fake_error_message: value })}
