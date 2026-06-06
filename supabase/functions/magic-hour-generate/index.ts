@@ -95,7 +95,7 @@ function buildBody(kind: string, endpoint: string, prompt: string, image?: strin
       return {
         end_seconds: duration ?? 5,
         model: 'ltx-2',
-        resolution: '720p',
+        resolution: '480p',
         style: { prompt },
         assets: { image_file_path: image },
       };
@@ -103,7 +103,7 @@ function buildBody(kind: string, endpoint: string, prompt: string, image?: strin
     return {
       end_seconds: duration ?? 5,
       aspect_ratio: '16:9',
-      resolution: '720p',
+      resolution: '480p',
       model: 'ltx-2',
       style: { prompt },
     };
