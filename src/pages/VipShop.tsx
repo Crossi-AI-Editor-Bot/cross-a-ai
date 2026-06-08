@@ -22,6 +22,7 @@ import { useCroins } from "@/hooks/useCroins";
 import VipAdminRequests from "@/components/VipAdminRequests";
 import VipTierComparisonChart from "@/components/VipTierComparisonChart";
 import CustomVipBuilder from "@/components/CustomVipBuilder";
+import CreditPurchaseSection from "@/components/CreditPurchaseSection";
 import { supabase } from "@/integrations/supabase/client";
 
 const VipShop = () => {
