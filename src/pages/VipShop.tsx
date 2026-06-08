@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Clock, X, Sparkles, Ticket, Coins } from "lucide-react";
+import { ArrowLeft, Check, Clock, X, Sparkles, Ticket, Coins, MessageSquare, Mic, Image as ImageIcon, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -252,6 +252,8 @@ const VipShop = () => {
         </Card>
 
         {isAdmin && <VipAdminRequests />}
+
+        <CreditPurchaseSection croinBalance={croinBalance} refetchCroins={refetchCroins} />
       </main>
 
       {/* Cancel Subscription Dialog */}
