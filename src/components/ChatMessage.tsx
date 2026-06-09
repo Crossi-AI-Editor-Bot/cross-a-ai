@@ -1,7 +1,9 @@
-import { Bot, User, Download, Maximize2 } from "lucide-react";
+import { Bot, User, Download, Maximize2, Copy as CopyIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { useMods } from "@/hooks/useMods";
+import { toast } from "@/hooks/use-toast";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -14,6 +16,8 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ role, content, image, video, audio, files }: ChatMessageProps) => {
   const isUser = role === "user";
+  const { has } = useMods();
+  const showCopy = has("copy");
 
   // Detect a "[[VIDEO_PROGRESS:cur/total]]" marker emitted during Crossi video
   // frame generation so we can render a real progress bar instead of raw text.
@@ -69,6 +73,18 @@ const ChatMessage = ({ role, content, image, video, audio, files }: ChatMessageP
         )}
         
         <p className="text-sm leading-relaxed whitespace-pre-wrap">{cleanedContent}</p>
+        {showCopy && cleanedContent && (
+          <button
+            type="button"
+            className="mt-2 inline-flex items-center gap-1 text-xs opacity-60 hover:opacity-100"
+            onClick={() => {
+              navigator.clipboard.writeText(cleanedContent);
+              toast({ title: "Copied to clipboard" });
+            }}
+          >
+            <CopyIcon className="w-3 h-3" /> Copy
+          </button>
+        )}
 
         {progressMatch && (
           <div className="mt-3 space-y-1">
