@@ -31,7 +31,7 @@ import { useChat } from "@/hooks/useChat";
 import { useQueueWatcher } from "@/hooks/useQueueWatcher";
 import { useCredits } from "@/hooks/useCredits";
 import { useImageCredits } from "@/hooks/useImageCredits";
-import { isMagicHourVideo } from "@/lib/externalModels";
+import { isMagicHourVideo, isMagicHourAudio } from "@/lib/externalModels";
 
 import { useConversations } from "@/hooks/useConversations";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -321,6 +321,7 @@ const Index = () => {
             }
             disabled={isLoading}
             isCrossiVideo={!!selectedModelRow?.model_id && isMagicHourVideo(selectedModelRow.model_id)}
+            isCrossiAudio={!!selectedModelRow?.model_id && isMagicHourAudio(selectedModelRow.model_id)}
           />
         </div>
       </footer>
