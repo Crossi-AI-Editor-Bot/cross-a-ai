@@ -1,5 +1,6 @@
-import { MessageSquarePlus, Trash2, Edit2, Phone } from "lucide-react";
+import { MessageSquarePlus, Trash2, Edit2, Phone, Puzzle, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import {
   Sheet,
   SheetContent,
@@ -52,6 +53,7 @@ const ConversationsList = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleRename = (id: string, currentTitle: string) => {
     setEditingId(id);
@@ -90,6 +92,24 @@ const ConversationsList = ({
             <MessageSquarePlus className="w-4 h-4 mr-2" />
             New Conversation
           </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => { setOpen(false); navigate("/mods"); }}
+              className="flex-1 justify-start"
+              variant="outline"
+            >
+              <Puzzle className="w-4 h-4 mr-2" />
+              Mods
+            </Button>
+            <Button
+              onClick={() => { setOpen(false); navigate("/settings"); }}
+              className="flex-1 justify-start"
+              variant="outline"
+            >
+              <SettingsIcon className="w-4 h-4 mr-2" />
+              Settings
+            </Button>
+          </div>
 
           <ScrollArea className="h-[calc(100vh-180px)] mt-4">
             <div className="space-y-1 pr-4">

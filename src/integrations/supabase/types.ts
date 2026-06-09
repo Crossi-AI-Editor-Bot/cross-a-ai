@@ -624,6 +624,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_mods: {
+        Row: {
+          installed: string[]
+          settings: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          installed?: string[]
+          settings?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          installed?: string[]
+          settings?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
