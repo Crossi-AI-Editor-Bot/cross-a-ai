@@ -4,6 +4,7 @@ import type { ModelCost } from "@/hooks/useModelCosts";
 import { isMediaModel, isMagicHourImage, isMagicHourVideo, isMagicHourAudio } from "@/lib/externalModels";
 import { useVideoCredits } from "@/hooks/useVideoCredits";
 import { useAudioCredits } from "@/hooks/useAudioCredits";
+import { useMods } from "@/hooks/useMods";
 
 interface CreditsDisplayProps {
   credits: number;
@@ -22,6 +23,12 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
   const { isVip, isUnlimited } = useVipStatus();
   const { videoCredits } = useVideoCredits();
   const { audioCredits } = useAudioCredits();
+  const { has, settings } = useMods();
+  const recolor = has("credit-recolor");
+  const colors = settings.creditColors || {};
+  const audioStyle = recolor && colors.audio ? { color: colors.audio, borderColor: colors.audio } : undefined;
+  const imageStyle = recolor && colors.image ? { color: colors.image, borderColor: colors.image } : undefined;
+  const videoStyle = recolor && colors.video ? { color: colors.video, borderColor: colors.video } : undefined;
 
   const modelData = selectedModelCostId ? models.find((m) => m.id === selectedModelCostId) : null;
   const modelId = modelData?.model_id;
@@ -49,9 +56,9 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
 
       {/* Image credits pill */}
       {isImage && imageCredits !== undefined && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg">
-          <Sparkles className="w-4 h-4 text-purple-400" />
-          <span className="text-sm font-medium text-purple-300">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg" style={imageStyle}>
+          <Sparkles className="w-4 h-4 text-purple-400" style={imageStyle} />
+          <span className="text-sm font-medium text-purple-300" style={imageStyle}>
             {`${formatCredits(imageCredits)} ${imageCost > 0 ? `(-${imageCost})` : ""}`}
           </span>
         </div>
@@ -59,9 +66,9 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
 
       {/* Video credits pill - light blue */}
       {isVideo && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-sky-500/10 to-cyan-500/10 border border-sky-500/30 rounded-lg">
-          <Video className="w-4 h-4 text-sky-300" />
-          <span className="text-sm font-medium text-sky-300">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-sky-500/10 to-cyan-500/10 border border-sky-500/30 rounded-lg" style={videoStyle}>
+          <Video className="w-4 h-4 text-sky-300" style={videoStyle} />
+          <span className="text-sm font-medium text-sky-300" style={videoStyle}>
             {`${formatCredits(videoCredits)} ${videoPerSec > 0 ? `(-${videoPerSec}/s)` : ""}`}
           </span>
         </div>
@@ -69,9 +76,9 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
 
       {/* Audio credits pill - orange */}
       {isAudio && (
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/30 rounded-lg">
-          <Mic className="w-4 h-4 text-orange-300" />
-          <span className="text-sm font-medium text-orange-300">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/30 rounded-lg" style={audioStyle}>
+          <Mic className="w-4 h-4 text-orange-300" style={audioStyle} />
+          <span className="text-sm font-medium text-orange-300" style={audioStyle}>
             {`${formatCredits(audioCredits)} ${audioPerThreeWords > 0 ? `(-${audioPerThreeWords}/3w)` : ""}`}
           </span>
         </div>
