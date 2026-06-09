@@ -17,6 +17,7 @@ const requestSchema = z.object({
   prompt: z.string().min(1).max(4000),
   image: z.string().optional(),
   duration: z.number().int().min(1).max(60).optional(),
+  voiceName: z.string().min(1).max(200).optional(),
 });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -78,7 +79,7 @@ async function callMagicHour(opts: {
   return { ok: false, status: 504, body: { error: 'Timeout' } };
 }
 
-function buildBody(kind: string, endpoint: string, prompt: string, image?: string, duration?: number) {
+function buildBody(kind: string, endpoint: string, prompt: string, image?: string, duration?: number, voiceName?: string) {
   if (kind === 'image') {
     return {
       image_count: 1,
@@ -88,7 +89,7 @@ function buildBody(kind: string, endpoint: string, prompt: string, image?: strin
     };
   }
   if (kind === 'audio') {
-    return { style: { prompt, voice_name: 'Elizabeth' } };
+    return { style: { prompt, voice_name: voiceName || 'Morgan Freeman' } };
   }
   if (kind === 'video') {
     if (endpoint === 'image-to-video') {
@@ -133,7 +134,7 @@ Deno.serve(async (req) => {
 
     const parsed = requestSchema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json(400, { error: 'Invalid request' });
-    const { modelCostId, prompt, image, duration } = parsed.data;
+    const { modelCostId, prompt, image, duration, voiceName } = parsed.data;
 
     const { data: modelData, error: modelErr } = await supabase
       .from('model_costs')
@@ -236,7 +237,7 @@ Deno.serve(async (req) => {
     // Random order
     const shuffled = [...keys].sort(() => Math.random() - 0.5);
 
-    const body = buildBody(kind, endpoint, prompt, image, dur);
+    const body = buildBody(kind, endpoint, prompt, image, dur, voiceName);
     let lastError: any = null;
     let all402 = true;
 
