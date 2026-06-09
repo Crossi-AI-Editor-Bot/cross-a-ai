@@ -1,20 +1,24 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Paperclip, X, Film } from "lucide-react";
+import { Send, Paperclip, X, Film, Mic } from "lucide-react";
 import { useDevMode } from "@/hooks/useDevMode";
 import { toast } from "sonner";
+import { MAGIC_HOUR_VOICES, DEFAULT_MAGIC_HOUR_VOICE } from "@/lib/magicHourVoices";
 
 interface ChatInputProps {
-  onSend: (message: string, files?: File[], options?: { videoSeconds?: number }) => void;
+  onSend: (message: string, files?: File[], options?: { videoSeconds?: number; voiceName?: string }) => void;
   disabled?: boolean;
   isCrossiVideo?: boolean;
+  isCrossiAudio?: boolean;
 }
 
-const ChatInput = ({ onSend, disabled, isCrossiVideo }: ChatInputProps) => {
+const ChatInput = ({ onSend, disabled, isCrossiVideo, isCrossiAudio }: ChatInputProps) => {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [videoSeconds, setVideoSeconds] = useState(3);
+  const [voiceName, setVoiceName] = useState<string>(DEFAULT_MAGIC_HOUR_VOICE);
+  const [voiceFilter, setVoiceFilter] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const emptyClickCount = useRef(0);
   const emptyClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -38,7 +42,10 @@ const ChatInput = ({ onSend, disabled, isCrossiVideo }: ChatInputProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if ((input.trim() || files.length > 0) && !disabled) {
-      onSend(input.trim(), files, isCrossiVideo ? { videoSeconds } : undefined);
+      const opts: { videoSeconds?: number; voiceName?: string } = {};
+      if (isCrossiVideo) opts.videoSeconds = videoSeconds;
+      if (isCrossiAudio) opts.voiceName = voiceName;
+      onSend(input.trim(), files, Object.keys(opts).length ? opts : undefined);
       setInput("");
       setFiles([]);
     }
@@ -63,6 +70,30 @@ const ChatInput = ({ onSend, disabled, isCrossiVideo }: ChatInputProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
+      {isCrossiAudio && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-xs">
+          <Mic className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="text-emerald-300 shrink-0">Voice:</span>
+          <input
+            type="text"
+            value={voiceFilter}
+            onChange={(e) => setVoiceFilter(e.target.value)}
+            placeholder="Search…"
+            className="flex-1 min-w-0 bg-transparent border border-emerald-500/30 rounded px-2 py-1 text-emerald-100 placeholder:text-emerald-400/50 focus:outline-none focus:border-emerald-400"
+          />
+          <select
+            value={voiceName}
+            onChange={(e) => setVoiceName(e.target.value)}
+            className="bg-background border border-emerald-500/30 rounded px-2 py-1 text-foreground max-w-[55%] truncate"
+          >
+            {MAGIC_HOUR_VOICES
+              .filter((v) => v.toLowerCase().includes(voiceFilter.toLowerCase()))
+              .map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+          </select>
+        </div>
+      )}
       {isCrossiVideo && (
         <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-purple-500/10 border border-purple-500/30 text-xs">
           <Film className="w-4 h-4 text-purple-400 shrink-0" />
