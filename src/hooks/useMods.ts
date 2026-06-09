@@ -66,12 +66,12 @@ export const useMods = () => {
       settings: next.settings ?? cache.settings,
     };
     setState({ ...merged, loading: false });
-    await supabase.from("user_mods").upsert({
+    await supabase.from("user_mods").upsert([{
       user_id: user.id,
       installed: merged.installed,
-      settings: merged.settings,
+      settings: merged.settings as any,
       updated_at: new Date().toISOString(),
-    });
+    }]);
   }, []);
 
   const toggleMod = useCallback((id: ModId) => {
