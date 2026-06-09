@@ -69,7 +69,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     content: string,
     modelCostId: string,
     files?: File[],
-    options?: { videoSeconds?: number; selectedModelId?: string },
+    options?: { videoSeconds?: number; selectedModelId?: string; voiceName?: string },
   ) => {
     if ((!content.trim() && !files?.length)) return;
     
@@ -179,6 +179,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
                 prompt: content || "Generate",
                 image: fileData.find((f) => f.type?.startsWith("image/"))?.data,
                 duration: options?.videoSeconds,
+                voiceName: options?.voiceName,
               }),
             },
           );
