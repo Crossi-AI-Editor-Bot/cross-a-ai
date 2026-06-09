@@ -13,6 +13,9 @@ import NotFound from "./pages/NotFound";
 import { NotificationPopup } from "./components/NotificationPopup";
 import { useIpBanCheck } from "./hooks/useIpBanCheck";
 import { useApiErrorInterceptor } from "./hooks/useApiErrorInterceptor";
+import Mods from "./pages/Mods";
+import Settings from "./pages/Settings";
+import { ModsApplier } from "./hooks/useMods";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +47,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <NotificationPopup />
+      <ModsApplier />
       <BrowserRouter>
         <ApiErrorInterceptorWrapper>
           <BanGuard>
@@ -52,6 +56,8 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/vip" element={<VipShop />} />
+              <Route path="/mods" element={<Mods />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/banned" element={<Banned />} />
               <Route path="/error" element={<ErrorPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
