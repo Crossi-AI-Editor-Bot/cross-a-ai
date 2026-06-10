@@ -278,13 +278,25 @@ Deno.serve(async (req) => {
     // Random order
     const shuffled = [...keys].sort(() => Math.random() - 0.5);
 
-    const body = buildBody(kind, endpoint, prompt, image, dur, voiceName);
+    // For video-with-image, force the image-to-video endpoint so Magic Hour
+    // accepts the request regardless of which video model the user selected.
+    if (kind === 'video' && image) endpoint = 'image-to-video';
     let lastError: any = null;
     let all402 = true;
 
     for (const key of shuffled) {
       const secret = Deno.env.get(key.secret_name);
       if (!secret) continue;
+      let perKeyImage = image;
+      if (kind === 'video' && image) {
+        const uploaded = await uploadToMagicHour(secret, image);
+        if (!uploaded) {
+          lastError = { error: 'Failed to upload reference image' };
+          continue;
+        }
+        perKeyImage = uploaded;
+      }
+      const body = buildBody(kind, endpoint, prompt, perKeyImage, dur, voiceName);
       const result = await callMagicHour({ kind, endpoint, apiKey: secret, body });
       if (result.ok) {
         // Deduct credits
