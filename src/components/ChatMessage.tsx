@@ -1,4 +1,4 @@
-import { Bot, User, Download, Maximize2, Copy as CopyIcon } from "lucide-react";
+import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -28,6 +28,38 @@ const ChatMessage = ({ role, content, image, video, audio, files }: ChatMessageP
   const progressCurrent = progressMatch ? Number(progressMatch[1]) : 0;
   const progressTotal = progressMatch ? Number(progressMatch[2]) : 0;
   const progressPct = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
+
+  // Extract $CODE$ ... $/CODE$ blocks and split content into segments
+  const codeRegex = /\$CODE\$([\s\S]*?)\$\/CODE\$/g;
+  const segments: Array<{ type: "text" | "code"; value: string }> = [];
+  {
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    const src = cleanedContent;
+    while ((match = codeRegex.exec(src)) !== null) {
+      if (match.index > lastIndex) {
+        segments.push({ type: "text", value: src.slice(lastIndex, match.index) });
+      }
+      segments.push({ type: "code", value: match[1].trim() });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < src.length) {
+      segments.push({ type: "text", value: src.slice(lastIndex) });
+    }
+    if (segments.length === 0) segments.push({ type: "text", value: src });
+  }
+
+  const downloadCode = (code: string) => {
+    const blob = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `code-${Date.now()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const handleDownload = () => {
     if (!image) return;
@@ -72,7 +104,38 @@ const ChatMessage = ({ role, content, image, video, audio, files }: ChatMessageP
           </div>
         )}
         
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{cleanedContent}</p>
+        <div className="text-sm leading-relaxed whitespace-pre-wrap space-y-2">
+          {segments.map((seg, i) =>
+            seg.type === "text" ? (
+              <p key={i}>{seg.value}</p>
+            ) : (
+              <div key={i} className="rounded-md border border-border bg-muted/50 overflow-hidden">
+                <pre className="p-3 text-xs overflow-x-auto whitespace-pre text-foreground">
+                  <code>{seg.value}</code>
+                </pre>
+                <div className="flex items-center gap-2 px-2 py-1 border-t border-border bg-background/50">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-accent text-foreground"
+                    onClick={() => {
+                      navigator.clipboard.writeText(seg.value);
+                      toast({ title: "Code copied to clipboard" });
+                    }}
+                  >
+                    <CopyIcon className="w-3 h-3" /> Copy
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded hover:bg-accent text-foreground"
+                    onClick={() => downloadCode(seg.value)}
+                  >
+                    <FileText className="w-3 h-3" /> Download .txt
+                  </button>
+                </div>
+              </div>
+            )
+          )}
+        </div>
         {showCopy && cleanedContent && (
           <button
             type="button"
