@@ -22,6 +22,46 @@ const requestSchema = z.object({
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Upload a data URL (or plain URL) to Magic Hour and return a file path
+// usable as `assets.image_file_path` for video endpoints.
+async function uploadToMagicHour(apiKey: string, dataOrUrl: string): Promise<string | null> {
+  try {
+    // If it's already a regular http(s) URL, pass it through.
+    if (/^https?:\/\//i.test(dataOrUrl)) return dataOrUrl;
+    const m = dataOrUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!m) return null;
+    const mime = m[1];
+    const b64 = m[2];
+    const ext = mime.includes('png') ? 'png'
+      : mime.includes('webp') ? 'webp'
+      : mime.includes('gif') ? 'gif' : 'jpg';
+
+    const r = await fetch('https://api.magichour.ai/v1/files/upload-urls', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ items: [{ type: 'image', extension: ext }] }),
+    });
+    const j = await r.json().catch(() => ({}));
+    const item = Array.isArray(j?.items) ? j.items[0] : null;
+    if (!item?.upload_url || !item?.file_path) return null;
+
+    // Decode base64 → bytes
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+    const up = await fetch(item.upload_url, {
+      method: 'PUT',
+      headers: { 'Content-Type': mime },
+      body: bytes,
+    });
+    if (!up.ok) return null;
+    return item.file_path as string;
+  } catch {
+    return null;
+  }
+}
+
 async function toDataUrl(url: string): Promise<string> {
   try {
     const r = await fetch(url);
@@ -92,7 +132,8 @@ function buildBody(kind: string, endpoint: string, prompt: string, image?: strin
     return { style: { prompt, voice_name: voiceName || 'Morgan Freeman' } };
   }
   if (kind === 'video') {
-    if (endpoint === 'image-to-video') {
+    // Any video request with an image becomes an image-to-video call.
+    if (image) {
       return {
         end_seconds: duration ?? 5,
         model: 'ltx-2',
