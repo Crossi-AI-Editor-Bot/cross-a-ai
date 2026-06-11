@@ -1,4 +1,5 @@
 import { MessageSquarePlus, Trash2, Edit2, Phone, Puzzle, Settings as SettingsIcon } from "lucide-react";
+import QueueDialog from "./QueueDialog";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import {
@@ -109,6 +110,10 @@ const ConversationsList = ({
               <SettingsIcon className="w-4 h-4 mr-2" />
               Settings
             </Button>
+          </div>
+          <div className="flex">
+            <QueueDialog />
+            <span className="ml-2 text-sm text-muted-foreground self-center">Generation queue</span>
           </div>
 
           <ScrollArea className="h-[calc(100vh-180px)] mt-4">
