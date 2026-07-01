@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { isMagicHourModel, magicHourKind } from "@/lib/externalModels";
+import { useVipStatus } from "@/hooks/useVipStatus";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,6 +19,21 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
   const [newCredits, setNewCredits] = useState<number | null>(null);
   const [newImageCredits, setNewImageCredits] = useState<number | null>(null);
   const { toast } = useToast();
+  const { isDynamic, topupDiscountPercent } = useVipStatus();
+
+  // Silently top up 10 credits at the configured Dynamic-VIP discount, returns true on success
+  const tryDynamicTopup = async (kind: "text" | "image" | "video" | "audio"): Promise<boolean> => {
+    if (!isDynamic) return false;
+    try {
+      const { data, error } = await supabase.functions.invoke("purchase-credits", {
+        body: { kind, amount: 10, discount_percent: topupDiscountPercent },
+      });
+      if (error || (data as any)?.error) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   // Load messages from database when conversation changes
   useEffect(() => {
@@ -169,7 +185,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         updateAssistantMessage("⏳ Generating with Magic Hour…");
 
         try {
-          const res = await fetch(
+          const doMagicHourCall = () => fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/magic-hour-generate`,
             {
               method: "POST",
@@ -183,7 +199,18 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
               }),
             },
           );
-          const data = await res.json().catch(() => ({}));
+          let res = await doMagicHourCall();
+          let data = await res.json().catch(() => ({}));
+
+          // Dynamic-VIP auto top-up on 402, then retry once
+          if (res.status === 402 && isDynamic) {
+            const kindForTopup = (kind === "image" || kind === "video" || kind === "audio") ? kind : "image";
+            const topped = await tryDynamicTopup(kindForTopup);
+            if (topped) {
+              res = await doMagicHourCall();
+              data = await res.json().catch(() => ({}));
+            }
+          }
 
           // Queue-offer flow: all keys returned 402
           if (res.ok && (data as any).status === 'queue_offer') {
@@ -280,7 +307,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         return;
       }
 
-      const response = await fetch(
+      const doChatCall = () => fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
         {
           method: "POST",
@@ -298,6 +325,19 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           }),
         }
       );
+      let response = await doChatCall();
+
+      // Dynamic-VIP silent top-up + retry on 402
+      if (response.status === 402 && isDynamic) {
+        const cloned = response.clone();
+        const errData = await cloned.json().catch(() => ({}));
+        // best-effort kind detection: assume text unless server hints otherwise
+        const hintedKind = (errData as any)?.kind as ("text" | "image" | "video" | "audio" | undefined);
+        const topped = await tryDynamicTopup(hintedKind || "text");
+        if (topped) {
+          response = await doChatCall();
+        }
+      }
 
       // Check content type to determine response handling
       const contentType = response.headers.get('content-type') || '';

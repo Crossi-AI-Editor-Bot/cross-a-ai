@@ -26,7 +26,13 @@ interface ModelSelectorProps {
 }
 
 // Dynamic access check using tier_access map
-const hasModelAccess = (model: ModelCost, tier: VipTier, isAdmin: boolean): boolean => {
+const hasModelAccess = (
+  model: ModelCost,
+  tier: VipTier,
+  isAdmin: boolean,
+  dynamicModelIds: string[] = [],
+): boolean => {
+  if (dynamicModelIds.includes(model.id)) return true;
   if (!tier && model.public_access) return true;
   if (!tier) return false;
   return model.tier_access[tier] ?? model.public_access;
@@ -42,7 +48,7 @@ const getRequiredTier = (model: ModelCost, tierNames: string[]): string | null =
 };
 
 const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
-  const { tier, isAdmin, loading: vipLoading } = useVipStatus();
+  const { tier, isAdmin, loading: vipLoading, dynamicModelIds } = useVipStatus();
   const { tierNames } = useVipTiers();
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
   const [defaultModelId, setDefaultModelId] = useState<string | null>(null);
@@ -77,12 +83,12 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
     (m) => m.enabled && !m.folder?.toLowerCase().startsWith("call models")
   );
   
-  const availableModels = enabledModels.filter((m) => hasModelAccess(m, tier, isAdmin));
+  const availableModels = enabledModels.filter((m) => hasModelAccess(m, tier, isAdmin, dynamicModelIds));
 
   const selectedModel = value ? enabledModels.find((m) => m.id === value) : undefined;
 
   const isVipModel = (model: ModelCost): boolean => !model.public_access;
-  const isModelLocked = (model: ModelCost): boolean => !hasModelAccess(model, tier, isAdmin);
+  const isModelLocked = (model: ModelCost): boolean => !hasModelAccess(model, tier, isAdmin, dynamicModelIds);
 
   interface FolderNode {
     name: string;

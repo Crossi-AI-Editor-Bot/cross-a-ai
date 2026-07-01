@@ -144,6 +144,8 @@ interface EditingTier {
   colorPresetIndex: number;
   hidden: boolean;
   unlimited: boolean;
+  is_dynamic: boolean;
+  topup_discount_percent: number;
 }
 
 const VipTierManager = () => {
@@ -194,6 +196,8 @@ const VipTierManager = () => {
       colorPresetIndex: findColorPresetIndex(tier),
       hidden: tier.hidden || false,
       unlimited: (tier as any).unlimited === true,
+      is_dynamic: (tier as any).is_dynamic === true,
+      topup_discount_percent: Number((tier as any).topup_discount_percent ?? 10),
     });
     setIsCreating(false);
   };
@@ -212,6 +216,8 @@ const VipTierManager = () => {
       colorPresetIndex: 0,
       hidden: false,
       unlimited: false,
+      is_dynamic: false,
+      topup_discount_percent: 10,
     });
     setIsCreating(true);
   };
@@ -237,6 +243,8 @@ const VipTierManager = () => {
       bg_color: preset.bg_color,
       hidden: editingTier.hidden,
       unlimited: editingTier.unlimited,
+      is_dynamic: editingTier.is_dynamic,
+      topup_discount_percent: editingTier.topup_discount_percent,
     };
 
     try {
@@ -515,6 +523,33 @@ const VipTierManager = () => {
                   Unlimited text credits (media credits stay limited)
                 </label>
               </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="tier-dynamic"
+                  checked={editingTier.is_dynamic}
+                  onChange={(e) => setEditingTier({ ...editingTier, is_dynamic: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="tier-dynamic" className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Zap className="w-3 h-3" />
+                  Dynamic VIP (free-tier credits + auto top-up when empty)
+                </label>
+              </div>
+              {editingTier.is_dynamic && (
+                <div>
+                  <label className="text-xs text-muted-foreground">Auto top-up discount (%)</label>
+                  <Input
+                    type="number"
+                    value={editingTier.topup_discount_percent}
+                    min={0}
+                    max={90}
+                    onChange={(e) => setEditingTier({ ...editingTier, topup_discount_percent: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              )}
               </div>
 
               <div className="flex gap-2 pt-2">

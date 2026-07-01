@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Clock, X, Sparkles, Ticket, Coins, MessageSquare, Mic, Image as ImageIcon, Video } from "lucide-react";
+import { ArrowLeft, Check, Clock, X, Sparkles, Ticket, Coins, MessageSquare, Mic, Image as ImageIcon, Video, Zap, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,12 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { VipTierIcon, VipTierBadge } from "@/components/VipTierIcon";
 import { useVipStatus } from "@/hooks/useVipStatus";
 import { useVipTiers } from "@/hooks/useVipTiers";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useCroins } from "@/hooks/useCroins";
+import { useModelCosts } from "@/hooks/useModelCosts";
 import VipAdminRequests from "@/components/VipAdminRequests";
 import VipTierComparisonChart from "@/components/VipTierComparisonChart";
 import CustomVipBuilder from "@/components/CustomVipBuilder";
@@ -32,6 +35,7 @@ const VipShop = () => {
   const { isAdmin, loading: adminLoading } = useIsAdmin();
   const { tiers, loading: tiersLoading } = useVipTiers();
   const { balance: croinBalance, loading: croinsLoading, refetch: refetchCroins } = useCroins();
+  const { modelCosts } = useModelCosts();
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
@@ -39,13 +43,37 @@ const VipShop = () => {
   const [purchasing, setPurchasing] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [dynamicDialogOpen, setDynamicDialogOpen] = useState(false);
+  const [dynamicCeilingTier, setDynamicCeilingTier] = useState<string>("");
+  const [dynamicSelectedIds, setDynamicSelectedIds] = useState<string[]>([]);
 
   const visibleTiers = tiers.filter((t) => !(t as any).hidden);
 
   const openPurchaseDialog = (tierName: string) => {
     setSelectedTier(tierName);
-    setPurchaseDialogOpen(true);
+    const tier = tiers.find(t => t.name === tierName);
+    if ((tier as any)?.is_dynamic) {
+      setDynamicCeilingTier("");
+      setDynamicSelectedIds([]);
+      setDynamicDialogOpen(true);
+    } else {
+      setPurchaseDialogOpen(true);
+    }
   };
+
+  // Models eligible for the currently chosen dynamic ceiling tier
+  const dynamicEligibleModels = useMemo(() => {
+    if (!dynamicCeilingTier) return [];
+    const tierOrder = tiers.map(t => t.name);
+    const ceilingIdx = tierOrder.indexOf(dynamicCeilingTier);
+    if (ceilingIdx < 0) return [];
+    return modelCosts.filter((m) => {
+      if (!m.enabled) return false;
+      if (m.public_access) return true;
+      // include a model if any tier at or below the ceiling grants access
+      return tierOrder.slice(0, ceilingIdx + 1).some((n) => m.tier_access?.[n]);
+    });
+  }, [dynamicCeilingTier, modelCosts, tiers]);
 
   const handlePurchaseWithCroins = async () => {
     if (!selectedTier) return;
@@ -55,7 +83,11 @@ const VipShop = () => {
     setPurchasing(true);
     try {
       const { data, error } = await supabase.functions.invoke("purchase-vip", {
-        body: { tier_name: selectedTier },
+        body: {
+          tier_name: selectedTier,
+          dynamic_ceiling_tier: (tier as any).is_dynamic ? dynamicCeilingTier : undefined,
+          dynamic_model_ids: (tier as any).is_dynamic ? dynamicSelectedIds : undefined,
+        },
       });
 
       if (error || data?.error) {
@@ -78,6 +110,7 @@ const VipShop = () => {
     } finally {
       setPurchasing(false);
       setPurchaseDialogOpen(false);
+      setDynamicDialogOpen(false);
     }
   };
 
@@ -189,8 +222,10 @@ const VipShop = () => {
                       onClick={() => openPurchaseDialog(tier.name)}
                       disabled={!canAfford || purchasing}
                     >
-                      <Coins className="w-4 h-4 mr-2" />
-                      {canAfford ? `Subscribe ¢${croinPrice}/mo` : `Need ¢${croinPrice}`}
+                      {(tier as any).is_dynamic ? <Zap className="w-4 h-4 mr-2" /> : <Coins className="w-4 h-4 mr-2" />}
+                      {canAfford
+                        ? ((tier as any).is_dynamic ? `Configure ¢${croinPrice}/mo` : `Subscribe ¢${croinPrice}/mo`)
+                        : `Need ¢${croinPrice}`}
                     </Button>
                   ) : (
                     <Button className="w-full" disabled variant="outline">
@@ -333,6 +368,83 @@ const VipShop = () => {
             <Button variant="outline" onClick={() => setPurchaseDialogOpen(false)}>Cancel</Button>
             <Button onClick={handlePurchaseWithCroins} disabled={purchasing}>
               {purchasing ? "Processing..." : "Confirm Subscription"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dynamic VIP Configuration Dialog */}
+      <Dialog open={dynamicDialogOpen} onOpenChange={setDynamicDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-yellow-500" />
+              Configure Dynamic VIP
+            </DialogTitle>
+            <DialogDescription>
+              Pick a ceiling tier and the specific models you want to unlock. You keep the free-tier credit budget, and any time it runs out we auto-buy 10 more at a discount.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground">Ceiling tier (models from this tier and below)</label>
+              <Select value={dynamicCeilingTier} onValueChange={(v) => { setDynamicCeilingTier(v); setDynamicSelectedIds([]); }}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Choose a tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tiers.filter((t) => !(t as any).is_dynamic).map((t) => (
+                    <SelectItem key={t.name} value={t.name}>{t.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {dynamicCeilingTier && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Choose models ({dynamicSelectedIds.length}/{dynamicEligibleModels.length})
+                </label>
+                <ScrollArea className="h-64 border rounded-md p-2">
+                  <div className="space-y-1">
+                    {dynamicEligibleModels.length === 0 && (
+                      <p className="text-xs text-muted-foreground p-2">No models available for this ceiling.</p>
+                    )}
+                    {dynamicEligibleModels.map((m) => {
+                      const checked = dynamicSelectedIds.includes(m.id);
+                      return (
+                        <label key={m.id} className="flex items-center gap-2 text-sm px-2 py-1 hover:bg-accent rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setDynamicSelectedIds((prev) => e.target.checked
+                                ? [...prev, m.id]
+                                : prev.filter((x) => x !== m.id));
+                            }}
+                          />
+                          <span className="flex-1 truncate">{m.label}</span>
+                          <span className="text-xs text-muted-foreground">{m.cost}c</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDynamicDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handlePurchaseWithCroins}
+              disabled={purchasing || !dynamicCeilingTier || dynamicSelectedIds.length === 0}
+            >
+              {purchasing ? "Processing..." : (() => {
+                const t = tiers.find(x => x.name === selectedTier);
+                return `Subscribe ¢${(t as any)?.croin_price || 0}/mo`;
+              })()}
             </Button>
           </DialogFooter>
         </DialogContent>
