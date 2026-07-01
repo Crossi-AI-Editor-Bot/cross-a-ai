@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { isMagicHourModel, magicHourKind } from "@/lib/externalModels";
+import { useVipStatus } from "@/hooks/useVipStatus";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,6 +19,21 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
   const [newCredits, setNewCredits] = useState<number | null>(null);
   const [newImageCredits, setNewImageCredits] = useState<number | null>(null);
   const { toast } = useToast();
+  const { isDynamic, topupDiscountPercent } = useVipStatus();
+
+  // Silently top up 10 credits at the configured Dynamic-VIP discount, returns true on success
+  const tryDynamicTopup = async (kind: "text" | "image" | "video" | "audio"): Promise<boolean> => {
+    if (!isDynamic) return false;
+    try {
+      const { data, error } = await supabase.functions.invoke("purchase-credits", {
+        body: { kind, amount: 10, discount_percent: topupDiscountPercent },
+      });
+      if (error || (data as any)?.error) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   // Load messages from database when conversation changes
   useEffect(() => {
