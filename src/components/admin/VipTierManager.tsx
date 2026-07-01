@@ -144,6 +144,8 @@ interface EditingTier {
   colorPresetIndex: number;
   hidden: boolean;
   unlimited: boolean;
+  is_dynamic: boolean;
+  topup_discount_percent: number;
 }
 
 const VipTierManager = () => {
@@ -194,6 +196,8 @@ const VipTierManager = () => {
       colorPresetIndex: findColorPresetIndex(tier),
       hidden: tier.hidden || false,
       unlimited: (tier as any).unlimited === true,
+      is_dynamic: (tier as any).is_dynamic === true,
+      topup_discount_percent: Number((tier as any).topup_discount_percent ?? 10),
     });
     setIsCreating(false);
   };
@@ -212,6 +216,8 @@ const VipTierManager = () => {
       colorPresetIndex: 0,
       hidden: false,
       unlimited: false,
+      is_dynamic: false,
+      topup_discount_percent: 10,
     });
     setIsCreating(true);
   };
@@ -237,6 +243,8 @@ const VipTierManager = () => {
       bg_color: preset.bg_color,
       hidden: editingTier.hidden,
       unlimited: editingTier.unlimited,
+      is_dynamic: editingTier.is_dynamic,
+      topup_discount_percent: editingTier.topup_discount_percent,
     };
 
     try {
