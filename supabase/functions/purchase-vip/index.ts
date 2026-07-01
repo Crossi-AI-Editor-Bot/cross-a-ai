@@ -38,7 +38,7 @@ serve(async (req) => {
     }
 
     const userId = claimsData.claims.sub;
-    const { tier_name } = await req.json();
+    const { tier_name, dynamic_ceiling_tier, dynamic_model_ids } = await req.json();
 
     if (!tier_name) {
       return new Response(JSON.stringify({ error: "tier_name required" }), {
@@ -52,7 +52,7 @@ serve(async (req) => {
     // Get tier info
     const { data: tier, error: tierError } = await serviceClient
       .from("vip_tiers")
-      .select("name, display_name, croin_price")
+      .select("name, display_name, croin_price, is_dynamic")
       .eq("name", tier_name)
       .single();
 
@@ -123,6 +123,8 @@ serve(async (req) => {
         user_id: userId,
         tier: tier.name,
         expires_at: expiresAt.toISOString(),
+        dynamic_ceiling_tier: (tier as any).is_dynamic ? (dynamic_ceiling_tier ?? null) : null,
+        dynamic_model_ids: (tier as any).is_dynamic ? (Array.isArray(dynamic_model_ids) ? dynamic_model_ids : []) : [],
       });
 
     if (insertError) {
