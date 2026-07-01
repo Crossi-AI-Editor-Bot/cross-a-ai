@@ -756,6 +756,8 @@ export type Database = {
       vip_status: {
         Row: {
           created_at: string
+          dynamic_ceiling_tier: string | null
+          dynamic_model_ids: string[]
           expires_at: string
           id: string
           tier: string
@@ -763,6 +765,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          dynamic_ceiling_tier?: string | null
+          dynamic_model_ids?: string[]
           expires_at: string
           id?: string
           tier?: string
@@ -770,6 +774,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          dynamic_ceiling_tier?: string | null
+          dynamic_model_ids?: string[]
           expires_at?: string
           id?: string
           tier?: string
@@ -792,10 +798,12 @@ export type Database = {
           hidden: boolean
           icon_name: string
           id: string
+          is_dynamic: boolean
           monthly_video_credits: number
           name: string
           sort_order: number
           text_color: string
+          topup_discount_percent: number
           unlimited: boolean
           updated_at: string
           weekly_audio_credits: number
@@ -816,10 +824,12 @@ export type Database = {
           hidden?: boolean
           icon_name?: string
           id?: string
+          is_dynamic?: boolean
           monthly_video_credits?: number
           name: string
           sort_order?: number
           text_color?: string
+          topup_discount_percent?: number
           unlimited?: boolean
           updated_at?: string
           weekly_audio_credits?: number
@@ -840,10 +850,12 @@ export type Database = {
           hidden?: boolean
           icon_name?: string
           id?: string
+          is_dynamic?: boolean
           monthly_video_credits?: number
           name?: string
           sort_order?: number
           text_color?: string
+          topup_discount_percent?: number
           unlimited?: boolean
           updated_at?: string
           weekly_audio_credits?: number
