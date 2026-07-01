@@ -307,7 +307,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         return;
       }
 
-      const response = await fetch(
+      const doChatCall = () => fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
         {
           method: "POST",
@@ -325,6 +325,19 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
           }),
         }
       );
+      let response = await doChatCall();
+
+      // Dynamic-VIP silent top-up + retry on 402
+      if (response.status === 402 && isDynamic) {
+        const cloned = response.clone();
+        const errData = await cloned.json().catch(() => ({}));
+        // best-effort kind detection: assume text unless server hints otherwise
+        const hintedKind = (errData as any)?.kind as ("text" | "image" | "video" | "audio" | undefined);
+        const topped = await tryDynamicTopup(hintedKind || "text");
+        if (topped) {
+          response = await doChatCall();
+        }
+      }
 
       // Check content type to determine response handling
       const contentType = response.headers.get('content-type') || '';
