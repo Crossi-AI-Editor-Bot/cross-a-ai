@@ -36,7 +36,7 @@ serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const { kind, amount } = await req.json();
+    const { kind, amount, discount_percent } = await req.json();
     const pricing = PRICING[kind];
     if (!pricing) {
       return new Response(JSON.stringify({ error: "Invalid credit kind" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -46,9 +46,27 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Amount must be a multiple of 10 (min 10)" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const croinCost = (amt / 10) * pricing.croinsPer10;
-
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Verify discount eligibility (only Dynamic-VIP subscribers get the discount)
+    let effectiveDiscount = 0;
+    const requestedDiscount = Number(discount_percent);
+    if (Number.isFinite(requestedDiscount) && requestedDiscount > 0) {
+      const { data: vipRow } = await serviceClient
+        .from("vip_status").select("tier, expires_at").eq("user_id", userId).maybeSingle();
+      if (vipRow && new Date((vipRow as any).expires_at) > new Date()) {
+        const { data: tierRow } = await serviceClient
+          .from("vip_tiers").select("is_dynamic, topup_discount_percent").eq("name", (vipRow as any).tier).maybeSingle();
+        if ((tierRow as any)?.is_dynamic) {
+          const cap = Number((tierRow as any).topup_discount_percent ?? 10);
+          effectiveDiscount = Math.min(requestedDiscount, cap);
+        }
+      }
+    }
+
+    const baseCost = (amt / 10) * pricing.croinsPer10;
+    const croinCost = Math.max(1, Math.round(baseCost * (1 - effectiveDiscount / 100)));
+
     const { data: profile } = await serviceClient
       .from("profiles").select("crossatrix_id").eq("user_id", userId).maybeSingle();
     if (!profile?.crossatrix_id) {
