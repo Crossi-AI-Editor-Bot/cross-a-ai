@@ -372,6 +372,83 @@ const VipShop = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dynamic VIP Configuration Dialog */}
+      <Dialog open={dynamicDialogOpen} onOpenChange={setDynamicDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-yellow-500" />
+              Configure Dynamic VIP
+            </DialogTitle>
+            <DialogDescription>
+              Pick a ceiling tier and the specific models you want to unlock. You keep the free-tier credit budget, and any time it runs out we auto-buy 10 more at a discount.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-muted-foreground">Ceiling tier (models from this tier and below)</label>
+              <Select value={dynamicCeilingTier} onValueChange={(v) => { setDynamicCeilingTier(v); setDynamicSelectedIds([]); }}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Choose a tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tiers.filter((t) => !(t as any).is_dynamic).map((t) => (
+                    <SelectItem key={t.name} value={t.name}>{t.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {dynamicCeilingTier && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Choose models ({dynamicSelectedIds.length}/{dynamicEligibleModels.length})
+                </label>
+                <ScrollArea className="h-64 border rounded-md p-2">
+                  <div className="space-y-1">
+                    {dynamicEligibleModels.length === 0 && (
+                      <p className="text-xs text-muted-foreground p-2">No models available for this ceiling.</p>
+                    )}
+                    {dynamicEligibleModels.map((m) => {
+                      const checked = dynamicSelectedIds.includes(m.id);
+                      return (
+                        <label key={m.id} className="flex items-center gap-2 text-sm px-2 py-1 hover:bg-accent rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setDynamicSelectedIds((prev) => e.target.checked
+                                ? [...prev, m.id]
+                                : prev.filter((x) => x !== m.id));
+                            }}
+                          />
+                          <span className="flex-1 truncate">{m.label}</span>
+                          <span className="text-xs text-muted-foreground">{m.cost}c</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDynamicDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handlePurchaseWithCroins}
+              disabled={purchasing || !dynamicCeilingTier || dynamicSelectedIds.length === 0}
+            >
+              {purchasing ? "Processing..." : (() => {
+                const t = tiers.find(x => x.name === selectedTier);
+                return `Subscribe ¢${(t as any)?.croin_price || 0}/mo`;
+              })()}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
