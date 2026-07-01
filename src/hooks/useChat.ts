@@ -185,7 +185,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         updateAssistantMessage("⏳ Generating with Magic Hour…");
 
         try {
-          const res = await fetch(
+          const doMagicHourCall = () => fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/magic-hour-generate`,
             {
               method: "POST",
@@ -199,7 +199,18 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
               }),
             },
           );
-          const data = await res.json().catch(() => ({}));
+          let res = await doMagicHourCall();
+          let data = await res.json().catch(() => ({}));
+
+          // Dynamic-VIP auto top-up on 402, then retry once
+          if (res.status === 402 && isDynamic) {
+            const kindForTopup = (kind === "image" || kind === "video" || kind === "audio") ? kind : "image";
+            const topped = await tryDynamicTopup(kindForTopup);
+            if (topped) {
+              res = await doMagicHourCall();
+              data = await res.json().catch(() => ({}));
+            }
+          }
 
           // Queue-offer flow: all keys returned 402
           if (res.ok && (data as any).status === 'queue_offer') {
