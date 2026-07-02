@@ -44,7 +44,6 @@ const VipShop = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [dynamicDialogOpen, setDynamicDialogOpen] = useState(false);
-  const [dynamicCeilingTier, setDynamicCeilingTier] = useState<string>("");
   const [dynamicSelectedIds, setDynamicSelectedIds] = useState<string[]>([]);
 
   const visibleTiers = tiers.filter((t) => !(t as any).hidden);
@@ -53,7 +52,6 @@ const VipShop = () => {
     setSelectedTier(tierName);
     const tier = tiers.find(t => t.name === tierName);
     if ((tier as any)?.is_dynamic) {
-      setDynamicCeilingTier("");
       setDynamicSelectedIds([]);
       setDynamicDialogOpen(true);
     } else {
@@ -61,19 +59,11 @@ const VipShop = () => {
     }
   };
 
-  // Models eligible for the currently chosen dynamic ceiling tier
-  const dynamicEligibleModels = useMemo(() => {
-    if (!dynamicCeilingTier) return [];
-    const tierOrder = tiers.map(t => t.name);
-    const ceilingIdx = tierOrder.indexOf(dynamicCeilingTier);
-    if (ceilingIdx < 0) return [];
-    return modelCosts.filter((m) => {
-      if (!m.enabled) return false;
-      if (m.public_access) return true;
-      // include a model if any tier at or below the ceiling grants access
-      return tierOrder.slice(0, ceilingIdx + 1).some((n) => m.tier_access?.[n]);
-    });
-  }, [dynamicCeilingTier, modelCosts, tiers]);
+  // All enabled models are eligible for Dynamic VIP selection
+  const dynamicEligibleModels = useMemo(
+    () => modelCosts.filter((m) => m.enabled),
+    [modelCosts]
+  );
 
   const handlePurchaseWithCroins = async () => {
     if (!selectedTier) return;
@@ -85,7 +75,6 @@ const VipShop = () => {
       const { data, error } = await supabase.functions.invoke("purchase-vip", {
         body: {
           tier_name: selectedTier,
-          dynamic_ceiling_tier: (tier as any).is_dynamic ? dynamicCeilingTier : undefined,
           dynamic_model_ids: (tier as any).is_dynamic ? dynamicSelectedIds : undefined,
         },
       });
@@ -382,34 +371,19 @@ const VipShop = () => {
               Configure Dynamic VIP
             </DialogTitle>
             <DialogDescription>
-              Pick a ceiling tier and the specific models you want to unlock. You keep the free-tier credit budget, and any time it runs out we auto-buy 10 more at a discount.
+              Pick the specific models you want to unlock. You keep the free-tier credit budget, and any time it runs out we auto-buy 10 more at a discount.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs text-muted-foreground">Ceiling tier (models from this tier and below)</label>
-              <Select value={dynamicCeilingTier} onValueChange={(v) => { setDynamicCeilingTier(v); setDynamicSelectedIds([]); }}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Choose a tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tiers.filter((t) => !(t as any).is_dynamic).map((t) => (
-                    <SelectItem key={t.name} value={t.name}>{t.display_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {dynamicCeilingTier && (
-              <div>
                 <label className="text-xs text-muted-foreground mb-1 block">
                   Choose models ({dynamicSelectedIds.length}/{dynamicEligibleModels.length})
                 </label>
                 <ScrollArea className="h-64 border rounded-md p-2">
                   <div className="space-y-1">
                     {dynamicEligibleModels.length === 0 && (
-                      <p className="text-xs text-muted-foreground p-2">No models available for this ceiling.</p>
+                      <p className="text-xs text-muted-foreground p-2">No models available.</p>
                     )}
                     {dynamicEligibleModels.map((m) => {
                       const checked = dynamicSelectedIds.includes(m.id);
@@ -431,15 +405,14 @@ const VipShop = () => {
                     })}
                   </div>
                 </ScrollArea>
-              </div>
-            )}
+            </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDynamicDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={handlePurchaseWithCroins}
-              disabled={purchasing || !dynamicCeilingTier || dynamicSelectedIds.length === 0}
+              disabled={purchasing || dynamicSelectedIds.length === 0}
             >
               {purchasing ? "Processing..." : (() => {
                 const t = tiers.find(x => x.name === selectedTier);
