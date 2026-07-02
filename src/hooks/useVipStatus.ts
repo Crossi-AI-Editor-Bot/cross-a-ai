@@ -8,7 +8,6 @@ export const useVipStatus = () => {
   const [tier, setTier] = useState<VipTier>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [dynamicCeilingTier, setDynamicCeilingTier] = useState<string | null>(null);
   const [dynamicModelIds, setDynamicModelIds] = useState<string[]>([]);
   const { tiers, loading: tiersLoading } = useVipTiers();
 
@@ -38,18 +37,16 @@ export const useVipStatus = () => {
 
         const { data: vipData } = await supabase
           .from("vip_status")
-          .select("tier, expires_at, dynamic_ceiling_tier, dynamic_model_ids")
+          .select("tier, expires_at, dynamic_model_ids")
           .eq("user_id", user.id)
           .gt("expires_at", new Date().toISOString())
           .maybeSingle();
 
         if (vipData) {
           setTier(vipData.tier as string);
-          setDynamicCeilingTier(((vipData as any).dynamic_ceiling_tier as string) || null);
           setDynamicModelIds(((vipData as any).dynamic_model_ids as string[]) || []);
         } else {
           setTier(null);
-          setDynamicCeilingTier(null);
           setDynamicModelIds([]);
         }
       } catch (error) {
@@ -93,7 +90,6 @@ export const useVipStatus = () => {
     isAdmin,
     isUnlimited,
     isDynamic,
-    dynamicCeilingTier,
     dynamicModelIds,
     topupDiscountPercent,
     loading: loading || tiersLoading,
