@@ -560,10 +560,9 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         }
       }
 
-      // Save messages to database after successful response
-      if (options?.regenerate) {
-        await saveMessagesToDatabase([{ role: "assistant", content: assistantContent }]);
-      } else {
+      // Save messages to database after successful response.
+      // On regenerate we skip persistence so we don't create duplicate user rows.
+      if (!options?.regenerate) {
         await saveMessagesToDatabase([userMessage, { role: "assistant", content: assistantContent }]);
       }
       
