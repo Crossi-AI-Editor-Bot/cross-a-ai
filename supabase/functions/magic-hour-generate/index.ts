@@ -18,6 +18,7 @@ const requestSchema = z.object({
   image: z.string().optional(),
   duration: z.number().int().min(1).max(60).optional(),
   voiceName: z.string().min(1).max(200).optional(),
+  discountPercent: z.number().min(0).max(90).optional(),
 });
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -175,7 +176,8 @@ Deno.serve(async (req) => {
 
     const parsed = requestSchema.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return json(400, { error: 'Invalid request' });
-    const { modelCostId, prompt, image, duration, voiceName } = parsed.data;
+    const { modelCostId, prompt, image, duration, voiceName, discountPercent } = parsed.data;
+    const discountMult = 1 - Math.min(Math.max(discountPercent ?? 0, 0), 90) / 100;
 
     const { data: modelData, error: modelErr } = await supabase
       .from('model_costs')
@@ -242,12 +244,12 @@ Deno.serve(async (req) => {
     if (kind === 'image') {
       creditTable = 'user_image_credits'; cost = Number(modelData.image_cost) || 1;
     } else if (kind === 'audio') {
-      // Audio: cost per 3 words (rounded up) of the prompt
       creditTable = 'user_audio_credits';
       cost = (Number(modelData.audio_credits_per_second) || 1) * Math.max(1, Math.ceil(wordCount / 3));
     } else {
       creditTable = 'user_video_credits'; cost = (Number(modelData.video_credits_per_second) || 1) * dur;
     }
+    cost = cost * discountMult;
 
     let currentCredits = 0;
     {
