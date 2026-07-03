@@ -1,4 +1,4 @@
-import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText } from "lucide-react";
+import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,12 +12,15 @@ interface ChatMessageProps {
   video?: string;
   audio?: string;
   files?: Array<{ name: string; type: string; data: string }>;
+  onDislike?: () => void;
 }
 
-const ChatMessage = ({ role, content, image, video, audio, files }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, video, audio, files, onDislike }: ChatMessageProps) => {
   const isUser = role === "user";
   const { has } = useMods();
   const showCopy = has("copy");
+  const showRating = has("like-dislike") && !isUser;
+  const [rating, setRating] = (require("react") as typeof import("react")).useState<"up" | "down" | null>(null);
 
   // Detect a "[[VIDEO_PROGRESS:cur/total]]" marker emitted during Crossi video
   // frame generation so we can render a real progress bar instead of raw text.
@@ -147,6 +150,31 @@ const ChatMessage = ({ role, content, image, video, audio, files }: ChatMessageP
           >
             <CopyIcon className="w-3 h-3" /> Copy
           </button>
+        )}
+
+        {showRating && (
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={rating !== null}
+              className={`inline-flex items-center gap-1 text-xs opacity-60 hover:opacity-100 disabled:opacity-100 ${rating === "up" ? "text-primary" : ""}`}
+              onClick={() => { setRating("up"); toast({ title: "Thanks for the feedback!" }); }}
+            >
+              <ThumbsUp className="w-3 h-3" /> Like
+            </button>
+            <button
+              type="button"
+              disabled={rating !== null}
+              className={`inline-flex items-center gap-1 text-xs opacity-60 hover:opacity-100 disabled:opacity-100 ${rating === "down" ? "text-destructive" : ""}`}
+              onClick={() => {
+                setRating("down");
+                toast({ title: "Regenerating with 50% discount…" });
+                onDislike?.();
+              }}
+            >
+              <ThumbsDown className="w-3 h-3" /> Dislike
+            </button>
+          </div>
         )}
 
         {progressMatch && (
