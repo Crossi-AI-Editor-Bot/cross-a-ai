@@ -1,17 +1,27 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type ModId = "text-size" | "credit-recolor" | "copy";
+export type ModId = "text-size" | "credit-recolor" | "copy" | "app-style" | "like-dislike";
 
 export const ALL_MODS: { id: ModId; name: string; description: string }[] = [
   { id: "text-size", name: "Text-Size-Changer", description: "Change the font size of the entire website." },
   { id: "credit-recolor", name: "Credit-Recolor", description: "Recolor the audio, image and video credit pills." },
   { id: "copy", name: "Copy", description: "Adds a copy button to AI answers and your prompts." },
+  { id: "app-style", name: "App-Style", description: "Change the app background and accent color — pick a preset or your own." },
+  { id: "like-dislike", name: "Like/Dislike", description: "Rate AI messages — disliking regenerates the reply with a 50% credit discount." },
 ];
+
+export type AppStylePreset = "classic" | "crossatrix" | "custom";
 
 export interface ModSettings {
   fontSize?: number; // px, default 16
   creditColors?: { audio?: string; image?: string; video?: string };
+  appStyle?: {
+    preset?: AppStylePreset;
+    /** HSL triplets like "220 80% 12%" — only used when preset === "custom" */
+    bg?: string;
+    accent?: string;
+  };
 }
 
 interface State {
@@ -88,12 +98,42 @@ export const useMods = () => {
   return { ...state, toggleMod, updateSettings, has: (id: ModId) => state.installed.includes(id) };
 };
 
-/** Applies font-size mod globally. */
+/** HSL triplet presets for the App-Style mod. */
+export const APP_STYLE_PRESETS: Record<Exclude<AppStylePreset, "custom">, { label: string; bg: string; accent: string }> = {
+  classic: { label: "Classic", bg: "", accent: "" },
+  crossatrix: { label: "Modern Crossatrix Style", bg: "220 80% 12%", accent: "45 100% 55%" },
+};
+
+/** Applies font-size + app-style mods globally. */
 export const ModsApplier = () => {
   const { installed, settings } = useMods();
   useEffect(() => {
     const size = installed.includes("text-size") ? (settings.fontSize ?? 16) : 16;
     document.documentElement.style.fontSize = `${size}px`;
   }, [installed, settings.fontSize]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const clear = () => {
+      root.style.removeProperty("--background");
+      root.style.removeProperty("--primary");
+      root.style.removeProperty("--accent");
+      root.style.removeProperty("--ring");
+    };
+    if (!installed.includes("app-style")) { clear(); return; }
+    const cfg = settings.appStyle ?? { preset: "classic" };
+    let bg = "", accent = "";
+    if (cfg.preset === "custom") { bg = cfg.bg ?? ""; accent = cfg.accent ?? ""; }
+    else if (cfg.preset && cfg.preset !== "classic") {
+      const p = APP_STYLE_PRESETS[cfg.preset]; bg = p.bg; accent = p.accent;
+    }
+    clear();
+    if (bg) root.style.setProperty("--background", bg);
+    if (accent) {
+      root.style.setProperty("--primary", accent);
+      root.style.setProperty("--accent", accent);
+      root.style.setProperty("--ring", accent);
+    }
+  }, [installed, settings.appStyle]);
   return null;
 };

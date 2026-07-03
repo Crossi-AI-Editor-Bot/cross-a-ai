@@ -53,7 +53,7 @@ const Index = () => {
     loading: conversationsLoading,
     refetch: refetchConversations,
   } = useConversations();
-  const { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages, refetchMessages } = useChat(currentConversationId, refetchConversations);
+  const { messages, isLoading, sendMessage, regenerateLastAssistant, newCredits, newImageCredits, clearMessages, refetchMessages } = useChat(currentConversationId, refetchConversations);
   useQueueWatcher(refetchMessages);
   const { credits, updateCredits, loading: creditsLoading } = useCredits();
   const { imageCredits, updateImageCredits, loading: imageCreditsLoading } = useImageCredits();
@@ -299,6 +299,11 @@ const Index = () => {
                 video={message.video}
                 audio={(message as any).audio}
                 files={message.files}
+                onDislike={
+                  message.role === "assistant" && index === messages.length - 1
+                    ? () => regenerateLastAssistant(selectedModelCostId || "", { selectedModelId: selectedModelRow?.model_id })
+                    : undefined
+                }
               />
             ))}
 
