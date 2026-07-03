@@ -98,7 +98,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messages, modelCostId } = validatedData;
+    const { messages, modelCostId, discountPercent } = validatedData;
+    const discountMult = 1 - Math.min(Math.max(discountPercent ?? 0, 0), 90) / 100;
 
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
@@ -286,8 +287,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const creditCost = modelCostData.cost;
-    const imageCreditCost = modelCostData.image_cost || 0;
+    const creditCost = Number(modelCostData.cost) * discountMult;
+    const imageCreditCost = (Number(modelCostData.image_cost) || 0) * discountMult;
     const initialCredits = userCredits.credits;
     const initialImageCredits = userImageCredits?.credits || 0;
 
