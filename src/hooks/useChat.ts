@@ -85,7 +85,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     content: string,
     modelCostId: string,
     files?: File[],
-    options?: { videoSeconds?: number; selectedModelId?: string; voiceName?: string },
+    options?: { videoSeconds?: number; selectedModelId?: string; voiceName?: string; discountPercent?: number; regenerate?: boolean },
   ) => {
     if ((!content.trim() && !files?.length)) return;
     
@@ -125,7 +125,16 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       content,
       files: fileData
     };
-    setMessages((prev) => [...prev, userMessage]);
+    if (options?.regenerate) {
+      // Regeneration: drop the last assistant reply and reuse the existing user turn.
+      setMessages((prev) => {
+        const copy = [...prev];
+        if (copy[copy.length - 1]?.role === "assistant") copy.pop();
+        return copy;
+      });
+    } else {
+      setMessages((prev) => [...prev, userMessage]);
+    }
 
     let assistantContent = "";
     let assistantImage: string | undefined = undefined;
@@ -196,6 +205,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
                 image: fileData.find((f) => f.type?.startsWith("image/"))?.data,
                 duration: options?.videoSeconds,
                 voiceName: options?.voiceName,
+                discountPercent: options?.discountPercent,
               }),
             },
           );
@@ -322,6 +332,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
               files: msg.files,
             })),
             modelCostId,
+            discountPercent: options?.discountPercent,
           }),
         }
       );
@@ -550,7 +561,11 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
       }
 
       // Save messages to database after successful response
-      await saveMessagesToDatabase([userMessage, { role: "assistant", content: assistantContent }]);
+      if (options?.regenerate) {
+        await saveMessagesToDatabase([{ role: "assistant", content: assistantContent }]);
+      } else {
+        await saveMessagesToDatabase([userMessage, { role: "assistant", content: assistantContent }]);
+      }
       
       // Generate title after first exchange (2 messages total: 1 user + 1 assistant)
       if (messages.length === 0) {
@@ -649,5 +664,16 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
     }
   };
 
-  return { messages, isLoading, sendMessage, newCredits, newImageCredits, clearMessages, refetchMessages: loadMessages };
+  const regenerateLastAssistant = async (modelCostId: string, options?: { selectedModelId?: string; voiceName?: string; videoSeconds?: number }) => {
+    // Find the last user message to reuse as the prompt.
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUser) return;
+    await sendMessage(lastUser.content, modelCostId, undefined, {
+      ...options,
+      discountPercent: 50,
+      regenerate: true,
+    });
+  };
+
+  return { messages, isLoading, sendMessage, regenerateLastAssistant, newCredits, newImageCredits, clearMessages, refetchMessages: loadMessages };
 };
