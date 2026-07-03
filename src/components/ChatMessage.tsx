@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike }: C
   const { has } = useMods();
   const showCopy = has("copy");
   const showRating = has("like-dislike") && !isUser;
-  const [rating, setRating] = (require("react") as typeof import("react")).useState<"up" | "down" | null>(null);
+  const [rating, setRating] = useState<"up" | "down" | null>(null);
 
   // Detect a "[[VIDEO_PROGRESS:cur/total]]" marker emitted during Crossi video
   // frame generation so we can render a real progress bar instead of raw text.
