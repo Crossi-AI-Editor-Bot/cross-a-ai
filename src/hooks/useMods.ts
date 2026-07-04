@@ -114,11 +114,20 @@ export const ModsApplier = () => {
 
   useEffect(() => {
     const root = document.documentElement;
+    const OVERRIDES = [
+      "--background", "--foreground",
+      "--card", "--card-foreground",
+      "--popover", "--popover-foreground",
+      "--muted", "--muted-foreground",
+      "--secondary", "--secondary-foreground",
+      "--border", "--input",
+      "--primary", "--primary-foreground",
+      "--accent", "--accent-foreground",
+      "--ring",
+      "--gradient-primary", "--gradient-subtle",
+    ];
     const clear = () => {
-      root.style.removeProperty("--background");
-      root.style.removeProperty("--primary");
-      root.style.removeProperty("--accent");
-      root.style.removeProperty("--ring");
+      OVERRIDES.forEach((p) => root.style.removeProperty(p));
     };
     if (!installed.includes("app-style")) { clear(); return; }
     const cfg = settings.appStyle ?? { preset: "classic" };
@@ -128,11 +137,47 @@ export const ModsApplier = () => {
       const p = APP_STYLE_PRESETS[cfg.preset]; bg = p.bg; accent = p.accent;
     }
     clear();
-    if (bg) root.style.setProperty("--background", bg);
+    // Parse "H S% L%" triplet; return null if invalid.
+    const parse = (v: string): [number, number, number] | null => {
+      const m = v.match(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%/);
+      return m ? [+m[1], +m[2], +m[3]] : null;
+    };
+    const hsl = (h: number, s: number, l: number) =>
+      `${((h % 360) + 360) % 360} ${Math.max(0, Math.min(100, s))}% ${Math.max(0, Math.min(100, l))}%`;
+
+    if (bg) {
+      const parsed = parse(bg);
+      const isDark = parsed ? parsed[2] < 50 : false;
+      const [h, s] = parsed ?? [220, 20];
+      const baseL = parsed?.[2] ?? 98;
+      // Backgrounds/surfaces derived from bg — page bg gets accent color, not buttons.
+      root.style.setProperty("--background", bg);
+      root.style.setProperty("--foreground", isDark ? "0 0% 98%" : "220 15% 15%");
+      const surfaceL = isDark ? Math.min(baseL + 4, 30) : Math.max(baseL - 2, 92);
+      const mutedL   = isDark ? Math.min(baseL + 6, 32) : Math.max(baseL - 4, 90);
+      const borderL  = isDark ? Math.min(baseL + 10, 40) : Math.max(baseL - 8, 82);
+      root.style.setProperty("--card", hsl(h, s * 0.5, surfaceL));
+      root.style.setProperty("--card-foreground", isDark ? "0 0% 98%" : "220 15% 15%");
+      root.style.setProperty("--popover", hsl(h, s * 0.5, surfaceL));
+      root.style.setProperty("--popover-foreground", isDark ? "0 0% 98%" : "220 15% 15%");
+      root.style.setProperty("--muted", hsl(h, s * 0.4, mutedL));
+      root.style.setProperty("--muted-foreground", isDark ? "0 0% 70%" : "220 10% 40%");
+      root.style.setProperty("--secondary", hsl(h, s * 0.4, mutedL));
+      root.style.setProperty("--secondary-foreground", isDark ? "0 0% 95%" : "220 15% 20%");
+      root.style.setProperty("--border", hsl(h, s * 0.3, borderL));
+      root.style.setProperty("--input", hsl(h, s * 0.3, borderL));
+      root.style.setProperty("--gradient-subtle", `linear-gradient(180deg, hsl(${bg}), hsl(${hsl(h, s, surfaceL)}))`);
+    }
     if (accent) {
+      const parsed = parse(accent);
+      const accL = parsed?.[2] ?? 50;
+      // Accent drives icons + buttons.
       root.style.setProperty("--primary", accent);
+      root.style.setProperty("--primary-foreground", accL > 60 ? "220 15% 10%" : "0 0% 100%");
       root.style.setProperty("--accent", accent);
+      root.style.setProperty("--accent-foreground", accL > 60 ? "220 15% 10%" : "0 0% 100%");
       root.style.setProperty("--ring", accent);
+      root.style.setProperty("--gradient-primary", `linear-gradient(135deg, hsl(${accent}), hsl(${accent}))`);
     }
   }, [installed, settings.appStyle]);
   return null;

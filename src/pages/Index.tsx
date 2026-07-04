@@ -304,6 +304,7 @@ const Index = () => {
                     ? () => regenerateLastAssistant(selectedModelCostId || "", { selectedModelId: selectedModelRow?.model_id })
                     : undefined
                 }
+                disabled={isLoading}
               />
             ))}
 

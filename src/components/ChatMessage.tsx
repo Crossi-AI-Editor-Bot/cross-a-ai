@@ -14,9 +14,10 @@ interface ChatMessageProps {
   audio?: string;
   files?: Array<{ name: string; type: string; data: string }>;
   onDislike?: () => void;
+  disabled?: boolean;
 }
 
-const ChatMessage = ({ role, content, image, video, audio, files, onDislike }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, video, audio, files, onDislike, disabled }: ChatMessageProps) => {
   const isUser = role === "user";
   const { has } = useMods();
   const showCopy = has("copy");
@@ -157,7 +158,7 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike }: C
           <div className="mt-2 flex items-center gap-2">
             <button
               type="button"
-              disabled={rating !== null}
+              disabled={rating !== null || disabled}
               className={`inline-flex items-center gap-1 text-xs opacity-60 hover:opacity-100 disabled:opacity-100 ${rating === "up" ? "text-primary" : ""}`}
               onClick={() => { setRating("up"); toast({ title: "Thanks for the feedback!" }); }}
             >
@@ -165,9 +166,10 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike }: C
             </button>
             <button
               type="button"
-              disabled={rating !== null}
+              disabled={rating !== null || disabled}
               className={`inline-flex items-center gap-1 text-xs opacity-60 hover:opacity-100 disabled:opacity-100 ${rating === "down" ? "text-destructive" : ""}`}
               onClick={() => {
+                if (disabled) return;
                 setRating("down");
                 toast({ title: "Regenerating with 50% discount…" });
                 onDislike?.();
