@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown, Search, Globe, ChevronDown, ChevronRight, File as FileIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -27,12 +27,30 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
   // Detect a "[[VIDEO_PROGRESS:cur/total]]" marker emitted during Crossi video
   // frame generation so we can render a real progress bar instead of raw text.
   const progressMatch = content.match(/\[\[VIDEO_PROGRESS:(\d+)\/(\d+)\]\]/);
-  const cleanedContent = progressMatch
+  let cleanedContent = progressMatch
     ? content.replace(progressMatch[0], "").trim()
     : content;
   const progressCurrent = progressMatch ? Number(progressMatch[1]) : 0;
   const progressTotal = progressMatch ? Number(progressMatch[2]) : 0;
   const progressPct = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
+
+  // Extract [[TOOL]]{...}[[/TOOL]] blocks emitted by the chat edge function
+  // when the assistant invoked /!csearch or /!web. Rendered as collapsible cards.
+  type ToolEvent = { tool: string; args: string; result: string };
+  const toolEvents: ToolEvent[] = [];
+  cleanedContent = cleanedContent.replace(/\[\[TOOL\]\]([\s\S]*?)\[\[\/TOOL\]\]/g, (_m, json) => {
+    try { toolEvents.push(JSON.parse(json)); } catch { /* ignore */ }
+    return "";
+  });
+
+  // Extract [[FILE]]{...}[[/FILE]] blocks emitted by /!present_file.
+  type FileEvent = { name: string; content: string };
+  const fileEvents: FileEvent[] = [];
+  cleanedContent = cleanedContent.replace(/\[\[FILE\]\]([\s\S]*?)\[\[\/FILE\]\]/g, (_m, json) => {
+    try { fileEvents.push(JSON.parse(json)); } catch { /* ignore */ }
+    return "";
+  });
+  cleanedContent = cleanedContent.replace(/\n{3,}/g, "\n\n").trim();
 
   // Extract $CODE$ ... $/CODE$ blocks and split content into segments
   const codeRegex = /\$CODE\$([\s\S]*?)\$\/CODE\$/g;
@@ -109,6 +127,14 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
           </div>
         )}
         
+        {toolEvents.length > 0 && (
+          <div className="mb-2 space-y-1.5">
+            {toolEvents.map((ev, i) => (
+              <ToolCard key={i} event={ev} />
+            ))}
+          </div>
+        )}
+
         <div className="text-sm leading-relaxed whitespace-pre-wrap space-y-2">
           {segments.map((seg, i) =>
             seg.type === "text" ? (
@@ -141,6 +167,14 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
             )
           )}
         </div>
+
+        {fileEvents.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {fileEvents.map((f, i) => (
+              <PresentedFileCard key={i} name={f.name} content={f.content} />
+            ))}
+          </div>
+        )}
         {showCopy && cleanedContent && (
           <button
             type="button"
@@ -303,3 +337,78 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
 };
 
 export default ChatMessage;
+
+// --- Tool activity card (csearch / web) -------------------------------------
+const ToolCard = ({ event }: { event: { tool: string; args: string; result: string } }) => {
+  const [open, setOpen] = useState(false);
+  const Icon = event.tool === "csearch" ? Search : event.tool === "web" ? Globe : FileText;
+  const title = event.tool === "csearch" ? "Crossisearch" : event.tool === "web" ? "Web fetch" : "Tool";
+  return (
+    <div className="rounded-md border border-border bg-muted/40 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-muted/70 transition-colors"
+      >
+        {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        <Icon className="w-3.5 h-3.5 text-primary" />
+        <span className="font-medium">{title}</span>
+        <span className="opacity-60 truncate">{event.args.replace(/^\/!\S+\s*/, "")}</span>
+      </button>
+      {open && (
+        <pre className="px-3 py-2 text-[11px] leading-snug bg-background/70 border-t border-border max-h-64 overflow-auto whitespace-pre-wrap">
+          {event.result}
+        </pre>
+      )}
+    </div>
+  );
+};
+
+// --- Presented-file card (/!present_file) -----------------------------------
+const PresentedFileCard = ({ name, content }: { name: string; content: string }) => {
+  const bytes = new Blob([content]).size;
+  const sizeLabel = bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  const ext = name.includes(".") ? name.split(".").pop()!.toUpperCase() : "FILE";
+  const [expanded, setExpanded] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(content);
+    toast({ title: `Copied ${name}` });
+  };
+  const download = () => {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="flex items-stretch gap-3 p-3">
+        <div className="flex-shrink-0 w-12 h-14 rounded-md bg-gradient-primary/10 border border-border flex items-center justify-center">
+          <FileIcon className="w-6 h-6 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{name}</div>
+          <div className="text-xs opacity-60">{ext} · {sizeLabel}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? "Hide" : "View"}
+            </Button>
+            <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={copy}>
+              <CopyIcon className="w-3 h-3 mr-1" /> Copy
+            </Button>
+            <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={download}>
+              <Download className="w-3 h-3 mr-1" /> Download
+            </Button>
+          </div>
+        </div>
+      </div>
+      {expanded && (
+        <pre className="px-3 py-2 text-[11px] leading-snug bg-muted/50 border-t border-border max-h-80 overflow-auto whitespace-pre-wrap">
+          {content}
+        </pre>
+      )}
+    </div>
+  );
+};
