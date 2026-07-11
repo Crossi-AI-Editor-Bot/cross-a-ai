@@ -337,3 +337,78 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
 };
 
 export default ChatMessage;
+
+// --- Tool activity card (csearch / web) -------------------------------------
+const ToolCard = ({ event }: { event: { tool: string; args: string; result: string } }) => {
+  const [open, setOpen] = useState(false);
+  const Icon = event.tool === "csearch" ? Search : event.tool === "web" ? Globe : FileText;
+  const title = event.tool === "csearch" ? "Crossisearch" : event.tool === "web" ? "Web fetch" : "Tool";
+  return (
+    <div className="rounded-md border border-border bg-muted/40 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-muted/70 transition-colors"
+      >
+        {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        <Icon className="w-3.5 h-3.5 text-primary" />
+        <span className="font-medium">{title}</span>
+        <span className="opacity-60 truncate">{event.args.replace(/^\/!\S+\s*/, "")}</span>
+      </button>
+      {open && (
+        <pre className="px-3 py-2 text-[11px] leading-snug bg-background/70 border-t border-border max-h-64 overflow-auto whitespace-pre-wrap">
+          {event.result}
+        </pre>
+      )}
+    </div>
+  );
+};
+
+// --- Presented-file card (/!present_file) -----------------------------------
+const PresentedFileCard = ({ name, content }: { name: string; content: string }) => {
+  const bytes = new Blob([content]).size;
+  const sizeLabel = bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  const ext = name.includes(".") ? name.split(".").pop()!.toUpperCase() : "FILE";
+  const [expanded, setExpanded] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(content);
+    toast({ title: `Copied ${name}` });
+  };
+  const download = () => {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className="flex items-stretch gap-3 p-3">
+        <div className="flex-shrink-0 w-12 h-14 rounded-md bg-gradient-primary/10 border border-border flex items-center justify-center">
+          <FileIcon className="w-6 h-6 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{name}</div>
+          <div className="text-xs opacity-60">{ext} · {sizeLabel}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? "Hide" : "View"}
+            </Button>
+            <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={copy}>
+              <CopyIcon className="w-3 h-3 mr-1" /> Copy
+            </Button>
+            <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={download}>
+              <Download className="w-3 h-3 mr-1" /> Download
+            </Button>
+          </div>
+        </div>
+      </div>
+      {expanded && (
+        <pre className="px-3 py-2 text-[11px] leading-snug bg-muted/50 border-t border-border max-h-80 overflow-auto whitespace-pre-wrap">
+          {content}
+        </pre>
+      )}
+    </div>
+  );
+};
