@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown, Search, Globe, ChevronDown, ChevronRight, File as FileIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -27,12 +27,30 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
   // Detect a "[[VIDEO_PROGRESS:cur/total]]" marker emitted during Crossi video
   // frame generation so we can render a real progress bar instead of raw text.
   const progressMatch = content.match(/\[\[VIDEO_PROGRESS:(\d+)\/(\d+)\]\]/);
-  const cleanedContent = progressMatch
+  let cleanedContent = progressMatch
     ? content.replace(progressMatch[0], "").trim()
     : content;
   const progressCurrent = progressMatch ? Number(progressMatch[1]) : 0;
   const progressTotal = progressMatch ? Number(progressMatch[2]) : 0;
   const progressPct = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
+
+  // Extract [[TOOL]]{...}[[/TOOL]] blocks emitted by the chat edge function
+  // when the assistant invoked /!csearch or /!web. Rendered as collapsible cards.
+  type ToolEvent = { tool: string; args: string; result: string };
+  const toolEvents: ToolEvent[] = [];
+  cleanedContent = cleanedContent.replace(/\[\[TOOL\]\]([\s\S]*?)\[\[\/TOOL\]\]/g, (_m, json) => {
+    try { toolEvents.push(JSON.parse(json)); } catch { /* ignore */ }
+    return "";
+  });
+
+  // Extract [[FILE]]{...}[[/FILE]] blocks emitted by /!present_file.
+  type FileEvent = { name: string; content: string };
+  const fileEvents: FileEvent[] = [];
+  cleanedContent = cleanedContent.replace(/\[\[FILE\]\]([\s\S]*?)\[\[\/FILE\]\]/g, (_m, json) => {
+    try { fileEvents.push(JSON.parse(json)); } catch { /* ignore */ }
+    return "";
+  });
+  cleanedContent = cleanedContent.replace(/\n{3,}/g, "\n\n").trim();
 
   // Extract $CODE$ ... $/CODE$ blocks and split content into segments
   const codeRegex = /\$CODE\$([\s\S]*?)\$\/CODE\$/g;
@@ -109,6 +127,14 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
           </div>
         )}
         
+        {toolEvents.length > 0 && (
+          <div className="mb-2 space-y-1.5">
+            {toolEvents.map((ev, i) => (
+              <ToolCard key={i} event={ev} />
+            ))}
+          </div>
+        )}
+
         <div className="text-sm leading-relaxed whitespace-pre-wrap space-y-2">
           {segments.map((seg, i) =>
             seg.type === "text" ? (
@@ -141,6 +167,14 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
             )
           )}
         </div>
+
+        {fileEvents.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {fileEvents.map((f, i) => (
+              <PresentedFileCard key={i} name={f.name} content={f.content} />
+            ))}
+          </div>
+        )}
         {showCopy && cleanedContent && (
           <button
             type="button"
