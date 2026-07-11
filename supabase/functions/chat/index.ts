@@ -608,6 +608,11 @@ Deno.serve(async (req) => {
 You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
 - /!csearch "<query>" <page|file> <limit>   — search crossisearch. Example: /!csearch "android security" page 10
 - /!web <url>                                 — HTTP GET the URL and read the response. Example: /!web https://example.com/api/data.json
+- /!present_file <filename>                   — render a downloadable file card for the user. Put the file body between this line and a line containing exactly /!end_file. Example:
+  /!present_file report.txt
+  Hello world
+  line two
+  /!end_file
 You may call multiple tools in one turn (one per line). Do NOT explain that you are calling a tool — just emit the command.`;
     (requestBody.messages[0] as any).content = (requestBody.messages[0] as any).content + toolInstructions;
 
@@ -671,6 +676,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     let toolCallCount = 0;
     const MAX_ITERS = 3;
     let finalContent = "";
+    const toolEvents: Array<{ tool: string; args: string; result: string }> = [];
 
     for (let iter = 0; iter < MAX_ITERS; iter++) {
       const r = await doModelCall(convo, false);
@@ -686,17 +692,39 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
       for (const m of matches) {
         toolCallCount++;
         const out = await runTool(m);
-        results.push(`\`${m.trim()}\` →\n${out}`);
+        const trimmed = m.trim();
+        const toolName = trimmed.startsWith("/!csearch") ? "csearch" : trimmed.startsWith("/!web") ? "web" : "tool";
+        toolEvents.push({ tool: toolName, args: trimmed, result: out });
+        results.push(`\`${trimmed}\` →\n${out}`);
       }
       convo.push({ role: "assistant", content });
       convo.push({ role: "user", content: `[TOOL RESULTS]\n\n${results.join("\n\n---\n\n")}\n\nUse these results to answer the user's original question. Do not repeat the tool commands unless another lookup is required.` });
       finalContent = content;
     }
 
-    // Strip tool command lines from the final visible content.
-    const visible = finalContent.replace(TOOL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+    // Extract /!present_file ... /!end_file blocks into file cards.
+    const files: Array<{ name: string; content: string }> = [];
+    const FILE_RE = /^\s*\/!present_file\s+(\S+)\s*\n([\s\S]*?)\n\s*\/!end_file\s*$/gim;
+    let visibleBody = finalContent.replace(FILE_RE, (_m, name, body) => {
+      files.push({ name: String(name), content: String(body) });
+      return "";
+    });
+
+    // Strip any remaining tool command lines from the final visible content.
+    visibleBody = visibleBody.replace(TOOL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+
+    // Serialize tool + file blocks as markers the client renders as rich UI.
+    const toolBlocks = toolEvents
+      .map((e) => `[[TOOL]]${JSON.stringify(e)}[[/TOOL]]`)
+      .join("\n");
+    const fileBlocks = files
+      .map((f) => `[[FILE]]${JSON.stringify(f)}[[/FILE]]`)
+      .join("\n");
+
     const header = toolCallCount > 0 ? `_${toolCallCount} Tool${toolCallCount > 1 ? "s" : ""} used_\n\n` : "";
-    const output = header + visible;
+    const output = [header + (toolBlocks ? toolBlocks + "\n\n" : ""), visibleBody, fileBlocks ? "\n\n" + fileBlocks : ""]
+      .join("")
+      .trim();
 
     // Emit as SSE for the streaming client.
     const encoder = new TextEncoder();
