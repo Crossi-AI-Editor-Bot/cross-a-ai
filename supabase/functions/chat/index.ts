@@ -603,53 +603,117 @@ Deno.serve(async (req) => {
       : "https://ai.gateway.lovable.dev/v1/chat/completions";
     const gatewayKey = isOpenRouter ? OPEN_ROUTER_KEY : LOVABLE_API_KEY;
 
-    const response = await fetch(gatewayUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${gatewayKey}`,
-        "Content-Type": "application/json",
-        ...(isOpenRouter
-          ? {
-              "HTTP-Referer": "https://cross-a-ai.lovable.app",
-              "X-Title": "Crossi AI",
-            }
-          : {}),
-      },
-      body: JSON.stringify(requestBody),
-    });
+    // Inject tool instructions into system prompt
+    const toolInstructions = `\n\nAVAILABLE TOOLS (use only when genuinely useful):
+You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
+- /!csearch "<query>" <page|file> <limit>   — search crossisearch. Example: /!csearch "android security" page 10
+- /!web <url>                                 — HTTP GET the URL and read the response. Example: /!web https://example.com/api/data.json
+You may call multiple tools in one turn (one per line). Do NOT explain that you are calling a tool — just emit the command.`;
+    (requestBody.messages[0] as any).content = (requestBody.messages[0] as any).content + toolInstructions;
 
-    if (!response.ok) {
+    const CROSSISEARCH_KEY = Deno.env.get("CROSSISEARCH_KEY");
+    const TOOL_RE = /^\s*\/!(csearch|web)\b.*$/gim;
+
+    const runTool = async (raw: string): Promise<string> => {
+      const line = raw.trim();
+      const cs = line.match(/^\/!csearch\s+"([^"]+)"\s+(\S+)\s+(\d+)/i) ||
+                 line.match(/^\/!csearch\s+(\S+)\s+(\S+)\s+(\d+)/i);
+      if (cs) {
+        if (!CROSSISEARCH_KEY) return "Error: CROSSISEARCH_KEY not configured.";
+        const [, query, kind, limit] = cs;
+        try {
+          const r = await fetch("https://crossisearch.lovable.app/api/public/search", {
+            method: "POST",
+            headers: { "x-api-key": CROSSISEARCH_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ query, kind, limit: Number(limit) }),
+          });
+          const t = await r.text();
+          return `[HTTP ${r.status}] ${t.substring(0, 4000)}`;
+        } catch (e) {
+          return `csearch error: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      }
+      const wm = line.match(/^\/!web\s+(\S+)/i);
+      if (wm) {
+        try {
+          const r = await fetch(wm[1], { redirect: "follow" });
+          const t = await r.text();
+          return `[HTTP ${r.status}] ${t.substring(0, 4000)}`;
+        } catch (e) {
+          return `web error: ${e instanceof Error ? e.message : String(e)}`;
+        }
+      }
+      return "Unknown tool invocation.";
+    };
+
+    const doModelCall = async (msgs: any[], stream: boolean) => {
+      return await fetch(gatewayUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${gatewayKey}`,
+          "Content-Type": "application/json",
+          ...(isOpenRouter ? { "HTTP-Referer": "https://cross-a-ai.lovable.app", "X-Title": "Crossi AI" } : {}),
+        },
+        body: JSON.stringify({ ...requestBody, messages: msgs, stream }),
+      });
+    };
+
+    const errorResp = async (response: Response) => {
       const errorText = await response.text();
       console.error("AI API error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "AI service error", details: errorText }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    };
 
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    // Multi-turn tool loop (non-streaming) then final streamed answer.
+    let convo = [...requestBody.messages];
+    let toolCallCount = 0;
+    const MAX_ITERS = 3;
+    let finalContent = "";
 
-      return new Response(JSON.stringify({ error: "AI service error", details: errorText }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    for (let iter = 0; iter < MAX_ITERS; iter++) {
+      const r = await doModelCall(convo, false);
+      if (!r.ok) return await errorResp(r);
+      const j = await r.json();
+      const content: string = j.choices?.[0]?.message?.content ?? "";
+      const matches = content.match(TOOL_RE) || [];
+      if (matches.length === 0 || iter === MAX_ITERS - 1) {
+        finalContent = content;
+        break;
+      }
+      const results: string[] = [];
+      for (const m of matches) {
+        toolCallCount++;
+        const out = await runTool(m);
+        results.push(`\`${m.trim()}\` →\n${out}`);
+      }
+      convo.push({ role: "assistant", content });
+      convo.push({ role: "user", content: `[TOOL RESULTS]\n\n${results.join("\n\n---\n\n")}\n\nUse these results to answer the user's original question. Do not repeat the tool commands unless another lookup is required.` });
+      finalContent = content;
     }
 
-    // Stream the response back to the client
-    return new Response(response.body, {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+    // Strip tool command lines from the final visible content.
+    const visible = finalContent.replace(TOOL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+    const header = toolCallCount > 0 ? `_${toolCallCount} Tool${toolCallCount > 1 ? "s" : ""} used_\n\n` : "";
+    const output = header + visible;
+
+    // Emit as SSE for the streaming client.
+    const encoder = new TextEncoder();
+    const sseStream = new ReadableStream({
+      start(controller) {
+        const send = (text: string) => {
+          const payload = { choices: [{ delta: { content: text } }] };
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        };
+        const CHUNK = 60;
+        for (let i = 0; i < output.length; i += CHUNK) send(output.slice(i, i + CHUNK));
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
       },
+    });
+    return new Response(sseStream, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
     });
   } catch (error) {
     console.error("Chat function error:", error);
