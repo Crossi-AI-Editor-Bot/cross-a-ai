@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown, Search, Globe, ChevronDown, ChevronRight, File as FileIcon, Loader2 } from "lucide-react";
+import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown, Search, Globe, ChevronDown, ChevronRight, File as FileIcon, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useMods } from "@/hooks/useMods";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -45,6 +46,8 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
     result?: string;
     durationMs?: number;
     pending?: boolean;
+    errorKind?: string | null;
+    errorMessage?: string | null;
   };
   const toolMap = new Map<string, ToolEvent>();
   const toolOrder: string[] = [];
@@ -364,16 +367,43 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
 export default ChatMessage;
 
 // --- Tool activity card (csearch / web) -------------------------------------
-const ToolCard = ({ event }: { event: { id?: string; tool: string; args: string; result?: string; durationMs?: number; pending?: boolean } }) => {
+const ToolCard = ({ event: initial }: { event: { id?: string; tool: string; args: string; result?: string; durationMs?: number; pending?: boolean; errorKind?: string | null; errorMessage?: string | null } }) => {
+  const [event, setEvent] = useState(initial);
   const [open, setOpen] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const Icon = event.tool === "csearch" ? Search : event.tool === "web" ? Globe : FileText;
   const title = event.tool === "csearch" ? "Crossisearch" : event.tool === "web" ? "Web fetch" : "Tool";
   const paramStr = event.args.replace(/^\/!\S+\s*/, "");
   const httpMatch = event.result?.match(/^\[HTTP (\d+)\]\s*([\s\S]*)$/);
   const status = httpMatch ? httpMatch[1] : null;
   const body = httpMatch ? httpMatch[2] : (event.result ?? "");
+  const hasError = !event.pending && !!event.errorKind;
+
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("run-tool", {
+        body: { tool: event.tool, args: event.args },
+      });
+      if (error) throw error;
+      setEvent((prev) => ({
+        ...prev,
+        pending: false,
+        result: (data as any).result,
+        durationMs: (data as any).durationMs,
+        errorKind: (data as any).errorKind ?? null,
+        errorMessage: (data as any).errorMessage ?? null,
+      }));
+      toast({ title: (data as any).errorKind ? "Retry failed" : "Tool retried successfully" });
+    } catch (e) {
+      toast({ title: "Retry failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   return (
-    <div className={`rounded-md border overflow-hidden transition-colors ${event.pending ? "border-primary/40 bg-primary/5 animate-pulse" : "border-border bg-muted/40"}`}>
+    <div className={`rounded-md border overflow-hidden transition-colors ${event.pending ? "border-primary/40 bg-primary/5 animate-pulse" : hasError ? "border-destructive/50 bg-destructive/5" : "border-border bg-muted/40"}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -381,16 +411,20 @@ const ToolCard = ({ event }: { event: { id?: string; tool: string; args: string;
       >
         {event.pending ? (
           <Loader2 className="w-3 h-3 animate-spin text-primary" />
+        ) : hasError ? (
+          <AlertTriangle className="w-3 h-3 text-destructive" />
         ) : open ? (
           <ChevronDown className="w-3 h-3" />
         ) : (
           <ChevronRight className="w-3 h-3" />
         )}
-        <Icon className="w-3.5 h-3.5 text-primary" />
+        <Icon className={`w-3.5 h-3.5 ${hasError ? "text-destructive" : "text-primary"}`} />
         <span className="font-medium">{title}</span>
         <span className="opacity-60 truncate flex-1 text-left">{paramStr}</span>
         {event.pending ? (
           <span className="text-[10px] uppercase tracking-wide text-primary">Running…</span>
+        ) : hasError ? (
+          <span className="text-[10px] uppercase tracking-wide text-destructive">{event.errorKind}</span>
         ) : (
           <span className="text-[10px] opacity-60">
             {status ? `HTTP ${status}` : "done"}
@@ -398,6 +432,25 @@ const ToolCard = ({ event }: { event: { id?: string; tool: string; args: string;
           </span>
         )}
       </button>
+      {hasError && (
+        <div className="flex items-start gap-2 px-3 py-2 border-t border-destructive/40 bg-destructive/10 text-[11px]">
+          <AlertTriangle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 text-destructive">
+            <div className="font-medium">
+              {event.errorKind === "timeout" ? "Request timed out" :
+               event.errorKind === "http" ? `HTTP error${status ? ` ${status}` : ""}` :
+               event.errorKind === "network" ? "Network error" :
+               event.errorKind === "empty" ? "No results" :
+               event.errorKind === "config" ? "Not configured" : "Tool failed"}
+            </div>
+            {event.errorMessage && <div className="opacity-90 break-words">{event.errorMessage}</div>}
+          </div>
+          <Button size="sm" variant="outline" className="h-6 px-2 text-[11px] flex-shrink-0" disabled={retrying} onClick={(e) => { e.stopPropagation(); retry(); }}>
+            {retrying ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+            Retry
+          </Button>
+        </div>
+      )}
       {open && (
         <div className="border-t border-border bg-background/70 text-[11px] leading-snug">
           <div className="px-3 py-1.5 border-b border-border/60">
