@@ -671,73 +671,84 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
       return new Response(JSON.stringify({ error: "AI service error", details: errorText }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     };
 
-    // Multi-turn tool loop (non-streaming) then final streamed answer.
-    let convo = [...requestBody.messages];
-    let toolCallCount = 0;
-    const MAX_ITERS = 3;
-    let finalContent = "";
-    const toolEvents: Array<{ tool: string; args: string; result: string }> = [];
-
-    for (let iter = 0; iter < MAX_ITERS; iter++) {
-      const r = await doModelCall(convo, false);
-      if (!r.ok) return await errorResp(r);
-      const j = await r.json();
-      const content: string = j.choices?.[0]?.message?.content ?? "";
-      const matches = content.match(TOOL_RE) || [];
-      if (matches.length === 0 || iter === MAX_ITERS - 1) {
-        finalContent = content;
-        break;
-      }
-      const results: string[] = [];
-      for (const m of matches) {
-        toolCallCount++;
-        const out = await runTool(m);
-        const trimmed = m.trim();
-        const toolName = trimmed.startsWith("/!csearch") ? "csearch" : trimmed.startsWith("/!web") ? "web" : "tool";
-        toolEvents.push({ tool: toolName, args: trimmed, result: out });
-        results.push(`\`${trimmed}\` →\n${out}`);
-      }
-      convo.push({ role: "assistant", content });
-      convo.push({ role: "user", content: `[TOOL RESULTS]\n\n${results.join("\n\n---\n\n")}\n\nUse these results to answer the user's original question. Do not repeat the tool commands unless another lookup is required.` });
-      finalContent = content;
-    }
-
-    // Extract /!present_file ... /!end_file blocks into file cards.
-    const files: Array<{ name: string; content: string }> = [];
-    const FILE_RE = /^\s*\/!present_file\s+(\S+)\s*\n([\s\S]*?)\n\s*\/!end_file\s*$/gim;
-    let visibleBody = finalContent.replace(FILE_RE, (_m, name, body) => {
-      files.push({ name: String(name), content: String(body) });
-      return "";
-    });
-
-    // Strip any remaining tool command lines from the final visible content.
-    visibleBody = visibleBody.replace(TOOL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
-
-    // Serialize tool + file blocks as markers the client renders as rich UI.
-    const toolBlocks = toolEvents
-      .map((e) => `[[TOOL]]${JSON.stringify(e)}[[/TOOL]]`)
-      .join("\n");
-    const fileBlocks = files
-      .map((f) => `[[FILE]]${JSON.stringify(f)}[[/FILE]]`)
-      .join("\n");
-
-    const header = toolCallCount > 0 ? `_${toolCallCount} Tool${toolCallCount > 1 ? "s" : ""} used_\n\n` : "";
-    const output = [header + (toolBlocks ? toolBlocks + "\n\n" : ""), visibleBody, fileBlocks ? "\n\n" + fileBlocks : ""]
-      .join("")
-      .trim();
-
-    // Emit as SSE for the streaming client.
+    // Multi-turn tool loop with LIVE SSE streaming so the client can render
+    // loading placeholders for each tool while it runs.
     const encoder = new TextEncoder();
+    const FILE_RE = /^\s*\/!present_file\s+(\S+)\s*\n([\s\S]*?)\n\s*\/!end_file\s*$/gim;
+
     const sseStream = new ReadableStream({
-      start(controller) {
-        const send = (text: string) => {
+      async start(controller) {
+        const sendText = (text: string) => {
           const payload = { choices: [{ delta: { content: text } }] };
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
         };
-        const CHUNK = 60;
-        for (let i = 0; i < output.length; i += CHUNK) send(output.slice(i, i + CHUNK));
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
+        const sendChunked = (text: string, chunk = 60) => {
+          for (let i = 0; i < text.length; i += chunk) sendText(text.slice(i, i + chunk));
+        };
+
+        try {
+          let convo = [...requestBody.messages];
+          let toolCallCount = 0;
+          const MAX_ITERS = 3;
+          let finalContent = "";
+
+          for (let iter = 0; iter < MAX_ITERS; iter++) {
+            const r = await doModelCall(convo, false);
+            if (!r.ok) {
+              const errorText = await r.text();
+              sendText(`\n\n[Error contacting model: HTTP ${r.status}]`);
+              console.error("AI API error:", r.status, errorText);
+              break;
+            }
+            const j = await r.json();
+            const content: string = j.choices?.[0]?.message?.content ?? "";
+            const matches = content.match(TOOL_RE) || [];
+            if (matches.length === 0 || iter === MAX_ITERS - 1) {
+              finalContent = content;
+              break;
+            }
+            const results: string[] = [];
+            for (const m of matches) {
+              toolCallCount++;
+              const id = `t${Date.now()}_${toolCallCount}`;
+              const trimmed = m.trim();
+              const toolName = trimmed.startsWith("/!csearch") ? "csearch" : trimmed.startsWith("/!web") ? "web" : "tool";
+              // Emit a "pending" marker → client shows loading card.
+              sendText(`[[TOOL_START]]${JSON.stringify({ id, tool: toolName, args: trimmed })}[[/TOOL_START]]\n`);
+              const startedAt = Date.now();
+              const out = await runTool(m);
+              const durationMs = Date.now() - startedAt;
+              // Emit the completed marker with full result + timing.
+              sendText(`[[TOOL_END]]${JSON.stringify({ id, tool: toolName, args: trimmed, result: out, durationMs })}[[/TOOL_END]]\n`);
+              results.push(`\`${trimmed}\` →\n${out}`);
+            }
+            convo.push({ role: "assistant", content });
+            convo.push({ role: "user", content: `[TOOL RESULTS]\n\n${results.join("\n\n---\n\n")}\n\nUse these results to answer the user's original question. Do not repeat the tool commands unless another lookup is required.` });
+            finalContent = content;
+          }
+
+          // Extract /!present_file ... /!end_file blocks into file cards.
+          const files: Array<{ name: string; content: string }> = [];
+          let visibleBody = finalContent.replace(FILE_RE, (_m, name, body) => {
+            files.push({ name: String(name), content: String(body) });
+            return "";
+          });
+
+          // Strip any remaining tool command lines from the final visible content.
+          visibleBody = visibleBody.replace(TOOL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+
+          const header = toolCallCount > 0 ? `_${toolCallCount} Tool${toolCallCount > 1 ? "s" : ""} used_\n\n` : "";
+          sendChunked(header + visibleBody);
+          for (const f of files) {
+            sendText(`\n\n[[FILE]]${JSON.stringify(f)}[[/FILE]]`);
+          }
+        } catch (e) {
+          console.error("Streaming loop error:", e);
+          sendText(`\n\n[Error: ${e instanceof Error ? e.message : String(e)}]`);
+        } finally {
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
       },
     });
     return new Response(sseStream, {
