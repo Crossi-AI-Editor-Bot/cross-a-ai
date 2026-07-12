@@ -606,7 +606,7 @@ Deno.serve(async (req) => {
     // Inject tool instructions into system prompt
     const toolInstructions = `\n\nAVAILABLE TOOLS (use only when genuinely useful):
 You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
-- /!csearch "<query>" <page|file> <limit>   — search crossisearch. Example: /!csearch "android security" page 10
+- /!csearch "<query>" <page|file> <limit>   — search crossisearch. Choose "page" to search web pages/articles, or "file" to search for downloadable files (PDFs, docs, images, etc). Examples: /!csearch "android security" page 10  •  /!csearch "quarterly report" file 5
 - /!web <url>                                 — HTTP GET the URL and read the response. Example: /!web https://example.com/api/data.json
 - /!present_file <filename>                   — render a downloadable file card for the user. Put the file body between this line and a line containing exactly /!end_file. Example:
   /!present_file report.txt
