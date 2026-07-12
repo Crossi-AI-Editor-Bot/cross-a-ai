@@ -618,37 +618,72 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
 
     const CROSSISEARCH_KEY = Deno.env.get("CROSSISEARCH_KEY");
     const TOOL_RE = /^\s*\/!(csearch|web)\b.*$/gim;
+    const TOOL_TIMEOUT_MS = 15000;
 
-    const runTool = async (raw: string): Promise<string> => {
+    const withTimeout = async (fn: (signal: AbortSignal) => Promise<Response>) => {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), TOOL_TIMEOUT_MS);
+      try { return await fn(ctrl.signal); } finally { clearTimeout(t); }
+    };
+
+    // Returns structured tool result. `errorKind` is set on failure/empty.
+    type ToolResult = { status: number | null; body: string; errorKind?: "timeout" | "network" | "http" | "empty" | "config" | "unknown"; errorMessage?: string };
+
+    const isEmptyPayload = (body: string): boolean => {
+      const s = body.trim();
+      if (!s) return true;
+      try {
+        const j = JSON.parse(s);
+        if (Array.isArray(j) && j.length === 0) return true;
+        if (j && typeof j === "object") {
+          const arr = (j as any).results ?? (j as any).items ?? (j as any).data ?? (j as any).hits;
+          if (Array.isArray(arr) && arr.length === 0) return true;
+          if ((j as any).total === 0 || (j as any).count === 0) return true;
+        }
+      } catch { /* not JSON — treat non-empty text as non-empty */ }
+      return false;
+    };
+
+    const runTool = async (raw: string): Promise<ToolResult> => {
       const line = raw.trim();
       const cs = line.match(/^\/!csearch\s+"([^"]+)"\s+(\S+)\s+(\d+)/i) ||
                  line.match(/^\/!csearch\s+(\S+)\s+(\S+)\s+(\d+)/i);
       if (cs) {
-        if (!CROSSISEARCH_KEY) return "Error: CROSSISEARCH_KEY not configured.";
-        const [, query, kind, limit] = cs;
+        if (!CROSSISEARCH_KEY) return { status: null, body: "CROSSISEARCH_KEY not configured.", errorKind: "config", errorMessage: "Search backend is not configured." };
+        const [, query, kindRaw, limit] = cs;
+        const kind = /^file/i.test(kindRaw) ? "file" : "page";
         try {
-          const r = await fetch("https://crossisearch.lovable.app/api/public/search", {
+          const r = await withTimeout((signal) => fetch("https://crossisearch.lovable.app/api/public/search", {
             method: "POST",
             headers: { "x-api-key": CROSSISEARCH_KEY, "Content-Type": "application/json" },
             body: JSON.stringify({ query, kind, limit: Number(limit) }),
-          });
-          const t = await r.text();
-          return `[HTTP ${r.status}] ${t.substring(0, 4000)}`;
+            signal,
+          }));
+          const t = (await r.text()).substring(0, 4000);
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `Search returned HTTP ${r.status}.` };
+          if (isEmptyPayload(t)) return { status: r.status, body: t, errorKind: "empty", errorMessage: `No ${kind} results for "${query}".` };
+          return { status: r.status, body: t };
         } catch (e) {
-          return `csearch error: ${e instanceof Error ? e.message : String(e)}`;
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `Search timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
         }
       }
       const wm = line.match(/^\/!web\s+(\S+)/i);
       if (wm) {
         try {
-          const r = await fetch(wm[1], { redirect: "follow" });
-          const t = await r.text();
-          return `[HTTP ${r.status}] ${t.substring(0, 4000)}`;
+          const r = await withTimeout((signal) => fetch(wm[1], { redirect: "follow", signal }));
+          const t = (await r.text()).substring(0, 4000);
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `Request returned HTTP ${r.status}.` };
+          if (!t.trim()) return { status: r.status, body: t, errorKind: "empty", errorMessage: "Response body was empty." };
+          return { status: r.status, body: t };
         } catch (e) {
-          return `web error: ${e instanceof Error ? e.message : String(e)}`;
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `Request timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
         }
       }
-      return "Unknown tool invocation.";
+      return { status: null, body: "Unknown tool invocation.", errorKind: "unknown", errorMessage: "Unknown tool invocation." };
     };
 
     const doModelCall = async (msgs: any[], stream: boolean) => {
@@ -713,14 +748,16 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
               const id = `t${Date.now()}_${toolCallCount}`;
               const trimmed = m.trim();
               const toolName = trimmed.startsWith("/!csearch") ? "csearch" : trimmed.startsWith("/!web") ? "web" : "tool";
-              // Emit a "pending" marker → client shows loading card.
               sendText(`[[TOOL_START]]${JSON.stringify({ id, tool: toolName, args: trimmed })}[[/TOOL_START]]\n`);
               const startedAt = Date.now();
-              const out = await runTool(m);
+              const res = await runTool(m);
               const durationMs = Date.now() - startedAt;
-              // Emit the completed marker with full result + timing.
-              sendText(`[[TOOL_END]]${JSON.stringify({ id, tool: toolName, args: trimmed, result: out, durationMs })}[[/TOOL_END]]\n`);
-              results.push(`\`${trimmed}\` →\n${out}`);
+              const resultStr = res.status != null ? `[HTTP ${res.status}] ${res.body}` : res.body;
+              sendText(`[[TOOL_END]]${JSON.stringify({ id, tool: toolName, args: trimmed, result: resultStr, durationMs, errorKind: res.errorKind ?? null, errorMessage: res.errorMessage ?? null })}[[/TOOL_END]]\n`);
+              const forModel = res.errorKind
+                ? `\`${trimmed}\` → ERROR (${res.errorKind}): ${res.errorMessage}${res.body ? `\n${res.body}` : ""}`
+                : `\`${trimmed}\` →\n${resultStr}`;
+              results.push(forModel);
             }
             convo.push({ role: "assistant", content });
             convo.push({ role: "user", content: `[TOOL RESULTS]\n\n${results.join("\n\n---\n\n")}\n\nUse these results to answer the user's original question. Do not repeat the tool commands unless another lookup is required.` });
