@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown, Search, Globe, ChevronDown, ChevronRight, File as FileIcon } from "lucide-react";
+import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown, Search, Globe, ChevronDown, ChevronRight, File as FileIcon, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -34,14 +34,39 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
   const progressTotal = progressMatch ? Number(progressMatch[2]) : 0;
   const progressPct = progressTotal > 0 ? Math.round((progressCurrent / progressTotal) * 100) : 0;
 
-  // Extract [[TOOL]]{...}[[/TOOL]] blocks emitted by the chat edge function
-  // when the assistant invoked /!csearch or /!web. Rendered as collapsible cards.
-  type ToolEvent = { tool: string; args: string; result: string };
-  const toolEvents: ToolEvent[] = [];
-  cleanedContent = cleanedContent.replace(/\[\[TOOL\]\]([\s\S]*?)\[\[\/TOOL\]\]/g, (_m, json) => {
-    try { toolEvents.push(JSON.parse(json)); } catch { /* ignore */ }
+  // Extract tool activity markers emitted by the chat edge function:
+  //  [[TOOL_START]]{id,tool,args}[[/TOOL_START]]           → pending / loading
+  //  [[TOOL_END]]{id,tool,args,result,durationMs}[[/TOOL_END]] → completed
+  //  [[TOOL]]{...}[[/TOOL]]                                → legacy (completed)
+  type ToolEvent = {
+    id?: string;
+    tool: string;
+    args: string;
+    result?: string;
+    durationMs?: number;
+    pending?: boolean;
+  };
+  const toolMap = new Map<string, ToolEvent>();
+  const toolOrder: string[] = [];
+  const addTool = (ev: ToolEvent) => {
+    const key = ev.id || `${ev.tool}:${ev.args}:${toolOrder.length}`;
+    if (!toolMap.has(key)) toolOrder.push(key);
+    const prev = toolMap.get(key);
+    toolMap.set(key, { ...(prev || {}), ...ev, id: key });
+  };
+  cleanedContent = cleanedContent.replace(/\[\[TOOL_START\]\]([\s\S]*?)\[\[\/TOOL_START\]\]/g, (_m, json) => {
+    try { const p = JSON.parse(json); addTool({ ...p, pending: true }); } catch { /* ignore */ }
     return "";
   });
+  cleanedContent = cleanedContent.replace(/\[\[TOOL_END\]\]([\s\S]*?)\[\[\/TOOL_END\]\]/g, (_m, json) => {
+    try { const p = JSON.parse(json); addTool({ ...p, pending: false }); } catch { /* ignore */ }
+    return "";
+  });
+  cleanedContent = cleanedContent.replace(/\[\[TOOL\]\]([\s\S]*?)\[\[\/TOOL\]\]/g, (_m, json) => {
+    try { const p = JSON.parse(json); addTool({ ...p, pending: false }); } catch { /* ignore */ }
+    return "";
+  });
+  const toolEvents: ToolEvent[] = toolOrder.map((k) => toolMap.get(k)!);
 
   // Extract [[FILE]]{...}[[/FILE]] blocks emitted by /!present_file.
   type FileEvent = { name: string; content: string };
@@ -339,26 +364,71 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
 export default ChatMessage;
 
 // --- Tool activity card (csearch / web) -------------------------------------
-const ToolCard = ({ event }: { event: { tool: string; args: string; result: string } }) => {
+const ToolCard = ({ event }: { event: { id?: string; tool: string; args: string; result?: string; durationMs?: number; pending?: boolean } }) => {
   const [open, setOpen] = useState(false);
   const Icon = event.tool === "csearch" ? Search : event.tool === "web" ? Globe : FileText;
   const title = event.tool === "csearch" ? "Crossisearch" : event.tool === "web" ? "Web fetch" : "Tool";
+  const paramStr = event.args.replace(/^\/!\S+\s*/, "");
+  const httpMatch = event.result?.match(/^\[HTTP (\d+)\]\s*([\s\S]*)$/);
+  const status = httpMatch ? httpMatch[1] : null;
+  const body = httpMatch ? httpMatch[2] : (event.result ?? "");
   return (
-    <div className="rounded-md border border-border bg-muted/40 overflow-hidden">
+    <div className={`rounded-md border overflow-hidden transition-colors ${event.pending ? "border-primary/40 bg-primary/5 animate-pulse" : "border-border bg-muted/40"}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-muted/70 transition-colors"
       >
-        {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        {event.pending ? (
+          <Loader2 className="w-3 h-3 animate-spin text-primary" />
+        ) : open ? (
+          <ChevronDown className="w-3 h-3" />
+        ) : (
+          <ChevronRight className="w-3 h-3" />
+        )}
         <Icon className="w-3.5 h-3.5 text-primary" />
         <span className="font-medium">{title}</span>
-        <span className="opacity-60 truncate">{event.args.replace(/^\/!\S+\s*/, "")}</span>
+        <span className="opacity-60 truncate flex-1 text-left">{paramStr}</span>
+        {event.pending ? (
+          <span className="text-[10px] uppercase tracking-wide text-primary">Running…</span>
+        ) : (
+          <span className="text-[10px] opacity-60">
+            {status ? `HTTP ${status}` : "done"}
+            {typeof event.durationMs === "number" ? ` · ${(event.durationMs / 1000).toFixed(1)}s` : ""}
+          </span>
+        )}
       </button>
       {open && (
-        <pre className="px-3 py-2 text-[11px] leading-snug bg-background/70 border-t border-border max-h-64 overflow-auto whitespace-pre-wrap">
-          {event.result}
-        </pre>
+        <div className="border-t border-border bg-background/70 text-[11px] leading-snug">
+          <div className="px-3 py-1.5 border-b border-border/60">
+            <div className="opacity-60 uppercase tracking-wide text-[10px] mb-0.5">Tool</div>
+            <div className="font-mono">{event.tool}</div>
+          </div>
+          <div className="px-3 py-1.5 border-b border-border/60">
+            <div className="opacity-60 uppercase tracking-wide text-[10px] mb-0.5">Parameters</div>
+            <div className="font-mono break-all">{paramStr || <span className="opacity-50">(none)</span>}</div>
+          </div>
+          {status && (
+            <div className="px-3 py-1.5 border-b border-border/60">
+              <div className="opacity-60 uppercase tracking-wide text-[10px] mb-0.5">HTTP status</div>
+              <div className="font-mono">{status}</div>
+            </div>
+          )}
+          {typeof event.durationMs === "number" && (
+            <div className="px-3 py-1.5 border-b border-border/60">
+              <div className="opacity-60 uppercase tracking-wide text-[10px] mb-0.5">Duration</div>
+              <div className="font-mono">{(event.durationMs / 1000).toFixed(2)}s</div>
+            </div>
+          )}
+          <div className="px-3 py-1.5">
+            <div className="opacity-60 uppercase tracking-wide text-[10px] mb-0.5">
+              {event.pending ? "Status" : "Response"}
+            </div>
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap font-mono">
+              {event.pending ? "Waiting for response…" : body || "(empty)"}
+            </pre>
+          </div>
+        </div>
       )}
     </div>
   );
