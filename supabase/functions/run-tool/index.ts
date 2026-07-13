@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
             headers: { 'x-api-key': CROSSISEARCH_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({ query, kind, limit: Number(limit) }),
           }));
-          status = r.status; body = (await r.text()).substring(0, 4000);
+          status = r.status; body = await r.text();
           if (!r.ok) { errorKind = 'http'; errorMessage = `Search returned HTTP ${r.status}.`; }
           else if (isEmptyPayload(body)) { errorKind = 'empty'; errorMessage = `No ${kind} results for "${query}".`; }
         }
@@ -69,12 +69,12 @@ Deno.serve(async (req) => {
         const wm = args.match(/^\/!web\s+(\S+)/i);
         if (!wm) throw new Error('Malformed web arguments');
         const r = await withTimeout((signal) => fetch(wm[1], { redirect: 'follow', signal }));
-        status = r.status; body = (await r.text()).substring(0, 4000);
+        status = r.status; body = await r.text();
         if (!r.ok) { errorKind = 'http'; errorMessage = `Request returned HTTP ${r.status}.`; }
         else if (!body.trim()) { errorKind = 'empty'; errorMessage = 'Response body was empty.'; }
       } else if (tool === 'news') {
         const r = await withTimeout((signal) => fetch('https://digjxtmzafzcgytgcwmb.supabase.co/functions/v1/news-api/?limit=100', { redirect: 'follow', signal }));
-        status = r.status; body = (await r.text()).substring(0, 4000);
+        status = r.status; body = await r.text();
         if (!r.ok) { errorKind = 'http'; errorMessage = `News feed returned HTTP ${r.status}.`; }
         else if (isEmptyPayload(body)) { errorKind = 'empty'; errorMessage = 'News feed returned no items.'; }
       } else {

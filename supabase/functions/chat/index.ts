@@ -660,7 +660,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
             body: JSON.stringify({ query, kind, limit: Number(limit) }),
             signal,
           }));
-          const t = (await r.text()).substring(0, 4000);
+          const t = await r.text();
           if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `Search returned HTTP ${r.status}.` };
           if (isEmptyPayload(t)) return { status: r.status, body: t, errorKind: "empty", errorMessage: `No ${kind} results for "${query}".` };
           return { status: r.status, body: t };
@@ -674,7 +674,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
       if (wm) {
         try {
           const r = await withTimeout((signal) => fetch(wm[1], { redirect: "follow", signal }));
-          const t = (await r.text()).substring(0, 4000);
+          const t = await r.text();
           if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `Request returned HTTP ${r.status}.` };
           if (!t.trim()) return { status: r.status, body: t, errorKind: "empty", errorMessage: "Response body was empty." };
           return { status: r.status, body: t };
@@ -687,7 +687,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
       if (/^\/!news\b/i.test(line)) {
         try {
           const r = await withTimeout((signal) => fetch("https://digjxtmzafzcgytgcwmb.supabase.co/functions/v1/news-api/?limit=100", { redirect: "follow", signal }));
-          const t = (await r.text()).substring(0, 4000);
+          const t = await r.text();
           if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `News feed returned HTTP ${r.status}.` };
           if (isEmptyPayload(t)) return { status: r.status, body: t, errorKind: "empty", errorMessage: "News feed returned no items." };
           return { status: r.status, body: t };
