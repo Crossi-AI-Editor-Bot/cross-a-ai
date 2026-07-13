@@ -354,11 +354,18 @@ export type Database = {
           is_fake: boolean
           kind: string
           label: string
+          max_tool_calls: number
           model_id: string
           platinum_access: boolean
           public_access: boolean
           silver_access: boolean
           system_prompt: string | null
+          tool_credits: boolean
+          tool_croins: boolean
+          tool_email: boolean
+          tool_shares: boolean
+          tool_switchmodel: boolean
+          tool_vip: boolean
           updated_at: string
           updated_by: string | null
           video_credits_per_second: number | null
@@ -379,11 +386,18 @@ export type Database = {
           is_fake?: boolean
           kind?: string
           label: string
+          max_tool_calls?: number
           model_id: string
           platinum_access?: boolean
           public_access?: boolean
           silver_access?: boolean
           system_prompt?: string | null
+          tool_credits?: boolean
+          tool_croins?: boolean
+          tool_email?: boolean
+          tool_shares?: boolean
+          tool_switchmodel?: boolean
+          tool_vip?: boolean
           updated_at?: string
           updated_by?: string | null
           video_credits_per_second?: number | null
@@ -404,11 +418,18 @@ export type Database = {
           is_fake?: boolean
           kind?: string
           label?: string
+          max_tool_calls?: number
           model_id?: string
           platinum_access?: boolean
           public_access?: boolean
           silver_access?: boolean
           system_prompt?: string | null
+          tool_credits?: boolean
+          tool_croins?: boolean
+          tool_email?: boolean
+          tool_shares?: boolean
+          tool_switchmodel?: boolean
+          tool_vip?: boolean
           updated_at?: string
           updated_by?: string | null
           video_credits_per_second?: number | null
