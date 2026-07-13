@@ -17,6 +17,13 @@ export interface ModelCost {
   is_fake: boolean;
   fake_error_message: string | null;
   fake_corrupted_output: boolean;
+  max_tool_calls: number;
+  tool_switchmodel: boolean;
+  tool_croins: boolean;
+  tool_vip: boolean;
+  tool_credits: boolean;
+  tool_email: boolean;
+  tool_shares: boolean;
   // Dynamic tier access map: { copper: true, bronze: false, ... }
   tier_access: Record<string, boolean>;
 }
@@ -31,7 +38,7 @@ export const useModelCosts = () => {
       const [modelsRes, accessRes] = await Promise.all([
         supabase
           .from("model_costs")
-          .select("id, model_id, label, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output")
+          .select("id, model_id, label, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares")
           .order("cost", { ascending: false }),
         supabase
           .from("model_tier_access" as any)
@@ -64,6 +71,13 @@ export const useModelCosts = () => {
         is_fake: !!m.is_fake,
         fake_error_message: m.fake_error_message ?? null,
         fake_corrupted_output: !!m.fake_corrupted_output,
+        max_tool_calls: Number(m.max_tool_calls ?? 3),
+        tool_switchmodel: !!m.tool_switchmodel,
+        tool_croins: !!m.tool_croins,
+        tool_vip: !!m.tool_vip,
+        tool_credits: !!m.tool_credits,
+        tool_email: !!m.tool_email,
+        tool_shares: !!m.tool_shares,
         tier_access: accessMap.get(m.id) || {},
       }));
 
