@@ -614,6 +614,14 @@ Deno.serve(async (req) => {
     let gatewayIsOpenRouter = isOpenRouter;
 
     // Inject tool instructions into system prompt
+    const optionalToolLines: string[] = [];
+    if (toolFlags.switchmodel) optionalToolLines.push(`- /!switchmodel <model_label>            — swap to another Crossi AI model for the follow-up answer (e.g. an image-gen model). Example: /!switchmodel Gemini 2.5 Flash Image`);
+    if (toolFlags.croins) optionalToolLines.push(`- /!croins                                — get the user's current Croin balance.`);
+    if (toolFlags.vip) optionalToolLines.push(`- /!vip                                   — get the user's active VIP tier (or "none").`);
+    if (toolFlags.credits) optionalToolLines.push(`- /!credits                               — get the user's text / image / video / audio credit balances.`);
+    if (toolFlags.email) optionalToolLines.push(`- /!email                                 — get the user's account email.`);
+    if (toolFlags.shares) optionalToolLines.push(`- /!shares                                — get the user's Crossatrix shares.`);
+    const extraTools = optionalToolLines.length ? `\n${optionalToolLines.join("\n")}` : "";
     const toolInstructions = `\n\nAVAILABLE TOOLS (use only when genuinely useful):
 You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
 - /!csearch "<query>" <page|file> <limit>   — search crossisearch. Choose "page" to search web pages/articles, or "file" to search for downloadable files (PDFs, docs, images, etc). Examples: /!csearch "android security" page 10  •  /!csearch "quarterly report" file 5
@@ -623,12 +631,14 @@ You may invoke tools by emitting one of these commands on its OWN LINE with no m
   /!present_file report.txt
   Hello world
   line two
-  /!end_file
+  /!end_file${extraTools}
 You may call multiple tools in one turn (one per line). Do NOT explain that you are calling a tool — just emit the command.`;
     (requestBody.messages[0] as any).content = (requestBody.messages[0] as any).content + toolInstructions;
 
     const CROSSISEARCH_KEY = Deno.env.get("CROSSISEARCH_KEY");
-    const TOOL_RE = /^\s*\/!(csearch|web|news)\b.*$/gim;
+    const CROINKEY = Deno.env.get("CROINKEY");
+    const CRASSATRIX_KEY = Deno.env.get("CRASSATRIX_KEY");
+    const TOOL_RE = /^\s*\/!(csearch|web|news|switchmodel|croins|vip|credits|email|shares)\b.*$/gim;
     const TOOL_TIMEOUT_MS = 15000;
 
     const withTimeout = async (fn: (signal: AbortSignal) => Promise<Response>) => {
