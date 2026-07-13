@@ -36,6 +36,13 @@ interface ModelState {
   is_fake: boolean;
   fake_error_message: string | null;
   fake_corrupted_output: boolean;
+  max_tool_calls: number;
+  tool_switchmodel: boolean;
+  tool_croins: boolean;
+  tool_vip: boolean;
+  tool_credits: boolean;
+  tool_email: boolean;
+  tool_shares: boolean;
   tier_access: Record<string, boolean>;
 }
 
@@ -118,6 +125,13 @@ const AdminPanel = () => {
       is_fake: !!model.is_fake,
       fake_error_message: model.fake_error_message ?? null,
       fake_corrupted_output: !!(model as any).fake_corrupted_output,
+      max_tool_calls: (model as any).max_tool_calls ?? 3,
+      tool_switchmodel: !!(model as any).tool_switchmodel,
+      tool_croins: !!(model as any).tool_croins,
+      tool_vip: !!(model as any).tool_vip,
+      tool_credits: !!(model as any).tool_credits,
+      tool_email: !!(model as any).tool_email,
+      tool_shares: !!(model as any).tool_shares,
       tier_access: { ...model.tier_access },
     }));
     setModels(initialModels);
@@ -251,6 +265,13 @@ const AdminPanel = () => {
           is_fake: false,
           fake_error_message: null,
           fake_corrupted_output: false,
+          max_tool_calls: 3,
+          tool_switchmodel: false,
+          tool_croins: false,
+          tool_vip: false,
+          tool_credits: false,
+          tool_email: false,
+          tool_shares: false,
           tier_access: defaultTierAccess,
         };
         setModels((prev) => [...prev, newModel]);
@@ -345,6 +366,13 @@ const AdminPanel = () => {
             is_fake: model.is_fake,
             fake_error_message: model.fake_error_message,
             fake_corrupted_output: model.fake_corrupted_output,
+            max_tool_calls: model.max_tool_calls,
+            tool_switchmodel: model.tool_switchmodel,
+            tool_croins: model.tool_croins,
+            tool_vip: model.tool_vip,
+            tool_credits: model.tool_credits,
+            tool_email: model.tool_email,
+            tool_shares: model.tool_shares,
           })
           .eq("id", model.id);
 
