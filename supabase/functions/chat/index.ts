@@ -166,7 +166,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    const model = modelCostData.model_id;
+    let model = modelCostData.model_id;
+    const toolFlags = {
+      switchmodel: !!(modelCostData as any).tool_switchmodel,
+      croins: !!(modelCostData as any).tool_croins,
+      vip: !!(modelCostData as any).tool_vip,
+      credits: !!(modelCostData as any).tool_credits,
+      email: !!(modelCostData as any).tool_email,
+      shares: !!(modelCostData as any).tool_shares,
+    };
+    const maxToolCalls = Math.max(0, Math.min(20, Number((modelCostData as any).max_tool_calls ?? 3)));
 
     // Check if this is an image generation request
     const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview' || model === 'google/gemini-3.1-flash-image-preview';
