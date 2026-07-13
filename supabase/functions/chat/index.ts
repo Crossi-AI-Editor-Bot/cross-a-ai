@@ -817,7 +817,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
         headers: {
           Authorization: `Bearer ${gatewayKey}`,
           "Content-Type": "application/json",
-          ...(isOpenRouter ? { "HTTP-Referer": "https://cross-a-ai.lovable.app", "X-Title": "Crossi AI" } : {}),
+          ...(gatewayIsOpenRouter ? { "HTTP-Referer": "https://cross-a-ai.lovable.app", "X-Title": "Crossi AI" } : {}),
         },
         body: JSON.stringify({ ...requestBody, messages: msgs, stream }),
       });
@@ -849,7 +849,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
         try {
           let convo = [...requestBody.messages];
           let toolCallCount = 0;
-          const MAX_ITERS = 3;
+          const MAX_ITERS = Math.max(1, maxToolCalls + 1);
           let finalContent = "";
 
           for (let iter = 0; iter < MAX_ITERS; iter++) {
@@ -863,16 +863,18 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
             const j = await r.json();
             const content: string = j.choices?.[0]?.message?.content ?? "";
             const matches = content.match(TOOL_RE) || [];
-            if (matches.length === 0 || iter === MAX_ITERS - 1) {
+            if (matches.length === 0 || iter === MAX_ITERS - 1 || toolCallCount >= maxToolCalls) {
               finalContent = content;
               break;
             }
             const results: string[] = [];
             for (const m of matches) {
+              if (toolCallCount >= maxToolCalls) break;
               toolCallCount++;
               const id = `t${Date.now()}_${toolCallCount}`;
               const trimmed = m.trim();
-              const toolName = trimmed.startsWith("/!csearch") ? "csearch" : trimmed.startsWith("/!web") ? "web" : trimmed.startsWith("/!news") ? "news" : "tool";
+              const nameMatch = trimmed.match(/^\/!(\w+)/);
+              const toolName = nameMatch ? nameMatch[1].toLowerCase() : "tool";
               sendText(`[[TOOL_START]]${JSON.stringify({ id, tool: toolName, args: trimmed })}[[/TOOL_START]]\n`);
               const startedAt = Date.now();
               const res = await runTool(m);
