@@ -717,6 +717,97 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `News request timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
         }
       }
+      // ---- Info / account tools (admin-toggled per model) ----------------
+      if (/^\/!switchmodel\b/i.test(line) && toolFlags.switchmodel) {
+        const sm = line.match(/^\/!switchmodel\s+(.+)$/i);
+        if (!sm) return { status: null, body: "Missing model label.", errorKind: "unknown", errorMessage: "Usage: /!switchmodel <model_label>" };
+        const target = sm[1].trim();
+        const { data: match } = await supabase
+          .from('model_costs')
+          .select('model_id, label, enabled')
+          .or(`label.ilike.${target},model_id.ilike.${target}`)
+          .eq('enabled', true)
+          .maybeSingle();
+        if (!match) return { status: 404, body: `No enabled model matches "${target}".`, errorKind: "empty", errorMessage: `No enabled model matches "${target}".` };
+        const newModelId = (match as any).model_id as string;
+        model = newModelId;
+        gatewayIsOpenRouter = newModelId.startsWith('openrouter/');
+        gatewayUrl = gatewayIsOpenRouter
+          ? "https://openrouter.ai/api/v1/chat/completions"
+          : "https://ai.gateway.lovable.dev/v1/chat/completions";
+        gatewayKey = gatewayIsOpenRouter ? OPEN_ROUTER_KEY : LOVABLE_API_KEY;
+        requestBody.model = gatewayIsOpenRouter ? newModelId.slice('openrouter/'.length) : newModelId;
+        return { status: 200, body: `Switched to "${(match as any).label}" (${newModelId}). Continue the response using the new model.` };
+      }
+      if (/^\/!email\b/i.test(line) && toolFlags.email) {
+        return { status: 200, body: JSON.stringify({ email: user.email ?? null }) };
+      }
+      if (/^\/!vip\b/i.test(line) && toolFlags.vip) {
+        const { data: vip } = await supabase
+          .from('vip_status')
+          .select('tier, expires_at')
+          .eq('user_id', user.id)
+          .gt('expires_at', new Date().toISOString())
+          .maybeSingle();
+        return { status: 200, body: JSON.stringify(vip ?? { tier: "none" }) };
+      }
+      if (/^\/!credits\b/i.test(line) && toolFlags.credits) {
+        const [tx, im, vd, au] = await Promise.all([
+          supabase.from('user_credits').select('credits').eq('user_id', user.id).maybeSingle(),
+          supabase.from('user_image_credits').select('credits').eq('user_id', user.id).maybeSingle(),
+          supabase.from('user_video_credits').select('credits').eq('user_id', user.id).maybeSingle(),
+          supabase.from('user_audio_credits').select('credits').eq('user_id', user.id).maybeSingle(),
+        ]);
+        return { status: 200, body: JSON.stringify({
+          text: tx.data?.credits ?? 0,
+          image: im.data?.credits ?? 0,
+          video: vd.data?.credits ?? 0,
+          audio: au.data?.credits ?? 0,
+        }) };
+      }
+      if (/^\/!croins\b/i.test(line) && toolFlags.croins) {
+        const { data: profile } = await serviceClient
+          .from('profiles').select('crossatrix_id').eq('user_id', user.id).maybeSingle();
+        if (!profile?.crossatrix_id) return { status: 400, body: "No Crossatrix account linked.", errorKind: "empty", errorMessage: "No Crossatrix account linked." };
+        if (!CROINKEY) return { status: null, body: "CROINKEY missing", errorKind: "config", errorMessage: "Croins backend not configured." };
+        try {
+          const r = await withTimeout((signal) => fetch("https://digjxtmzafzcgytgcwmb.supabase.co/functions/v1/croins", {
+            method: "POST", signal,
+            headers: { "Content-Type": "application/json", "x-api-key": CROINKEY },
+            body: JSON.stringify({ action: "balance", user_id: profile.crossatrix_id }),
+          }));
+          const t = await r.text();
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `Croins returned HTTP ${r.status}.` };
+          return { status: r.status, body: t };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? "Croins request timed out." : `Network error: ${msg}` };
+        }
+      }
+      if (/^\/!shares\b/i.test(line) && toolFlags.shares) {
+        const { data: profile } = await serviceClient
+          .from('profiles').select('crossatrix_id').eq('user_id', user.id).maybeSingle();
+        if (!profile?.crossatrix_id) return { status: 400, body: "No Crossatrix account linked.", errorKind: "empty", errorMessage: "No Crossatrix account linked." };
+        try {
+          const url = `https://digjxtmzafzcgytgcwmb.supabase.co/functions/v1/user-shares-api?user=${encodeURIComponent(profile.crossatrix_id)}`;
+          const r = await withTimeout((signal) => fetch(url, {
+            signal,
+            headers: CRASSATRIX_KEY ? { "x-api-key": CRASSATRIX_KEY } : {},
+          }));
+          const t = await r.text();
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `Shares API returned HTTP ${r.status}.` };
+          return { status: r.status, body: t };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? "Shares request timed out." : `Network error: ${msg}` };
+        }
+      }
+      // Tool exists but is disabled for this model
+      if (/^\/!(switchmodel|croins|vip|credits|email|shares)\b/i.test(line)) {
+        return { status: 403, body: "Tool disabled for this model.", errorKind: "config", errorMessage: "This tool is disabled for the current model." };
+      }
       return { status: null, body: "Unknown tool invocation.", errorKind: "unknown", errorMessage: "Unknown tool invocation." };
     };
 
