@@ -38,6 +38,12 @@ interface ModelData {
   fake_error_message?: string | null;
   fake_corrupted_output?: boolean;
   max_tool_calls?: number;
+  tool_switchmodel?: boolean;
+  tool_croins?: boolean;
+  tool_vip?: boolean;
+  tool_credits?: boolean;
+  tool_email?: boolean;
+  tool_shares?: boolean;
   tier_access: Record<string, boolean>;
 }
 
@@ -57,6 +63,7 @@ interface FileEditorProps {
   onUpdateFakeErrorMessage?: (value: string) => void;
   onUpdateFakeCorruptedOutput?: (value: boolean) => void;
   onUpdateMaxToolCalls?: (value: number) => void;
+  onUpdateToolFlag?: (key: 'tool_switchmodel'|'tool_croins'|'tool_vip'|'tool_credits'|'tool_email'|'tool_shares', value: boolean) => void;
   onDelete?: () => void;
 }
 
@@ -76,6 +83,7 @@ export const FileEditor = ({
   onUpdateFakeErrorMessage,
   onUpdateFakeCorruptedOutput,
   onUpdateMaxToolCalls,
+  onUpdateToolFlag,
   onDelete,
 }: FileEditorProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -243,6 +251,32 @@ export const FileEditor = ({
               />
               <span className="text-xs text-muted-foreground">(tool-use loop iterations per turn)</span>
             </div>
+          )}
+
+          {onUpdateToolFlag && (
+            <>
+              <div className="h-px bg-border my-4" />
+              <div className="text-muted-foreground mb-2">
+                <span className="text-green-500">{"// "}</span>
+                <span>Optional Tools (default: off)</span>
+              </div>
+              {([
+                ['tool_switchmodel', '/!switchmodel'],
+                ['tool_croins', '/!croins'],
+                ['tool_vip', '/!vip'],
+                ['tool_credits', '/!credits'],
+                ['tool_email', '/!email'],
+                ['tool_shares', '/!shares'],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-purple-400">{label}</span>
+                  <Switch
+                    checked={!!(model as any)[key]}
+                    onCheckedChange={(v) => onUpdateToolFlag(key, v)}
+                  />
+                </div>
+              ))}
+            </>
           )}
 
           <div className="h-px bg-border my-4" />
