@@ -607,10 +607,11 @@ Deno.serve(async (req) => {
       ...requestBody.messages,
     ];
 
-    const gatewayUrl = isOpenRouter
+    let gatewayUrl = isOpenRouter
       ? "https://openrouter.ai/api/v1/chat/completions"
       : "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const gatewayKey = isOpenRouter ? OPEN_ROUTER_KEY : LOVABLE_API_KEY;
+    let gatewayKey = isOpenRouter ? OPEN_ROUTER_KEY : LOVABLE_API_KEY;
+    let gatewayIsOpenRouter = isOpenRouter;
 
     // Inject tool instructions into system prompt
     const toolInstructions = `\n\nAVAILABLE TOOLS (use only when genuinely useful):
