@@ -571,6 +571,8 @@ const AdminPanel = () => {
                 onUpdateIsFake={(value) => updateModel(selectedModel.id, { is_fake: value })}
                 onUpdateFakeErrorMessage={(value) => updateModel(selectedModel.id, { fake_error_message: value })}
                 onUpdateFakeCorruptedOutput={(value) => updateModel(selectedModel.id, { fake_corrupted_output: value })}
+                onUpdateMaxToolCalls={(value) => updateModel(selectedModel.id, { max_tool_calls: value })}
+                onUpdateToolFlag={(key, value) => updateModel(selectedModel.id, { [key]: value } as any)}
                 onDelete={() => handleDeleteModel(selectedModel.id)}
               />
             ) : (
