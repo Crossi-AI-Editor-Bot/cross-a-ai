@@ -608,6 +608,7 @@ Deno.serve(async (req) => {
 You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
 - /!csearch "<query>" <page|file> <limit>   — search crossisearch. Choose "page" to search web pages/articles, or "file" to search for downloadable files (PDFs, docs, images, etc). Examples: /!csearch "android security" page 10  •  /!csearch "quarterly report" file 5
 - /!web <url>                                 — HTTP GET the URL and read the response. Example: /!web https://example.com/api/data.json
+- /!news                                      — fetch the latest news feed (returns up to 100 items). No arguments. Example: /!news
 - /!present_file <filename>                   — render a downloadable file card for the user. Put the file body between this line and a line containing exactly /!end_file. Example:
   /!present_file report.txt
   Hello world
@@ -617,7 +618,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     (requestBody.messages[0] as any).content = (requestBody.messages[0] as any).content + toolInstructions;
 
     const CROSSISEARCH_KEY = Deno.env.get("CROSSISEARCH_KEY");
-    const TOOL_RE = /^\s*\/!(csearch|web)\b.*$/gim;
+    const TOOL_RE = /^\s*\/!(csearch|web|news)\b.*$/gim;
     const TOOL_TIMEOUT_MS = 15000;
 
     const withTimeout = async (fn: (signal: AbortSignal) => Promise<Response>) => {
@@ -681,6 +682,19 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           const msg = e instanceof Error ? e.message : String(e);
           const timeout = /abort/i.test(msg);
           return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `Request timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
+        }
+      }
+      if (/^\/!news\b/i.test(line)) {
+        try {
+          const r = await withTimeout((signal) => fetch("https://digjxtmzafzcgytgcwmb.supabase.co/functions/v1/news-api/?limit=100", { redirect: "follow", signal }));
+          const t = (await r.text()).substring(0, 4000);
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `News feed returned HTTP ${r.status}.` };
+          if (isEmptyPayload(t)) return { status: r.status, body: t, errorKind: "empty", errorMessage: "News feed returned no items." };
+          return { status: r.status, body: t };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `News request timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
         }
       }
       return { status: null, body: "Unknown tool invocation.", errorKind: "unknown", errorMessage: "Unknown tool invocation." };
@@ -747,7 +761,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
               toolCallCount++;
               const id = `t${Date.now()}_${toolCallCount}`;
               const trimmed = m.trim();
-              const toolName = trimmed.startsWith("/!csearch") ? "csearch" : trimmed.startsWith("/!web") ? "web" : "tool";
+              const toolName = trimmed.startsWith("/!csearch") ? "csearch" : trimmed.startsWith("/!web") ? "web" : trimmed.startsWith("/!news") ? "news" : "tool";
               sendText(`[[TOOL_START]]${JSON.stringify({ id, tool: toolName, args: trimmed })}[[/TOOL_START]]\n`);
               const startedAt = Date.now();
               const res = await runTool(m);
