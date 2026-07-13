@@ -72,6 +72,11 @@ Deno.serve(async (req) => {
         status = r.status; body = (await r.text()).substring(0, 4000);
         if (!r.ok) { errorKind = 'http'; errorMessage = `Request returned HTTP ${r.status}.`; }
         else if (!body.trim()) { errorKind = 'empty'; errorMessage = 'Response body was empty.'; }
+      } else if (tool === 'news') {
+        const r = await withTimeout((signal) => fetch('https://digjxtmzafzcgytgcwmb.supabase.co/functions/v1/news-api/?limit=100', { redirect: 'follow', signal }));
+        status = r.status; body = (await r.text()).substring(0, 4000);
+        if (!r.ok) { errorKind = 'http'; errorMessage = `News feed returned HTTP ${r.status}.`; }
+        else if (isEmptyPayload(body)) { errorKind = 'empty'; errorMessage = 'News feed returned no items.'; }
       } else {
         return new Response(JSON.stringify({ error: 'Unknown tool' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
