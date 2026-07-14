@@ -1,0 +1,1062 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  public: {
+    Tables: {
+      admin_folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          path: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          path?: string
+        }
+        Relationships: []
+      }
+      advent_claims: {
+        Row: {
+          claimed_at: string
+          credits_awarded: number
+          day_number: number
+          id: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          claimed_at?: string
+          credits_awarded: number
+          day_number: number
+          id?: string
+          user_id: string
+          year?: number
+        }
+        Update: {
+          claimed_at?: string
+          credits_awarded?: number
+          day_number?: number
+          id?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      api_keys: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          key: string
+          label: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key: string
+          label?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key?: string
+          label?: string
+        }
+        Relationships: []
+      }
+      blocked_ips: {
+        Row: {
+          blocked_at: string
+          id: string
+          ip_address: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_at?: string
+          id?: string
+          ip_address: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_at?: string
+          id?: string
+          ip_address?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      custom_vip_configs: {
+        Row: {
+          ai_price: number | null
+          ai_reasoning: string | null
+          bg_color: string
+          color_label: string
+          created_at: string
+          daily_credits: number
+          display_name: string
+          expires_at: string | null
+          gradient_from: string
+          gradient_to: string
+          icon_name: string
+          id: string
+          model_access_tier: string
+          status: string
+          text_color: string
+          updated_at: string
+          user_id: string
+          weekly_image_credits: number
+        }
+        Insert: {
+          ai_price?: number | null
+          ai_reasoning?: string | null
+          bg_color?: string
+          color_label?: string
+          created_at?: string
+          daily_credits?: number
+          display_name?: string
+          expires_at?: string | null
+          gradient_from?: string
+          gradient_to?: string
+          icon_name?: string
+          id?: string
+          model_access_tier?: string
+          status?: string
+          text_color?: string
+          updated_at?: string
+          user_id: string
+          weekly_image_credits?: number
+        }
+        Update: {
+          ai_price?: number | null
+          ai_reasoning?: string | null
+          bg_color?: string
+          color_label?: string
+          created_at?: string
+          daily_credits?: number
+          display_name?: string
+          expires_at?: string | null
+          gradient_from?: string
+          gradient_to?: string
+          icon_name?: string
+          id?: string
+          model_access_tier?: string
+          status?: string
+          text_color?: string
+          updated_at?: string
+          user_id?: string
+          weekly_image_credits?: number
+        }
+        Relationships: []
+      }
+      generation_queue: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          duration: number | null
+          error: string | null
+          id: string
+          image_input: string | null
+          kind: string
+          last_attempt_at: string | null
+          model_cost_id: string
+          position: number
+          prompt: string
+          result_audio: string | null
+          result_image: string | null
+          result_video: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          duration?: number | null
+          error?: string | null
+          id?: string
+          image_input?: string | null
+          kind: string
+          last_attempt_at?: string | null
+          model_cost_id: string
+          position?: number
+          prompt: string
+          result_audio?: string | null
+          result_image?: string | null
+          result_video?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          duration?: number | null
+          error?: string | null
+          id?: string
+          image_input?: string | null
+          kind?: string
+          last_attempt_at?: string | null
+          model_cost_id?: string
+          position?: number
+          prompt?: string
+          result_audio?: string | null
+          result_image?: string | null
+          result_video?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      jailbreak_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string
+          prompt_snippet: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address: string
+          prompt_snippet?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string
+          prompt_snippet?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      magic_hour_keys: {
+        Row: {
+          category: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          last_402_at: string | null
+          secret_name: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_402_at?: string | null
+          secret_name: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_402_at?: string | null
+          secret_name?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      model_costs: {
+        Row: {
+          audio_credits_per_second: number | null
+          bronze_access: boolean
+          copper_access: boolean
+          cost: number
+          diamond_access: boolean
+          enabled: boolean
+          fake_corrupted_output: boolean
+          fake_error_message: string | null
+          folder: string | null
+          gold_access: boolean
+          id: string
+          image_cost: number | null
+          is_fake: boolean
+          kind: string
+          label: string
+          max_tool_calls: number
+          model_id: string
+          platinum_access: boolean
+          public_access: boolean
+          silver_access: boolean
+          system_prompt: string | null
+          tool_ccpost: boolean
+          tool_ccsong: boolean
+          tool_ccstream: boolean
+          tool_ccvideo: boolean
+          tool_credits: boolean
+          tool_croins: boolean
+          tool_email: boolean
+          tool_shares: boolean
+          tool_switchmodel: boolean
+          tool_vip: boolean
+          updated_at: string
+          updated_by: string | null
+          video_credits_per_second: number | null
+        }
+        Insert: {
+          audio_credits_per_second?: number | null
+          bronze_access?: boolean
+          copper_access?: boolean
+          cost: number
+          diamond_access?: boolean
+          enabled?: boolean
+          fake_corrupted_output?: boolean
+          fake_error_message?: string | null
+          folder?: string | null
+          gold_access?: boolean
+          id?: string
+          image_cost?: number | null
+          is_fake?: boolean
+          kind?: string
+          label: string
+          max_tool_calls?: number
+          model_id: string
+          platinum_access?: boolean
+          public_access?: boolean
+          silver_access?: boolean
+          system_prompt?: string | null
+          tool_ccpost?: boolean
+          tool_ccsong?: boolean
+          tool_ccstream?: boolean
+          tool_ccvideo?: boolean
+          tool_credits?: boolean
+          tool_croins?: boolean
+          tool_email?: boolean
+          tool_shares?: boolean
+          tool_switchmodel?: boolean
+          tool_vip?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          video_credits_per_second?: number | null
+        }
+        Update: {
+          audio_credits_per_second?: number | null
+          bronze_access?: boolean
+          copper_access?: boolean
+          cost?: number
+          diamond_access?: boolean
+          enabled?: boolean
+          fake_corrupted_output?: boolean
+          fake_error_message?: string | null
+          folder?: string | null
+          gold_access?: boolean
+          id?: string
+          image_cost?: number | null
+          is_fake?: boolean
+          kind?: string
+          label?: string
+          max_tool_calls?: number
+          model_id?: string
+          platinum_access?: boolean
+          public_access?: boolean
+          silver_access?: boolean
+          system_prompt?: string | null
+          tool_ccpost?: boolean
+          tool_ccsong?: boolean
+          tool_ccstream?: boolean
+          tool_ccvideo?: boolean
+          tool_credits?: boolean
+          tool_croins?: boolean
+          tool_email?: boolean
+          tool_shares?: boolean
+          tool_switchmodel?: boolean
+          tool_vip?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          video_credits_per_second?: number | null
+        }
+        Relationships: []
+      }
+      model_tier_access: {
+        Row: {
+          has_access: boolean
+          id: string
+          model_cost_id: string
+          tier_name: string
+        }
+        Insert: {
+          has_access?: boolean
+          id?: string
+          model_cost_id: string
+          tier_name: string
+        }
+        Update: {
+          has_access?: boolean
+          id?: string
+          model_cost_id?: string
+          tier_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "model_tier_access_model_cost_id_fkey"
+            columns: ["model_cost_id"]
+            isOneToOne: false
+            referencedRelation: "model_costs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          crossatrix_id: string | null
+          email: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          crossatrix_id?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          crossatrix_id?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      user_audio_credits: {
+        Row: {
+          credits: number
+          last_reset_date: string
+          user_id: string
+        }
+        Insert: {
+          credits?: number
+          last_reset_date?: string
+          user_id: string
+        }
+        Update: {
+          credits?: number
+          last_reset_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_call_credits: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          last_reset_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_credits: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          last_reset_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_image_credits: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          last_reset_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          last_reset_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_mods: {
+        Row: {
+          installed: string[]
+          settings: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          installed?: string[]
+          settings?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          installed?: string[]
+          settings?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_video_credits: {
+        Row: {
+          credits: number
+          last_reset_date: string
+          user_id: string
+        }
+        Insert: {
+          credits?: number
+          last_reset_date?: string
+          user_id: string
+        }
+        Update: {
+          credits?: number
+          last_reset_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vip_invite_codes: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string
+          id: string
+          tier_name: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by: string
+          id?: string
+          tier_name: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          tier_name?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
+      vip_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          requested_tier: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+          user_message: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          requested_tier: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+          user_message?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          requested_tier?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+          user_message?: string | null
+        }
+        Relationships: []
+      }
+      vip_status: {
+        Row: {
+          created_at: string
+          dynamic_ceiling_tier: string | null
+          dynamic_model_ids: string[]
+          expires_at: string
+          id: string
+          tier: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dynamic_ceiling_tier?: string | null
+          dynamic_model_ids?: string[]
+          expires_at: string
+          id?: string
+          tier?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dynamic_ceiling_tier?: string | null
+          dynamic_model_ids?: string[]
+          expires_at?: string
+          id?: string
+          tier?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vip_tiers: {
+        Row: {
+          bg_color: string
+          color: string
+          created_at: string
+          croin_price: number
+          daily_credits: number
+          default_audio_credits: number | null
+          default_video_credits: number | null
+          display_name: string
+          gradient_from: string
+          gradient_to: string
+          hidden: boolean
+          icon_name: string
+          id: string
+          is_dynamic: boolean
+          monthly_video_credits: number
+          name: string
+          sort_order: number
+          text_color: string
+          topup_discount_percent: number
+          unlimited: boolean
+          updated_at: string
+          weekly_audio_credits: number
+          weekly_call_credits: number
+          weekly_image_credits: number
+        }
+        Insert: {
+          bg_color?: string
+          color?: string
+          created_at?: string
+          croin_price?: number
+          daily_credits?: number
+          default_audio_credits?: number | null
+          default_video_credits?: number | null
+          display_name: string
+          gradient_from?: string
+          gradient_to?: string
+          hidden?: boolean
+          icon_name?: string
+          id?: string
+          is_dynamic?: boolean
+          monthly_video_credits?: number
+          name: string
+          sort_order?: number
+          text_color?: string
+          topup_discount_percent?: number
+          unlimited?: boolean
+          updated_at?: string
+          weekly_audio_credits?: number
+          weekly_call_credits?: number
+          weekly_image_credits?: number
+        }
+        Update: {
+          bg_color?: string
+          color?: string
+          created_at?: string
+          croin_price?: number
+          daily_credits?: number
+          default_audio_credits?: number | null
+          default_video_credits?: number | null
+          display_name?: string
+          gradient_from?: string
+          gradient_to?: string
+          hidden?: boolean
+          icon_name?: string
+          id?: string
+          is_dynamic?: boolean
+          monthly_video_credits?: number
+          name?: string
+          sort_order?: number
+          text_color?: string
+          topup_discount_percent?: number
+          unlimited?: boolean
+          updated_at?: string
+          weekly_audio_credits?: number
+          weekly_call_credits?: number
+          weekly_image_credits?: number
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      reset_daily_credits: { Args: { p_user_id: string }; Returns: undefined }
+      reset_monthly_video_credits: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      reset_weekly_audio_credits: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      reset_weekly_call_credits: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      reset_weekly_image_credits: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+    }
+    Enums: {
+      app_role: "admin" | "user"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ["admin", "user"],
+    },
+  },
+} as const
