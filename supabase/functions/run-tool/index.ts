@@ -42,6 +42,9 @@ Deno.serve(async (req) => {
     if (!tool || typeof args !== 'string') return new Response(JSON.stringify({ error: 'tool and args required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const CROSSISEARCH_KEY = Deno.env.get('CROSSISEARCH_KEY');
+    const CC_DATA_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZXdrZG9sbW5yam1ncGx6eHJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NzE3MTQsImV4cCI6MjA3NzE0NzcxNH0.mtZiST9pfc5DLokcdY0OMAXlpSK1ftkHJY020u1DXQc";
+    const CC_DATA_API_BASE = "https://kwewkdolmnrjmgplzxrk.supabase.co/rest/v1/rpc/data_api";
+    const CC_ACTIONS: Record<string, string> = { ccvideo: 'video', ccpost: 'post', ccsong: 'song', ccstream: 'livestream' };
     const started = Date.now();
     let status: number | null = null;
     let body = '';
@@ -77,6 +80,12 @@ Deno.serve(async (req) => {
         status = r.status; body = await r.text();
         if (!r.ok) { errorKind = 'http'; errorMessage = `News feed returned HTTP ${r.status}.`; }
         else if (isEmptyPayload(body)) { errorKind = 'empty'; errorMessage = 'News feed returned no items.'; }
+      } else if (tool in CC_ACTIONS) {
+        const action = CC_ACTIONS[tool];
+        const r = await withTimeout((signal) => fetch(`${CC_DATA_API_BASE}?action=${action}&apikey=${CC_DATA_API_KEY}`, { signal }));
+        status = r.status; body = await r.text();
+        if (!r.ok) { errorKind = 'http'; errorMessage = `${tool} returned HTTP ${r.status}.`; }
+        else if (isEmptyPayload(body)) { errorKind = 'empty'; errorMessage = `${tool} returned no items.`; }
       } else {
         return new Response(JSON.stringify({ error: 'Unknown tool' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
