@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares')
+      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream')
       .eq('id', modelCostId)
       .single();
 
@@ -174,6 +174,10 @@ Deno.serve(async (req) => {
       credits: !!(modelCostData as any).tool_credits,
       email: !!(modelCostData as any).tool_email,
       shares: !!(modelCostData as any).tool_shares,
+      ccvideo: !!(modelCostData as any).tool_ccvideo,
+      ccpost: !!(modelCostData as any).tool_ccpost,
+      ccsong: !!(modelCostData as any).tool_ccsong,
+      ccstream: !!(modelCostData as any).tool_ccstream,
     };
     const maxToolCalls = Math.max(0, Math.min(20, Number((modelCostData as any).max_tool_calls ?? 3)));
 
@@ -621,6 +625,10 @@ Deno.serve(async (req) => {
     if (toolFlags.credits) optionalToolLines.push(`- /!credits                               — get the user's text / image / video / audio credit balances.`);
     if (toolFlags.email) optionalToolLines.push(`- /!email                                 — get the user's account email.`);
     if (toolFlags.shares) optionalToolLines.push(`- /!shares                                — get the user's Crossatrix shares.`);
+    if (toolFlags.ccvideo) optionalToolLines.push(`- /!ccvideo                               — fetch video data. No arguments. Example: /!ccvideo`);
+    if (toolFlags.ccpost) optionalToolLines.push(`- /!ccpost                                — fetch post data. No arguments. Example: /!ccpost`);
+    if (toolFlags.ccsong) optionalToolLines.push(`- /!ccsong                                — fetch song data. No arguments. Example: /!ccsong`);
+    if (toolFlags.ccstream) optionalToolLines.push(`- /!ccstream                              — fetch livestream data. No arguments. Example: /!ccstream`);
     const extraTools = optionalToolLines.length ? `\n${optionalToolLines.join("\n")}` : "";
     const toolInstructions = `\n\nAVAILABLE TOOLS (use only when genuinely useful):
 You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
@@ -638,7 +646,9 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     const CROSSISEARCH_KEY = Deno.env.get("CROSSISEARCH_KEY");
     const CROINKEY = Deno.env.get("CROINKEY");
     const CRASSATRIX_KEY = Deno.env.get("CRASSATRIX_KEY");
-    const TOOL_RE = /^\s*\/!(csearch|web|news|switchmodel|croins|vip|credits|email|shares)\b.*$/gim;
+    const CC_DATA_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZXdrZG9sbW5yam1ncGx6eHJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NzE3MTQsImV4cCI6MjA3NzE0NzcxNH0.mtZiST9pfc5DLokcdY0OMAXlpSK1ftkHJY020u1DXQc";
+    const CC_DATA_API_BASE = "https://kwewkdolmnrjmgplzxrk.supabase.co/rest/v1/rpc/data_api";
+    const TOOL_RE = /^\s*\/!(csearch|web|news|switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream)\b.*$/gim;
     const TOOL_TIMEOUT_MS = 15000;
 
     const withTimeout = async (fn: (signal: AbortSignal) => Promise<Response>) => {
@@ -804,8 +814,61 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? "Shares request timed out." : `Network error: ${msg}` };
         }
       }
+      // ---- CC data tools (admin-toggled per model) -------------------------
+      if (/^\/!ccvideo\b/i.test(line) && toolFlags.ccvideo) {
+        try {
+          const r = await withTimeout((signal) => fetch(`${CC_DATA_API_BASE}?action=video&apikey=${CC_DATA_API_KEY}`, { signal }));
+          const t = await r.text();
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `ccvideo returned HTTP ${r.status}.` };
+          if (isEmptyPayload(t)) return { status: r.status, body: t, errorKind: "empty", errorMessage: "ccvideo returned no items." };
+          return { status: r.status, body: t };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `ccvideo timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
+        }
+      }
+      if (/^\/!ccpost\b/i.test(line) && toolFlags.ccpost) {
+        try {
+          const r = await withTimeout((signal) => fetch(`${CC_DATA_API_BASE}?action=post&apikey=${CC_DATA_API_KEY}`, { signal }));
+          const t = await r.text();
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `ccpost returned HTTP ${r.status}.` };
+          if (isEmptyPayload(t)) return { status: r.status, body: t, errorKind: "empty", errorMessage: "ccpost returned no items." };
+          return { status: r.status, body: t };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `ccpost timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
+        }
+      }
+      if (/^\/!ccsong\b/i.test(line) && toolFlags.ccsong) {
+        try {
+          const r = await withTimeout((signal) => fetch(`${CC_DATA_API_BASE}?action=song&apikey=${CC_DATA_API_KEY}`, { signal }));
+          const t = await r.text();
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `ccsong returned HTTP ${r.status}.` };
+          if (isEmptyPayload(t)) return { status: r.status, body: t, errorKind: "empty", errorMessage: "ccsong returned no items." };
+          return { status: r.status, body: t };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `ccsong timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
+        }
+      }
+      if (/^\/!ccstream\b/i.test(line) && toolFlags.ccstream) {
+        try {
+          const r = await withTimeout((signal) => fetch(`${CC_DATA_API_BASE}?action=livestream&apikey=${CC_DATA_API_KEY}`, { signal }));
+          const t = await r.text();
+          if (!r.ok) return { status: r.status, body: t, errorKind: "http", errorMessage: `ccstream returned HTTP ${r.status}.` };
+          if (isEmptyPayload(t)) return { status: r.status, body: t, errorKind: "empty", errorMessage: "ccstream returned no items." };
+          return { status: r.status, body: t };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          const timeout = /abort/i.test(msg);
+          return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `ccstream timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
+        }
+      }
       // Tool exists but is disabled for this model
-      if (/^\/!(switchmodel|croins|vip|credits|email|shares)\b/i.test(line)) {
+      if (/^\/!(switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream)\b/i.test(line)) {
         return { status: 403, body: "Tool disabled for this model.", errorKind: "config", errorMessage: "This tool is disabled for the current model." };
       }
       return { status: null, body: "Unknown tool invocation.", errorKind: "unknown", errorMessage: "Unknown tool invocation." };
