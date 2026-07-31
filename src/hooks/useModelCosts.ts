@@ -6,6 +6,7 @@ export interface ModelCost {
   id: string;
   model_id: string;
   label: string;
+  description: string | null;
   cost: number;
   enabled: boolean;
   public_access: boolean;
@@ -42,7 +43,7 @@ export const useModelCosts = () => {
       const [modelsRes, accessRes] = await Promise.all([
         supabase
           .from("model_costs")
-          .select("id, model_id, label, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream")
+          .select("id, model_id, label, description, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream")
           .order("cost", { ascending: false }),
         supabase
           .from("model_tier_access" as any)
@@ -64,6 +65,7 @@ export const useModelCosts = () => {
         id: m.id,
         model_id: m.model_id,
         label: m.label,
+        description: m.description ?? null,
         cost: m.cost,
         enabled: m.enabled,
         public_access: m.public_access,

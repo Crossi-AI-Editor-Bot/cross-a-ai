@@ -26,6 +26,7 @@ interface ModelData {
   id: string;
   model_id: string;
   label: string;
+  description?: string | null;
   cost: number;
   enabled: boolean;
   public_access: boolean;
@@ -55,6 +56,7 @@ interface FileEditorProps {
   model: ModelData;
   tiers: VipTierConfig[];
   onUpdateLabel: (value: string) => void;
+  onUpdateDescription?: (value: string) => void;
   onUpdateCost: (value: number) => void;
   onUpdateEnabled: (value: boolean) => void;
   onUpdatePublicAccess: (value: boolean) => void;
@@ -75,6 +77,7 @@ export const FileEditor = ({
   model,
   tiers,
   onUpdateLabel,
+  onUpdateDescription,
   onUpdateCost,
   onUpdateEnabled,
   onUpdatePublicAccess,
@@ -177,6 +180,20 @@ export const FileEditor = ({
             />
             <span className="text-yellow-400">"</span>
           </div>
+
+          {/* Description - shown under the model name in the model selector */}
+          {onUpdateDescription && (
+            <div className="flex flex-col gap-2">
+              <span className="text-purple-400">description</span>
+              <span className="text-muted-foreground">=</span>
+              <Textarea
+                value={model.description || ""}
+                onChange={(e) => onUpdateDescription(e.target.value)}
+                placeholder="Short description shown under the model name in the selector..."
+                className="min-h-[60px] text-sm font-mono bg-background"
+              />
+            </div>
+          )}
 
           {/* Cost */}
           <div className="flex items-center gap-2">

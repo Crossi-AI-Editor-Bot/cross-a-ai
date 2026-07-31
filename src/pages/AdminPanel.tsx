@@ -25,6 +25,7 @@ interface ModelState {
   id: string;
   model_id: string;
   label: string;
+  description: string | null;
   cost: number;
   enabled: boolean;
   public_access: boolean;
@@ -118,6 +119,7 @@ const AdminPanel = () => {
       id: model.id,
       model_id: model.model_id,
       label: model.label,
+      description: model.description ?? null,
       cost: model.cost,
       enabled: model.enabled,
       public_access: model.public_access,
@@ -266,6 +268,7 @@ const AdminPanel = () => {
           enabled: data.enabled,
           public_access: data.public_access,
           folder: data.folder,
+          description: (data as any).description ?? null,
           image_cost: data.image_cost || 0,
           video_credits_per_second: Number((data as any).video_credits_per_second ?? 1),
           audio_credits_per_second: Number((data as any).audio_credits_per_second ?? 1),
@@ -368,6 +371,7 @@ const AdminPanel = () => {
           .update({
             cost: model.cost,
             label: model.label,
+            description: model.description,
             enabled: model.enabled,
             public_access: model.public_access,
             folder: model.folder,
@@ -576,6 +580,7 @@ const AdminPanel = () => {
                 model={selectedModel}
                 tiers={tiers}
                 onUpdateLabel={(value) => updateModel(selectedModel.id, { label: value })}
+                onUpdateDescription={(value) => updateModel(selectedModel.id, { description: value })}
                 onUpdateCost={(value) => updateModel(selectedModel.id, { cost: value })}
                 onUpdateEnabled={(value) => updateModel(selectedModel.id, { enabled: value })}
                 onUpdatePublicAccess={(value) => updateModel(selectedModel.id, { public_access: value })}
