@@ -7,6 +7,27 @@ import { useVipTiers } from "@/hooks/useVipTiers";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import type { ModelCost } from "@/hooks/useModelCosts";
 import { supabase } from "@/integrations/supabase/client";
+import { isMagicHourImage, isMagicHourVideo, isMagicHourAudio } from "@/lib/externalModels";
+
+const BUILTIN_IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
+
+const isImageModel = (modelId: string) =>
+  BUILTIN_IMAGE_MODELS.includes(modelId) || isMagicHourImage(modelId);
+
+// Builds the "(N credits)" label for a model, using the right cost field
+// and unit depending on whether it's an image, video, audio, or text model.
+const getCostLabel = (model: ModelCost): string => {
+  if (isImageModel(model.model_id)) {
+    return `${model.image_cost} image ${model.image_cost === 1 ? "credit" : "credits"}`;
+  }
+  if (isMagicHourVideo(model.model_id)) {
+    return `${model.video_credits_per_second} video ${model.video_credits_per_second === 1 ? "credit" : "credits"}/sec`;
+  }
+  if (isMagicHourAudio(model.model_id)) {
+    return `${model.audio_credits_per_second} audio ${model.audio_credits_per_second === 1 ? "credit" : "credits"}/3 words`;
+  }
+  return `${model.cost} ${model.cost === 1 ? "credit" : "credits"}`;
+};
 
 export type AIModel =
   | "openai/gpt-5-nano"
@@ -189,13 +210,20 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
               style={{ paddingLeft }}
               disabled={locked}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 {locked ? (
-                  <Lock className="w-3 h-3 text-muted-foreground" />
+                  <Lock className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
                 ) : isVipModel(model) ? (
-                  <Crown className="w-3 h-3 text-yellow-500" />
+                  <Crown className="w-3 h-3 text-yellow-500 mt-0.5 shrink-0" />
                 ) : null}
-                <span>{model.label} ({model.cost} credits)</span>
+                <div className="flex flex-col min-w-0">
+                  <span>{model.label} ({getCostLabel(model)})</span>
+                  {model.description && (
+                    <span className="text-xs text-muted-foreground font-normal whitespace-normal">
+                      {model.description}
+                    </span>
+                  )}
+                </div>
               </div>
             </SelectItem>
           </div>
@@ -251,7 +279,7 @@ const ModelSelector = ({ models, value, onChange }: ModelSelectorProps) => {
           <div className="flex items-center gap-2">
             <Brain className="w-4 h-4 text-muted-foreground" />
             <span>
-              {selectedModel ? `${selectedModel.label} (${selectedModel.cost} credits)` : "Choose model"}
+              {selectedModel ? `${selectedModel.label} (${getCostLabel(selectedModel)})` : "Choose model"}
             </span>
           </div>
         </SelectValue>
