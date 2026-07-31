@@ -343,6 +343,7 @@ export type Database = {
           bronze_access: boolean
           copper_access: boolean
           cost: number
+          description: string | null
           diamond_access: boolean
           enabled: boolean
           fake_corrupted_output: boolean
@@ -379,6 +380,7 @@ export type Database = {
           bronze_access?: boolean
           copper_access?: boolean
           cost: number
+          description?: string | null
           diamond_access?: boolean
           enabled?: boolean
           fake_corrupted_output?: boolean
@@ -415,6 +417,7 @@ export type Database = {
           bronze_access?: boolean
           copper_access?: boolean
           cost?: number
+          description?: string | null
           diamond_access?: boolean
           enabled?: boolean
           fake_corrupted_output?: boolean
