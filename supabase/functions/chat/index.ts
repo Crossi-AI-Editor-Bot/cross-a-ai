@@ -621,7 +621,7 @@ Deno.serve(async (req) => {
     const optionalToolLines: string[] = [];
     if (toolFlags.switchmodel) optionalToolLines.push(`- /!switchmodel <model_label>            — swap to another Crossi AI model for the follow-up answer (e.g. an image-gen model). Example: /!switchmodel Gemini 2.5 Flash Image`);
     if (toolFlags.croins) optionalToolLines.push(`- /!croins                                — get the user's current Croin balance.`);
-    if (toolFlags.vip) optionalToolLines.push(`- /!vip                                   — get the user's active VIP tier (or "none").`);
+    if (toolFlags.vip) optionalToolLines.push(`- /!vip                                   — get the user's active VIP: tier name, display name, monthly Croin cost, expiry, top-up discount and included credit allowances (or "none").`);
     if (toolFlags.credits) optionalToolLines.push(`- /!credits                               — get the user's text / image / video / audio credit balances.`);
     if (toolFlags.email) optionalToolLines.push(`- /!email                                 — get the user's account email.`);
     if (toolFlags.shares) optionalToolLines.push(`- /!shares                                — get the user's Crossatrix shares.`);
@@ -759,7 +759,33 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           .eq('user_id', user.id)
           .gt('expires_at', new Date().toISOString())
           .maybeSingle();
-        return { status: 200, body: JSON.stringify(vip ?? { tier: "none" }) };
+        if (!vip) return { status: 200, body: JSON.stringify({ tier: "none", active: false }) };
+        const { data: tierCfg } = await supabase
+          .from('vip_tiers')
+          .select('name, display_name, croin_price, topup_discount_percent, daily_credits, weekly_image_credits, weekly_audio_credits, monthly_video_credits, weekly_call_credits, unlimited, is_dynamic')
+          .eq('name', vip.tier)
+          .maybeSingle();
+        return {
+          status: 200,
+          body: JSON.stringify({
+            active: true,
+            tier: vip.tier,
+            name: (tierCfg as any)?.display_name ?? vip.tier,
+            expires_at: vip.expires_at,
+            cost: (tierCfg as any)?.croin_price != null ? `${(tierCfg as any).croin_price} Croins / month` : null,
+            croin_price: (tierCfg as any)?.croin_price ?? null,
+            topup_discount_percent: (tierCfg as any)?.topup_discount_percent ?? null,
+            unlimited_text: !!(tierCfg as any)?.unlimited,
+            dynamic: !!(tierCfg as any)?.is_dynamic,
+            credits: {
+              daily_text: (tierCfg as any)?.daily_credits ?? null,
+              weekly_image: (tierCfg as any)?.weekly_image_credits ?? null,
+              weekly_audio: (tierCfg as any)?.weekly_audio_credits ?? null,
+              monthly_video: (tierCfg as any)?.monthly_video_credits ?? null,
+              weekly_call: (tierCfg as any)?.weekly_call_credits ?? null,
+            },
+          }),
+        };
       }
       if (/^\/!credits\b/i.test(line) && toolFlags.credits) {
         const [tx, im, vd, au] = await Promise.all([
