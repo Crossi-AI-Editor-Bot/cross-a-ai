@@ -366,6 +366,42 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
 
 export default ChatMessage;
 
+// --- Lightweight rich text: # / ## headings and **bold** ---------------------
+const renderInlineBold = (text: string, keyPrefix: string) => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    /^\*\*[^*]+\*\*$/.test(part) ? (
+      <strong key={`${keyPrefix}-b${i}`} className="font-bold">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={`${keyPrefix}-t${i}`}>{part}</span>
+    )
+  );
+};
+
+const renderRichText = (value: string) => {
+  const lines = value.split("\n");
+  return lines.map((line, i) => {
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    const isLast = i === lines.length - 1;
+    if (heading) {
+      return (
+        <span key={`h-${i}`}>
+          <span className="font-bold">{renderInlineBold(heading[2], `h${i}`)}</span>
+          {!isLast && "\n"}
+        </span>
+      );
+    }
+    return (
+      <span key={`l-${i}`}>
+        {renderInlineBold(line, `l${i}`)}
+        {!isLast && "\n"}
+      </span>
+    );
+  });
+};
+
 // --- Tool activity card (csearch / web) -------------------------------------
 const ToolCard = ({ event: initial }: { event: { id?: string; tool: string; args: string; result?: string; durationMs?: number; pending?: boolean; errorKind?: string | null; errorMessage?: string | null } }) => {
   const [event, setEvent] = useState(initial);
