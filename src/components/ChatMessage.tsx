@@ -166,7 +166,7 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
         <div className="text-sm leading-relaxed whitespace-pre-wrap space-y-2">
           {segments.map((seg, i) =>
             seg.type === "text" ? (
-              <p key={i}>{seg.value}</p>
+              <p key={i}>{renderRichText(seg.value)}</p>
             ) : (
               <div key={i} className="rounded-md border border-border bg-muted/50 overflow-hidden">
                 <pre className="p-3 text-xs overflow-x-auto whitespace-pre text-foreground">
