@@ -30,7 +30,7 @@ const useVersion = () => {
 };
 
 const Auth = () => {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showMigration, setShowMigration] = useState(false);
