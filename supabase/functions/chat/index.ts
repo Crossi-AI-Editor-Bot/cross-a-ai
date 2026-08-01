@@ -621,7 +621,7 @@ Deno.serve(async (req) => {
     const optionalToolLines: string[] = [];
     if (toolFlags.switchmodel) optionalToolLines.push(`- /!switchmodel <model_label>            — swap to another Crossi AI model for the follow-up answer (e.g. an image-gen model). Example: /!switchmodel Gemini 2.5 Flash Image`);
     if (toolFlags.croins) optionalToolLines.push(`- /!croins                                — get the user's current Croin balance.`);
-    if (toolFlags.vip) optionalToolLines.push(`- /!vip                                   — get the user's active VIP tier (or "none").`);
+    if (toolFlags.vip) optionalToolLines.push(`- /!vip                                   — get the user's active VIP: tier name, display name, monthly Croin cost, expiry, top-up discount and included credit allowances (or "none").`);
     if (toolFlags.credits) optionalToolLines.push(`- /!credits                               — get the user's text / image / video / audio credit balances.`);
     if (toolFlags.email) optionalToolLines.push(`- /!email                                 — get the user's account email.`);
     if (toolFlags.shares) optionalToolLines.push(`- /!shares                                — get the user's Crossatrix shares.`);
