@@ -14,10 +14,12 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
+    const identifier: string | undefined = body.identifier ?? body.email ?? body.username;
+    const password: string | undefined = body.password;
 
-    if (!email || !password) {
-      return new Response(JSON.stringify({ error: "Email and password are required" }), {
+    if (!identifier || !password) {
+      return new Response(JSON.stringify({ error: "Email or username and password are required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -27,7 +29,7 @@ serve(async (req) => {
     const crossatrixRes = await fetch(CROSSATRIX_AUTH_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: identifier, identifier, username: identifier, password }),
     });
 
     if (!crossatrixRes.ok) {
@@ -40,6 +42,17 @@ serve(async (req) => {
 
     const crossatrixData = await crossatrixRes.json();
     const crossatrixUserId = crossatrixData.user?.id;
+
+    // Crossatrix may authenticate by username; always use the canonical email it returns
+    const email: string | undefined =
+      crossatrixData.user?.email ?? (identifier.includes("@") ? identifier : undefined);
+
+    if (!email) {
+      return new Response(JSON.stringify({ error: "Could not resolve account email from Crossatrix" }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Step 2: Sign into local Supabase with same credentials
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
