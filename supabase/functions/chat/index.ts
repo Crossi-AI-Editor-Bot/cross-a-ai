@@ -759,7 +759,33 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           .eq('user_id', user.id)
           .gt('expires_at', new Date().toISOString())
           .maybeSingle();
-        return { status: 200, body: JSON.stringify(vip ?? { tier: "none" }) };
+        if (!vip) return { status: 200, body: JSON.stringify({ tier: "none", active: false }) };
+        const { data: tierCfg } = await supabase
+          .from('vip_tiers')
+          .select('name, display_name, croin_price, topup_discount_percent, daily_credits, weekly_image_credits, weekly_audio_credits, monthly_video_credits, weekly_call_credits, unlimited, is_dynamic')
+          .eq('name', vip.tier)
+          .maybeSingle();
+        return {
+          status: 200,
+          body: JSON.stringify({
+            active: true,
+            tier: vip.tier,
+            name: (tierCfg as any)?.display_name ?? vip.tier,
+            expires_at: vip.expires_at,
+            cost: (tierCfg as any)?.croin_price != null ? `${(tierCfg as any).croin_price} Croins / month` : null,
+            croin_price: (tierCfg as any)?.croin_price ?? null,
+            topup_discount_percent: (tierCfg as any)?.topup_discount_percent ?? null,
+            unlimited_text: !!(tierCfg as any)?.unlimited,
+            dynamic: !!(tierCfg as any)?.is_dynamic,
+            credits: {
+              daily_text: (tierCfg as any)?.daily_credits ?? null,
+              weekly_image: (tierCfg as any)?.weekly_image_credits ?? null,
+              weekly_audio: (tierCfg as any)?.weekly_audio_credits ?? null,
+              monthly_video: (tierCfg as any)?.monthly_video_credits ?? null,
+              weekly_call: (tierCfg as any)?.weekly_call_credits ?? null,
+            },
+          }),
+        };
       }
       if (/^\/!credits\b/i.test(line) && toolFlags.credits) {
         const [tx, im, vd, au] = await Promise.all([
