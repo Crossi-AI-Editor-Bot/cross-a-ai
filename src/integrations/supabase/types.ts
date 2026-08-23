@@ -107,10 +107,58 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_files: {
+        Row: {
+          content_base64: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_binary: boolean
+          is_dir: boolean
+          path: string
+          size_bytes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_base64?: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_binary?: boolean
+          is_dir?: boolean
+          path: string
+          size_bytes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_base64?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_binary?: boolean
+          is_dir?: boolean
+          path?: string
+          size_bytes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_files_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
           id: string
+          terminal_cwd: string
           title: string
           updated_at: string
           user_id: string
@@ -118,6 +166,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          terminal_cwd?: string
           title?: string
           updated_at?: string
           user_id: string
@@ -125,6 +174,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          terminal_cwd?: string
           title?: string
           updated_at?: string
           user_id?: string
@@ -370,6 +420,7 @@ export type Database = {
           tool_email: boolean
           tool_shares: boolean
           tool_switchmodel: boolean
+          tool_terminal: boolean
           tool_vip: boolean
           updated_at: string
           updated_by: string | null
@@ -407,6 +458,7 @@ export type Database = {
           tool_email?: boolean
           tool_shares?: boolean
           tool_switchmodel?: boolean
+          tool_terminal?: boolean
           tool_vip?: boolean
           updated_at?: string
           updated_by?: string | null
@@ -444,6 +496,7 @@ export type Database = {
           tool_email?: boolean
           tool_shares?: boolean
           tool_switchmodel?: boolean
+          tool_terminal?: boolean
           tool_vip?: boolean
           updated_at?: string
           updated_by?: string | null
