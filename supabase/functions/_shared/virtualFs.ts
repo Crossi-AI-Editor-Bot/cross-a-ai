@@ -106,6 +106,10 @@ const HELP_TEXT = `Crossi AI sandbox terminal — supported commands:
   zip <out.zip> <path...>      create a zip archive
   unzip -l <zip>               list a zip archive
   base64 [-d] <file>           encode / decode a text file
+  python <script.py>           run a Python script from the filesystem
+  python -c "code"             run inline Python (single line; write a .py file for multi-line)
+                               subset: print, vars, math, strings, lists, if/for/while,
+                               f-strings, open() reads/writes this filesystem
   help                         this help
 Limits: ${TERMINAL_MAX_ENTRIES} entries, ${Math.round(TERMINAL_MAX_FILE_BYTES / 1024)} KB per file. Files persist for this conversation.`;
 
@@ -478,6 +482,40 @@ export async function runTerminal(
         } else {
           if (node.isBinary) { fail('base64', `'${f}': already binary`); continue; }
           out.push(node.contentBase64);
+        }
+      }
+    } else if (cmd === 'python' || cmd === 'python3') {
+      let src: string | null = null;
+      let scriptName = '<string>';
+      if (args[0] === '-c') {
+        src = args.slice(1).join(' ');
+        if (!src.trim()) { fail('python', 'usage: python -c "code"'); src = null; }
+      } else if (args[0] && !args[0].startsWith('-')) {
+        const abs = resolvePath(cwd, args[0]);
+        const pnode = fs.get(abs);
+        if (!pnode || pnode.isDir) fail('python', `can't open file '${args[0]}': [Errno 2] No such file or directory`);
+        else if (pnode.isBinary) fail('python', `'${args[0]}': cannot execute binary file`);
+        else { src = b64ToText(pnode.contentBase64); scriptName = args[0]; }
+      } else {
+        fail('python', `usage: python <script.py> | python -c "code"`);
+      }
+      if (src !== null) {
+        const py = runPython(src, {
+          cwd,
+          scriptName,
+          readText: (p) => {
+            const n = fs.get(p);
+            if (!n || n.isDir || n.isBinary) return null;
+            return b64ToText(n.contentBase64);
+          },
+          writeText: (p, text, append) => writeFile(p, text, append),
+        });
+        if (py.stderr) err.push(py.stderr);
+        if (redirect && py.stdout) {
+          const wErr = writeFile(redirect.file, py.stdout, redirect.op === '>>');
+          if (wErr) fail('python', wErr);
+        } else if (py.stdout) {
+          out.push(py.stdout.replace(/\n$/, ''));
         }
       }
     } else {
