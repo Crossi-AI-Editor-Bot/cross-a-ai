@@ -1004,11 +1004,36 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           }
 
           // Extract /!present_file ... /!end_file blocks into file cards.
-          const files: Array<{ name: string; content: string }> = [];
+          const files: Array<{ name: string; content: string; encoding?: string }> = [];
           let visibleBody = finalContent.replace(FILE_RE, (_m, name, body) => {
             files.push({ name: String(name), content: String(body) });
             return "";
           });
+
+          // Extract /!present_fs_file <path> lines: read from the sandbox filesystem.
+          const fsRequests: string[] = [];
+          visibleBody = visibleBody.replace(FS_FILE_RE, (_m, p) => {
+            fsRequests.push(String(p).trim());
+            return "";
+          });
+          for (const p of fsRequests) {
+            if (!toolFlags.terminal || !conversationId) {
+              files.push({ name: p, content: "The terminal tool is not available for this model." });
+              continue;
+            }
+            try {
+              const f = await readFsFile(serviceClient, conversationId, p);
+              if (!f) {
+                files.push({ name: p, content: `File not found in the sandbox: ${p}` });
+              } else if (f.isBinary) {
+                files.push({ name: f.name, content: f.contentBase64, encoding: "base64" });
+              } else {
+                files.push({ name: f.name, content: f.text ?? "" });
+              }
+            } catch (e) {
+              files.push({ name: p, content: `Failed to read file: ${e instanceof Error ? e.message : String(e)}` });
+            }
+          }
 
           // Strip any remaining tool command lines from the final visible content.
           visibleBody = visibleBody.replace(TOOL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
