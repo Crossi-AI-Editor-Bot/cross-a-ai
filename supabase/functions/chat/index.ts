@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messages, modelCostId, discountPercent } = validatedData;
+    const { messages, modelCostId, discountPercent, conversationId } = validatedData;
     const discountMult = 1 - Math.min(Math.max(discountPercent ?? 0, 0), 90) / 100;
 
     // Fetch model configuration from database using the unique record ID
