@@ -2,7 +2,7 @@
 // One persistent virtual filesystem per conversation. Shared by the
 // `chat` and `run-tool` edge functions.
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import JSZip from 'npm:jszip@3.10.1';
+import JSZip from 'https://esm.sh/jszip@3.10.1';
 
 export const TERMINAL_MAX_ENTRIES = 40;          // files + dirs per conversation
 export const TERMINAL_MAX_FILE_BYTES = 256 * 1024; // 256 KB per file
