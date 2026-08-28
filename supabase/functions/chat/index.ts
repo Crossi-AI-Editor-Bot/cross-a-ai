@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import Replicate from "https://esm.sh/replicate@0.25.2";
+import { runTerminal, readFsFile } from '../_shared/virtualFs.ts';
 
 // Image generation models
 const IMAGE_MODEL_FAST = "google/gemini-2.5-flash-image";
@@ -24,6 +25,7 @@ const chatRequestSchema = z.object({
   })).min(1).max(100),
   modelCostId: z.string().uuid(), // The unique record ID from model_costs table
   discountPercent: z.number().min(0).max(90).optional(),
+  conversationId: z.string().uuid().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -98,13 +100,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messages, modelCostId, discountPercent } = validatedData;
+    const { messages, modelCostId, discountPercent, conversationId } = validatedData;
     const discountMult = 1 - Math.min(Math.max(discountPercent ?? 0, 0), 90) / 100;
 
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream')
+      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal')
       .eq('id', modelCostId)
       .single();
 
@@ -178,6 +180,7 @@ Deno.serve(async (req) => {
       ccpost: !!(modelCostData as any).tool_ccpost,
       ccsong: !!(modelCostData as any).tool_ccsong,
       ccstream: !!(modelCostData as any).tool_ccstream,
+      terminal: !!(modelCostData as any).tool_terminal && !!conversationId,
     };
     const maxToolCalls = Math.max(0, Math.min(20, Number((modelCostData as any).max_tool_calls ?? 3)));
 
@@ -629,6 +632,10 @@ Deno.serve(async (req) => {
     if (toolFlags.ccpost) optionalToolLines.push(`- /!ccpost                                — fetch post data. No arguments. Example: /!ccpost`);
     if (toolFlags.ccsong) optionalToolLines.push(`- /!ccsong                                — fetch song data. No arguments. Example: /!ccsong`);
     if (toolFlags.ccstream) optionalToolLines.push(`- /!ccstream                              — fetch livestream data. No arguments. Example: /!ccstream`);
+    if (toolFlags.terminal) optionalToolLines.push(`- /!terminal <command>                    — run ONE command in your private Linux-style sandbox terminal. Files persist for this conversation.
+  Commands: pwd, cd, ls, cat, echo/printf (with > and >>), touch, mkdir, rm, mv, cp, head, tail, wc, grep, zip <out.zip> <paths...>, unzip -l, base64, python <script.py>, python -c "code", help
+  Examples: /!terminal echo "print('hi')" > main.py  •  /!terminal python main.py  •  /!terminal zip bundle.zip main.py
+- /!present_fs_file <path>                 — hand a file from the sandbox terminal to the user as a downloadable card (works for zips and other binaries). Example: /!present_fs_file bundle.zip`);
     const extraTools = optionalToolLines.length ? `\n${optionalToolLines.join("\n")}` : "";
     const toolInstructions = `\n\nAVAILABLE TOOLS (use only when genuinely useful):
 You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
@@ -648,7 +655,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     const CRASSATRIX_KEY = Deno.env.get("CRASSATRIX_KEY");
     const CC_DATA_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZXdrZG9sbW5yam1ncGx6eHJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NzE3MTQsImV4cCI6MjA3NzE0NzcxNH0.mtZiST9pfc5DLokcdY0OMAXlpSK1ftkHJY020u1DXQc";
     const CC_DATA_API_BASE = "https://kwewkdolmnrjmgplzxrk.supabase.co/rest/v1/rpc/data_api";
-    const TOOL_RE = /^\s*\/!(csearch|web|news|switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream)\b.*$/gim;
+    const TOOL_RE = /^\s*\/!(csearch|web|news|switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream|terminal)\b.*$/gim;
     const TOOL_TIMEOUT_MS = 15000;
 
     const withTimeout = async (fn: (signal: AbortSignal) => Promise<Response>) => {
@@ -893,8 +900,24 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `ccstream timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
         }
       }
+      // ---- Sandbox terminal ------------------------------------------------
+      if (/^\/!terminal\b/i.test(line) && toolFlags.terminal && conversationId) {
+        const cmd = line.replace(/^\/!terminal\s*/i, "").trim();
+        if (!cmd) return { status: null, body: "Missing command.", errorKind: "unknown", errorMessage: "Usage: /!terminal <command>" };
+        try {
+          const res = await runTerminal(serviceClient, { conversationId, userId: user.id, command: cmd });
+          const out = [res.stdout, res.stderr].filter(Boolean).join("\n").trim();
+          if (res.stderr) {
+            return { status: 200, body: out || res.stderr, errorKind: "unknown", errorMessage: res.stderr.split("\n")[0] };
+          }
+          return { status: 200, body: out || "(no output)" };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return { status: null, body: msg, errorKind: "unknown", errorMessage: `Terminal error: ${msg}` };
+        }
+      }
       // Tool exists but is disabled for this model
-      if (/^\/!(switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream)\b/i.test(line)) {
+      if (/^\/!(switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream|terminal)\b/i.test(line)) {
         return { status: 403, body: "Tool disabled for this model.", errorKind: "config", errorMessage: "This tool is disabled for the current model." };
       }
       return { status: null, body: "Unknown tool invocation.", errorKind: "unknown", errorMessage: "Unknown tool invocation." };
@@ -924,6 +947,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     // loading placeholders for each tool while it runs.
     const encoder = new TextEncoder();
     const FILE_RE = /^\s*\/!present_file\s+(\S+)\s*\n([\s\S]*?)\n\s*\/!end_file\s*$/gim;
+    const FS_FILE_RE = /^\s*\/!present_fs_file\s+(\S+)\s*$/gim;
 
     const sseStream = new ReadableStream({
       async start(controller) {
@@ -981,11 +1005,36 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           }
 
           // Extract /!present_file ... /!end_file blocks into file cards.
-          const files: Array<{ name: string; content: string }> = [];
+          const files: Array<{ name: string; content: string; encoding?: string }> = [];
           let visibleBody = finalContent.replace(FILE_RE, (_m, name, body) => {
             files.push({ name: String(name), content: String(body) });
             return "";
           });
+
+          // Extract /!present_fs_file <path> lines: read from the sandbox filesystem.
+          const fsRequests: string[] = [];
+          visibleBody = visibleBody.replace(FS_FILE_RE, (_m, p) => {
+            fsRequests.push(String(p).trim());
+            return "";
+          });
+          for (const p of fsRequests) {
+            if (!toolFlags.terminal || !conversationId) {
+              files.push({ name: p, content: "The terminal tool is not available for this model." });
+              continue;
+            }
+            try {
+              const f = await readFsFile(serviceClient, { conversationId, path: p });
+              if (!f) {
+                files.push({ name: p, content: `File not found in the sandbox: ${p}` });
+              } else if (f.isBinary) {
+                files.push({ name: f.name, content: f.contentBase64, encoding: "base64" });
+              } else {
+                files.push({ name: f.name, content: new TextDecoder().decode(Uint8Array.from(atob(f.contentBase64), (c) => c.charCodeAt(0))) });
+              }
+            } catch (e) {
+              files.push({ name: p, content: `Failed to read file: ${e instanceof Error ? e.message : String(e)}` });
+            }
+          }
 
           // Strip any remaining tool command lines from the final visible content.
           visibleBody = visibleBody.replace(TOOL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
