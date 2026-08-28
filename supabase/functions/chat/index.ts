@@ -25,6 +25,7 @@ const chatRequestSchema = z.object({
   })).min(1).max(100),
   modelCostId: z.string().uuid(), // The unique record ID from model_costs table
   discountPercent: z.number().min(0).max(90).optional(),
+  conversationId: z.string().uuid().optional(),
 });
 
 Deno.serve(async (req) => {
