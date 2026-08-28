@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
       ccpost: !!(modelCostData as any).tool_ccpost,
       ccsong: !!(modelCostData as any).tool_ccsong,
       ccstream: !!(modelCostData as any).tool_ccstream,
+      terminal: !!(modelCostData as any).tool_terminal && !!conversationId,
     };
     const maxToolCalls = Math.max(0, Math.min(20, Number((modelCostData as any).max_tool_calls ?? 3)));
 
