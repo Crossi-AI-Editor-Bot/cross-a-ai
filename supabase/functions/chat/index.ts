@@ -655,7 +655,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     const CRASSATRIX_KEY = Deno.env.get("CRASSATRIX_KEY");
     const CC_DATA_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZXdrZG9sbW5yam1ncGx6eHJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NzE3MTQsImV4cCI6MjA3NzE0NzcxNH0.mtZiST9pfc5DLokcdY0OMAXlpSK1ftkHJY020u1DXQc";
     const CC_DATA_API_BASE = "https://kwewkdolmnrjmgplzxrk.supabase.co/rest/v1/rpc/data_api";
-    const TOOL_RE = /^\s*\/!(csearch|web|news|switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream)\b.*$/gim;
+    const TOOL_RE = /^\s*\/!(csearch|web|news|switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream|terminal)\b.*$/gim;
     const TOOL_TIMEOUT_MS = 15000;
 
     const withTimeout = async (fn: (signal: AbortSignal) => Promise<Response>) => {
