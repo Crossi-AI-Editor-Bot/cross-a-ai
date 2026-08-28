@@ -574,7 +574,7 @@ export async function readFsFile(
       .maybeSingle();
     cwd = (convo as any)?.terminal_cwd || '/';
   }
-  const abs = resolvePath(cwd, path);
+  const abs = resolvePath(cwd || '/', path);
   const { data } = await client
     .from('chat_files')
     .select('path, content_base64, is_binary, is_dir, size_bytes')
