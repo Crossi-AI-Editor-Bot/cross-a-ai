@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream')
+      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal')
       .eq('id', modelCostId)
       .single();
 
