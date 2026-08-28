@@ -947,6 +947,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     // loading placeholders for each tool while it runs.
     const encoder = new TextEncoder();
     const FILE_RE = /^\s*\/!present_file\s+(\S+)\s*\n([\s\S]*?)\n\s*\/!end_file\s*$/gim;
+    const FS_FILE_RE = /^\s*\/!present_fs_file\s+(\S+)\s*$/gim;
 
     const sseStream = new ReadableStream({
       async start(controller) {
