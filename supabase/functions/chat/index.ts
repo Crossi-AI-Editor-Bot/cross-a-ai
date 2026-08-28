@@ -632,6 +632,10 @@ Deno.serve(async (req) => {
     if (toolFlags.ccpost) optionalToolLines.push(`- /!ccpost                                — fetch post data. No arguments. Example: /!ccpost`);
     if (toolFlags.ccsong) optionalToolLines.push(`- /!ccsong                                — fetch song data. No arguments. Example: /!ccsong`);
     if (toolFlags.ccstream) optionalToolLines.push(`- /!ccstream                              — fetch livestream data. No arguments. Example: /!ccstream`);
+    if (toolFlags.terminal) optionalToolLines.push(`- /!terminal <command>                    — run ONE command in your private Linux-style sandbox terminal. Files persist for this conversation.
+  Commands: pwd, cd, ls, cat, echo/printf (with > and >>), touch, mkdir, rm, mv, cp, head, tail, wc, grep, zip <out.zip> <paths...>, unzip -l, base64, python <script.py>, python -c "code", help
+  Examples: /!terminal echo "print('hi')" > main.py  •  /!terminal python main.py  •  /!terminal zip bundle.zip main.py
+- /!present_fs_file <path>                 — hand a file from the sandbox terminal to the user as a downloadable card (works for zips and other binaries). Example: /!present_fs_file bundle.zip`);
     const extraTools = optionalToolLines.length ? `\n${optionalToolLines.join("\n")}` : "";
     const toolInstructions = `\n\nAVAILABLE TOOLS (use only when genuinely useful):
 You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
