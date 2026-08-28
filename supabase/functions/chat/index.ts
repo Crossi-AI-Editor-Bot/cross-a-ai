@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import Replicate from "https://esm.sh/replicate@0.25.2";
+import { runTerminal, readFsFile, TERMINAL_HELP } from '../_shared/virtualFs.ts';
 
 // Image generation models
 const IMAGE_MODEL_FAST = "google/gemini-2.5-flash-image";
