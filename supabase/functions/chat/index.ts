@@ -1023,13 +1023,13 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
               continue;
             }
             try {
-              const f = await readFsFile(serviceClient, conversationId, p);
+              const f = await readFsFile(serviceClient, { conversationId, path: p });
               if (!f) {
                 files.push({ name: p, content: `File not found in the sandbox: ${p}` });
               } else if (f.isBinary) {
                 files.push({ name: f.name, content: f.contentBase64, encoding: "base64" });
               } else {
-                files.push({ name: f.name, content: f.text ?? "" });
+                files.push({ name: f.name, content: new TextDecoder().decode(Uint8Array.from(atob(f.contentBase64), (c) => c.charCodeAt(0))) });
               }
             } catch (e) {
               files.push({ name: p, content: `Failed to read file: ${e instanceof Error ? e.message : String(e)}` });
