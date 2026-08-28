@@ -900,8 +900,24 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           return { status: null, body: msg, errorKind: timeout ? "timeout" : "network", errorMessage: timeout ? `ccstream timed out after ${TOOL_TIMEOUT_MS / 1000}s.` : `Network error: ${msg}` };
         }
       }
+      // ---- Sandbox terminal ------------------------------------------------
+      if (/^\/!terminal\b/i.test(line) && toolFlags.terminal && conversationId) {
+        const cmd = line.replace(/^\/!terminal\s*/i, "").trim();
+        if (!cmd) return { status: null, body: "Missing command.", errorKind: "unknown", errorMessage: "Usage: /!terminal <command>" };
+        try {
+          const res = await runTerminal(serviceClient, { conversationId, userId: user.id, command: cmd });
+          const out = [res.stdout, res.stderr].filter(Boolean).join("\n").trim();
+          if (res.stderr) {
+            return { status: 200, body: out || res.stderr, errorKind: "unknown", errorMessage: res.stderr.split("\n")[0] };
+          }
+          return { status: 200, body: out || "(no output)" };
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return { status: null, body: msg, errorKind: "unknown", errorMessage: `Terminal error: ${msg}` };
+        }
+      }
       // Tool exists but is disabled for this model
-      if (/^\/!(switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream)\b/i.test(line)) {
+      if (/^\/!(switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream|terminal)\b/i.test(line)) {
         return { status: 403, body: "Tool disabled for this model.", errorKind: "config", errorMessage: "This tool is disabled for the current model." };
       }
       return { status: null, body: "Unknown tool invocation.", errorKind: "unknown", errorMessage: "Unknown tool invocation." };
