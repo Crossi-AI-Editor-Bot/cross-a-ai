@@ -1577,7 +1577,7 @@ class PyExec {
       const rhs = this.parseTokens(rhsToks, line);
       if (op === '=') { this.vars.set(name, rhs); return; }
       if (!this.vars.has(name)) this.fail('NameError', `name '${name}' is not defined`, line);
-      this.vars.set(name, this.parseTokens(lexPy(`__lhs__ ${op.slice(0, -1)} __rhs__`, line), line));
+      this.vars.set(name, this.compound(op.slice(0, -1), this.vars.get(name), rhs, line));
       return;
     }
     // index assignment: name[expr]
@@ -1609,10 +1609,7 @@ class PyExec {
   }
 
   private evalCompound(cur: PyVal, op: string, rhs: PyVal, line: number): PyVal {
-    const base = op.slice(0, -1); // strip '='
-    return this.parseTokens(lexPy('1', line), line) === 1
-      ? this.parseTokens([{ t: 'num', v: '0' }], line) // placeholder, replaced below
-      : null, this.compound(base, cur, rhs, line);
+    return this.compound(op.slice(0, -1), cur, rhs, line);
   }
 
   private compound(base: string, cur: PyVal, rhs: PyVal, line: number): PyVal {
