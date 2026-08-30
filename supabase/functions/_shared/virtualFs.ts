@@ -1577,7 +1577,7 @@ class PyExec {
       const rhs = this.parseTokens(rhsToks, line);
       if (op === '=') { this.vars.set(name, rhs); return; }
       if (!this.vars.has(name)) this.fail('NameError', `name '${name}' is not defined`, line);
-      this.vars.set(name, this.parseTokens(lexPy(`__lhs__ ${op.slice(0, -1)} __rhs__`, line), line));
+      this.vars.set(name, this.compound(op.slice(0, -1), this.vars.get(name), rhs, line));
       return;
     }
     // index assignment: name[expr]
