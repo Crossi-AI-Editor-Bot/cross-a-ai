@@ -524,17 +524,35 @@ const ToolCard = ({ event: initial }: { event: { id?: string; tool: string; args
 };
 
 // --- Presented-file card (/!present_file) -----------------------------------
-const PresentedFileCard = ({ name, content }: { name: string; content: string }) => {
-  const bytes = new Blob([content]).size;
+const PresentedFileCard = ({ name, content, encoding }: { name: string; content: string; encoding?: string }) => {
+  const isBase64 = encoding === "base64";
+  const binary = (() => {
+    if (!isBase64) return null;
+    try {
+      const raw = atob(content);
+      const arr = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+      return arr;
+    } catch {
+      return null;
+    }
+  })();
+  const bytes = binary ? binary.byteLength : new Blob([content]).size;
   const sizeLabel = bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   const ext = name.includes(".") ? name.split(".").pop()!.toUpperCase() : "FILE";
   const [expanded, setExpanded] = useState(false);
   const copy = () => {
+    if (isBase64) {
+      toast({ title: "Binary file", description: "Use Download instead of Copy." });
+      return;
+    }
     navigator.clipboard.writeText(content);
     toast({ title: `Copied ${name}` });
   };
   const download = () => {
-    const blob = new Blob([content], { type: "text/plain" });
+    const blob = binary
+      ? new Blob([binary as BlobPart], { type: "application/octet-stream" })
+      : new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = name;
