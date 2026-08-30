@@ -1609,10 +1609,7 @@ class PyExec {
   }
 
   private evalCompound(cur: PyVal, op: string, rhs: PyVal, line: number): PyVal {
-    const base = op.slice(0, -1); // strip '='
-    return this.parseTokens(lexPy('1', line), line) === 1
-      ? this.parseTokens([{ t: 'num', v: '0' }], line) // placeholder, replaced below
-      : null, this.compound(base, cur, rhs, line);
+    return this.compound(op.slice(0, -1), cur, rhs, line);
   }
 
   private compound(base: string, cur: PyVal, rhs: PyVal, line: number): PyVal {
