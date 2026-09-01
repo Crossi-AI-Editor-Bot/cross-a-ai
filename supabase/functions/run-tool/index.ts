@@ -60,9 +60,9 @@ Deno.serve(async (req) => {
           errorKind = 'config'; errorMessage = 'Terminal retry requires a conversation.';
         } else {
           const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-          const out = await runTerminal(admin, { conversationId, userId: user.id, command: tm[1] });
-          body = out.output ?? '';
-          if (out.error) { errorKind = 'command'; errorMessage = out.error; }
+          const out = await runTerminal(admin, { conversationId, userId: user.id, command: tm[1].trim() });
+          body = [out.stdout, out.stderr].filter(Boolean).join('\n').trim() || '(no output)';
+          if (out.stderr) { errorKind = 'command'; errorMessage = out.stderr.split('\n')[0]; }
         }
       } else if (tool === 'csearch') {
         const cs = args.match(/^\/!csearch\s+"([^"]+)"\s+(\S+)\s+(\d+)/i) || args.match(/^\/!csearch\s+(\S+)\s+(\S+)\s+(\d+)/i);
