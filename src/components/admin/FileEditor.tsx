@@ -49,6 +49,7 @@ interface ModelData {
   tool_ccpost?: boolean;
   tool_ccsong?: boolean;
   tool_ccstream?: boolean;
+  tool_terminal?: boolean;
   tier_access: Record<string, boolean>;
 }
 
@@ -69,7 +70,7 @@ interface FileEditorProps {
   onUpdateFakeErrorMessage?: (value: string) => void;
   onUpdateFakeCorruptedOutput?: (value: boolean) => void;
   onUpdateMaxToolCalls?: (value: number) => void;
-  onUpdateToolFlag?: (key: 'tool_switchmodel'|'tool_croins'|'tool_vip'|'tool_credits'|'tool_email'|'tool_shares'|'tool_ccvideo'|'tool_ccpost'|'tool_ccsong'|'tool_ccstream', value: boolean) => void;
+  onUpdateToolFlag?: (key: 'tool_switchmodel'|'tool_croins'|'tool_vip'|'tool_credits'|'tool_email'|'tool_shares'|'tool_ccvideo'|'tool_ccpost'|'tool_ccsong'|'tool_ccstream'|'tool_terminal', value: boolean) => void;
   onDelete?: () => void;
 }
 
@@ -292,6 +293,7 @@ export const FileEditor = ({
                 ['tool_ccpost', '/!ccpost'],
                 ['tool_ccsong', '/!ccsong'],
                 ['tool_ccstream', '/!ccstream'],
+                ['tool_terminal', '/!terminal'],
               ] as const).map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
                   <span className="text-purple-400">{label}</span>
