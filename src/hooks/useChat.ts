@@ -332,6 +332,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
               files: msg.files,
             })),
             modelCostId,
+            conversationId,
             discountPercent: options?.discountPercent,
           }),
         }
