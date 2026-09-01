@@ -106,11 +106,13 @@ const HELP_TEXT = `Crossi AI sandbox terminal — supported commands:
   zip <out.zip> <path...>      create a zip archive
   unzip -l <zip>               list a zip archive
   base64 [-d] <file>           encode / decode a text file
-  python <script.py>           run a Python script from the filesystem
-  python -c "code"             run inline Python (single line; write a .py file for multi-line)
-                               subset: print, vars, math, strings, lists, if/for/while,
-                               f-strings, open() reads/writes this filesystem
+  python <script.py>           run a real Python 3 script (CPython/WASM sandbox)
+  python -c "code"             run inline Python (real interpreter, full stdlib)
+                               imports are auto-installed when available
+                               (numpy, pandas, sympy, pillow, requests, ...)
+  pip install <pkg...>         install packages for this conversation
   help                         this help
+
 Limits: ${TERMINAL_MAX_ENTRIES} entries, ${Math.round(TERMINAL_MAX_FILE_BYTES / 1024)} KB per file. Files persist for this conversation.`;
 
 // ---------- main entry ----------
