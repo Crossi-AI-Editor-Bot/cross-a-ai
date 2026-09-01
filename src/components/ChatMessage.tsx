@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown, Search, Globe, ChevronDown, ChevronRight, File as FileIcon, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Bot, User, Download, Maximize2, Copy as CopyIcon, FileText, ThumbsUp, ThumbsDown, Search, Globe, ChevronDown, ChevronRight, File as FileIcon, Loader2, AlertTriangle, RefreshCw, Terminal as TerminalIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -16,9 +16,10 @@ interface ChatMessageProps {
   files?: Array<{ name: string; type: string; data: string }>;
   onDislike?: () => void;
   disabled?: boolean;
+  conversationId?: string | null;
 }
 
-const ChatMessage = ({ role, content, image, video, audio, files, onDislike, disabled }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, image, video, audio, files, onDislike, disabled, conversationId }: ChatMessageProps) => {
   const isUser = role === "user";
   const { has } = useMods();
   const showCopy = has("copy");
@@ -72,7 +73,7 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
   const toolEvents: ToolEvent[] = toolOrder.map((k) => toolMap.get(k)!);
 
   // Extract [[FILE]]{...}[[/FILE]] blocks emitted by /!present_file.
-  type FileEvent = { name: string; content: string };
+  type FileEvent = { name: string; content: string; encoding?: string };
   const fileEvents: FileEvent[] = [];
   cleanedContent = cleanedContent.replace(/\[\[FILE\]\]([\s\S]*?)\[\[\/FILE\]\]/g, (_m, json) => {
     try { fileEvents.push(JSON.parse(json)); } catch { /* ignore */ }
@@ -158,7 +159,7 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
         {toolEvents.length > 0 && (
           <div className="mb-2 space-y-1.5">
             {toolEvents.map((ev, i) => (
-              <ToolCard key={i} event={ev} />
+              <ToolCard key={i} event={ev} conversationId={conversationId} />
             ))}
           </div>
         )}
@@ -199,7 +200,7 @@ const ChatMessage = ({ role, content, image, video, audio, files, onDislike, dis
         {fileEvents.length > 0 && (
           <div className="mt-3 space-y-2">
             {fileEvents.map((f, i) => (
-              <PresentedFileCard key={i} name={f.name} content={f.content} />
+              <PresentedFileCard key={i} name={f.name} content={f.content} encoding={f.encoding} />
             ))}
           </div>
         )}
@@ -403,12 +404,13 @@ const renderRichText = (value: string) => {
 };
 
 // --- Tool activity card (csearch / web) -------------------------------------
-const ToolCard = ({ event: initial }: { event: { id?: string; tool: string; args: string; result?: string; durationMs?: number; pending?: boolean; errorKind?: string | null; errorMessage?: string | null } }) => {
+const ToolCard = ({ event: initial, conversationId }: { event: { id?: string; tool: string; args: string; result?: string; durationMs?: number; pending?: boolean; errorKind?: string | null; errorMessage?: string | null }; conversationId?: string | null }) => {
   const [event, setEvent] = useState(initial);
   const [open, setOpen] = useState(false);
   const [retrying, setRetrying] = useState(false);
-  const Icon = event.tool === "csearch" ? Search : event.tool === "web" ? Globe : FileText;
-  const title = event.tool === "csearch" ? "Crossisearch" : event.tool === "web" ? "Web fetch" : "Tool";
+  const isTerminal = event.tool === "terminal";
+  const Icon = event.tool === "csearch" ? Search : event.tool === "web" ? Globe : isTerminal ? TerminalIcon : FileText;
+  const title = event.tool === "csearch" ? "Crossisearch" : event.tool === "web" ? "Web fetch" : isTerminal ? "Terminal" : "Tool";
   const paramStr = event.args.replace(/^\/!\S+\s*/, "");
   const httpMatch = event.result?.match(/^\[HTTP (\d+)\]\s*([\s\S]*)$/);
   const status = httpMatch ? httpMatch[1] : null;
@@ -419,7 +421,7 @@ const ToolCard = ({ event: initial }: { event: { id?: string; tool: string; args
     setRetrying(true);
     try {
       const { data, error } = await supabase.functions.invoke("run-tool", {
-        body: { tool: event.tool, args: event.args },
+        body: { tool: event.tool, args: event.args, conversationId },
       });
       if (error) throw error;
       setEvent((prev) => ({
