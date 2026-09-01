@@ -299,6 +299,7 @@ const Index = () => {
                 video={message.video}
                 audio={(message as any).audio}
                 files={message.files}
+                conversationId={currentConversationId}
                 onDislike={
                   message.role === "assistant" && index === messages.length - 1
                     ? () => regenerateLastAssistant(selectedModelCostId || "", { selectedModelId: selectedModelRow?.model_id })
