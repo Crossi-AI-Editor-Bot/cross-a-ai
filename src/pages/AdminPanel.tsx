@@ -48,6 +48,7 @@ interface ModelState {
   tool_ccpost: boolean;
   tool_ccsong: boolean;
   tool_ccstream: boolean;
+  tool_terminal: boolean;
   tier_access: Record<string, boolean>;
 }
 
@@ -142,6 +143,7 @@ const AdminPanel = () => {
       tool_ccpost: !!(model as any).tool_ccpost,
       tool_ccsong: !!(model as any).tool_ccsong,
       tool_ccstream: !!(model as any).tool_ccstream,
+      tool_terminal: !!(model as any).tool_terminal,
       tier_access: { ...model.tier_access },
     }));
     setModels(initialModels);
@@ -287,6 +289,7 @@ const AdminPanel = () => {
           tool_ccpost: false,
           tool_ccsong: false,
           tool_ccstream: false,
+          tool_terminal: false,
           tier_access: defaultTierAccess,
         };
         setModels((prev) => [...prev, newModel]);
@@ -393,6 +396,7 @@ const AdminPanel = () => {
             tool_ccpost: model.tool_ccpost,
             tool_ccsong: model.tool_ccsong,
             tool_ccstream: model.tool_ccstream,
+            tool_terminal: model.tool_terminal,
           })
           .eq("id", model.id);
 

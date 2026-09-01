@@ -1,6 +1,7 @@
 // Retry endpoint for /!csearch and /!web tool invocations from the chat UI.
 // Keeps parity with the inline runTool in supabase/functions/chat/index.ts.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { runTerminal } from '../_shared/virtualFs.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    const { tool, args } = await req.json();
+    const { tool, args, conversationId } = await req.json();
     if (!tool || typeof args !== 'string') return new Response(JSON.stringify({ error: 'tool and args required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const CROSSISEARCH_KEY = Deno.env.get('CROSSISEARCH_KEY');
@@ -52,7 +53,18 @@ Deno.serve(async (req) => {
     let errorMessage: string | null = null;
 
     try {
-      if (tool === 'csearch') {
+      if (tool === 'terminal') {
+        const tm = args.match(/^\/!terminal\s+([\s\S]+)$/i);
+        if (!tm) throw new Error('Malformed terminal arguments');
+        if (!conversationId || typeof conversationId !== 'string') {
+          errorKind = 'config'; errorMessage = 'Terminal retry requires a conversation.';
+        } else {
+          const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+          const out = await runTerminal(admin, { conversationId, userId: user.id, command: tm[1].trim() });
+          body = [out.stdout, out.stderr].filter(Boolean).join('\n').trim() || '(no output)';
+          if (out.stderr) { errorKind = 'command'; errorMessage = out.stderr.split('\n')[0]; }
+        }
+      } else if (tool === 'csearch') {
         const cs = args.match(/^\/!csearch\s+"([^"]+)"\s+(\S+)\s+(\d+)/i) || args.match(/^\/!csearch\s+(\S+)\s+(\S+)\s+(\d+)/i);
         if (!cs) throw new Error('Malformed csearch arguments');
         if (!CROSSISEARCH_KEY) { errorKind = 'config'; errorMessage = 'Search backend not configured.'; }

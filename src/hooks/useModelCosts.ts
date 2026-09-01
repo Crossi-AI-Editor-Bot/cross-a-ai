@@ -29,6 +29,7 @@ export interface ModelCost {
   tool_ccpost: boolean;
   tool_ccsong: boolean;
   tool_ccstream: boolean;
+  tool_terminal: boolean;
   // Dynamic tier access map: { copper: true, bronze: false, ... }
   tier_access: Record<string, boolean>;
 }
@@ -43,7 +44,7 @@ export const useModelCosts = () => {
       const [modelsRes, accessRes] = await Promise.all([
         supabase
           .from("model_costs")
-          .select("id, model_id, label, description, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream")
+          .select("id, model_id, label, description, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal")
           .order("cost", { ascending: false }),
         supabase
           .from("model_tier_access" as any)
@@ -88,6 +89,7 @@ export const useModelCosts = () => {
         tool_ccpost: !!m.tool_ccpost,
         tool_ccsong: !!m.tool_ccsong,
         tool_ccstream: !!m.tool_ccstream,
+        tool_terminal: !!m.tool_terminal,
         tier_access: accessMap.get(m.id) || {},
       }));
 
