@@ -53,20 +53,42 @@ const loadedPackages = new Set<string>();
 async function getPyodide(): Promise<Pyodide> {
   if (!pyodidePromise) {
     pyodidePromise = (async () => {
-      // Pyodide treats a global `process` as "running in Node" and then loads its
-      // assets through node:fs, which breaks on Deno/edge. Hide it so Pyodide
-      // takes the fetch()-based browser path instead.
+      // Pyodide 0.26 only has a Node loader (node:fs, local asset paths) and a
+      // browser loader (fetch + location). Neither matches Deno, so we present a
+      // minimal browser-like environment while it boots: hide `process`/`Deno`
+      // and provide window/document/location stubs. Everything is restored after
+      // loading, and all assets come over fetch() from the CDN.
       // deno-lint-ignore no-explicit-any
       const g = globalThis as any;
-      const savedProcess = g.process;
-      if (savedProcess) delete g.process;
+      const saved: Record<string, unknown> = {};
+      const had: Record<string, boolean> = {};
+      const hide = (k: string) => { had[k] = k in g; saved[k] = g[k]; delete g[k]; };
+      const define = (k: string, v: unknown) => { had[k] = k in g; saved[k] = g[k]; g[k] = v; };
+
+      hide('process');
+      hide('Deno');
+      hide('importScripts');
+      define('location', new URL(PYODIDE_INDEX_URL));
+      define('sessionStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} });
+      define('document', {
+        createElement: () => ({ style: {}, setAttribute: () => {}, appendChild: () => {} }),
+        head: { appendChild: () => {} },
+        body: { appendChild: () => {} },
+        getElementById: () => null,
+        addEventListener: () => {},
+      });
+      define('window', g);
+
       try {
         const mod = await import(`${PYODIDE_INDEX_URL}pyodide.mjs`);
         const py = await mod.loadPyodide({ indexURL: PYODIDE_INDEX_URL });
         py.FS.mkdirTree(SANDBOX_ROOT);
         return py;
       } finally {
-        if (savedProcess) g.process = savedProcess;
+        for (const k of Object.keys(had)) {
+          if (had[k]) { try { g[k] = saved[k]; } catch { /* read-only global */ } }
+          else { try { delete g[k]; } catch { /* ignore */ } }
+        }
       }
     })().catch((e) => {
       pyodidePromise = null;
@@ -75,6 +97,7 @@ async function getPyodide(): Promise<Pyodide> {
   }
   return pyodidePromise;
 }
+
 
 
 /** Modules shipped with Pyodide's package set (loaded via loadPackage). */
