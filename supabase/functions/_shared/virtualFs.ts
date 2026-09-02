@@ -536,8 +536,6 @@ export async function runTerminal(
         }
       }
     } else {
-
-    } else {
       err.push(`${cmd}: command not found (run 'help' for supported commands)`);
     }
   } catch (e) {
