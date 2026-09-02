@@ -198,7 +198,7 @@ function snapshot(py: Pyodide): PyFile[] {
         walk(full);
       } else {
         let bytes = new Uint8Array();
-        try { bytes = py.FS.readFile(full, { encoding: 'binary' }) as Uint8Array; } catch { /* ignore */ }
+        try { bytes = new Uint8Array(py.FS.readFile(full, { encoding: 'binary' })); } catch { /* ignore */ }
         out.push({ path: fromSandbox(full), isDir: false, bytes });
       }
     }
