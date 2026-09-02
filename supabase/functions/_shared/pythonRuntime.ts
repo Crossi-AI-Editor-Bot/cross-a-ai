@@ -53,10 +53,21 @@ const loadedPackages = new Set<string>();
 async function getPyodide(): Promise<Pyodide> {
   if (!pyodidePromise) {
     pyodidePromise = (async () => {
-      const mod = await import(`${PYODIDE_INDEX_URL}pyodide.mjs`);
-      const py = await mod.loadPyodide({ indexURL: PYODIDE_INDEX_URL, stdLibURL: undefined });
-      py.FS.mkdirTree(SANDBOX_ROOT);
-      return py;
+      // Pyodide treats a global `process` as "running in Node" and then loads its
+      // assets through node:fs, which breaks on Deno/edge. Hide it so Pyodide
+      // takes the fetch()-based browser path instead.
+      // deno-lint-ignore no-explicit-any
+      const g = globalThis as any;
+      const savedProcess = g.process;
+      if (savedProcess) delete g.process;
+      try {
+        const mod = await import(`${PYODIDE_INDEX_URL}pyodide.mjs`);
+        const py = await mod.loadPyodide({ indexURL: PYODIDE_INDEX_URL });
+        py.FS.mkdirTree(SANDBOX_ROOT);
+        return py;
+      } finally {
+        if (savedProcess) g.process = savedProcess;
+      }
     })().catch((e) => {
       pyodidePromise = null;
       throw e;
@@ -64,6 +75,7 @@ async function getPyodide(): Promise<Pyodide> {
   }
   return pyodidePromise;
 }
+
 
 /** Modules shipped with Pyodide's package set (loaded via loadPackage). */
 const PYODIDE_PACKAGE_MODULES: Record<string, string> = {
