@@ -53,10 +53,43 @@ const loadedPackages = new Set<string>();
 async function getPyodide(): Promise<Pyodide> {
   if (!pyodidePromise) {
     pyodidePromise = (async () => {
-      const mod = await import(`${PYODIDE_INDEX_URL}pyodide.mjs`);
-      const py = await mod.loadPyodide({ indexURL: PYODIDE_INDEX_URL, stdLibURL: undefined });
-      py.FS.mkdirTree(SANDBOX_ROOT);
-      return py;
+      // Pyodide 0.26 only has a Node loader (node:fs, local asset paths) and a
+      // browser loader (fetch + location). Neither matches Deno, so we present a
+      // minimal browser-like environment while it boots: hide `process`/`Deno`
+      // and provide window/document/location stubs. Everything is restored after
+      // loading, and all assets come over fetch() from the CDN.
+      // deno-lint-ignore no-explicit-any
+      const g = globalThis as any;
+      const saved: Record<string, unknown> = {};
+      const had: Record<string, boolean> = {};
+      const hide = (k: string) => { had[k] = k in g; saved[k] = g[k]; delete g[k]; };
+      const define = (k: string, v: unknown) => { had[k] = k in g; saved[k] = g[k]; g[k] = v; };
+
+      hide('process');
+      hide('Deno');
+      hide('importScripts');
+      define('location', new URL(PYODIDE_INDEX_URL));
+      define('sessionStorage', { getItem: () => null, setItem: () => {}, removeItem: () => {} });
+      define('document', {
+        createElement: () => ({ style: {}, setAttribute: () => {}, appendChild: () => {} }),
+        head: { appendChild: () => {} },
+        body: { appendChild: () => {} },
+        getElementById: () => null,
+        addEventListener: () => {},
+      });
+      define('window', g);
+
+      try {
+        const mod = await import(`${PYODIDE_INDEX_URL}pyodide.mjs`);
+        const py = await mod.loadPyodide({ indexURL: PYODIDE_INDEX_URL });
+        py.FS.mkdirTree(SANDBOX_ROOT);
+        return py;
+      } finally {
+        for (const k of Object.keys(had)) {
+          if (had[k]) { try { g[k] = saved[k]; } catch { /* read-only global */ } }
+          else { try { delete g[k]; } catch { /* ignore */ } }
+        }
+      }
     })().catch((e) => {
       pyodidePromise = null;
       throw e;
@@ -64,6 +97,8 @@ async function getPyodide(): Promise<Pyodide> {
   }
   return pyodidePromise;
 }
+
+
 
 /** Modules shipped with Pyodide's package set (loaded via loadPackage). */
 const PYODIDE_PACKAGE_MODULES: Record<string, string> = {
@@ -198,7 +233,7 @@ function snapshot(py: Pyodide): PyFile[] {
         walk(full);
       } else {
         let bytes = new Uint8Array();
-        try { bytes = py.FS.readFile(full, { encoding: 'binary' }) as Uint8Array; } catch { /* ignore */ }
+        try { bytes = new Uint8Array(py.FS.readFile(full, { encoding: 'binary' })); } catch { /* ignore */ }
         out.push({ path: fromSandbox(full), isDir: false, bytes });
       }
     }
