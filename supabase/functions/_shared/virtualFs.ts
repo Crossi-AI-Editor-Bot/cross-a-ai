@@ -486,6 +486,19 @@ export async function runTerminal(
           out.push(node.contentBase64);
         }
       }
+    } else if (cmd === 'pip' || cmd === 'pip3') {
+      if (args[0] !== 'install') {
+        fail('pip', `usage: pip install <package...>`);
+      } else {
+        const pkgs = args.slice(1).filter((a) => !a.startsWith('-'));
+        if (!pkgs.length) fail('pip', 'you must give at least one requirement to install');
+        else {
+          const { installed, warnings } = await pipInstall(pkgs);
+          if (installed.length) out.push(`Successfully installed ${installed.join(' ')}`);
+          else if (!warnings.length) out.push(`Requirement already satisfied: ${pkgs.join(', ')}`);
+          for (const w of warnings) fail('pip', w);
+        }
+      }
     } else if (cmd === 'python' || cmd === 'python3') {
       let src: string | null = null;
       let scriptName = '<string>';
@@ -502,16 +515,18 @@ export async function runTerminal(
         fail('python', `usage: python <script.py> | python -c "code"`);
       }
       if (src !== null) {
-        const py = runPython(src, {
-          cwd,
+        const py = await runPythonSandbox({
+          source: src,
           scriptName,
-          readText: (p) => {
-            const n = fs.get(p);
-            if (!n || n.isDir || n.isBinary) return null;
-            return b64ToText(n.contentBase64);
-          },
-          writeText: (p, text, append) => writeFile(p, text, append),
+          cwd,
+          files: [...fs.values()].map((n) => ({
+            path: n.path,
+            isDir: n.isDir,
+            bytes: n.isDir ? new Uint8Array() : b64ToBytes(n.contentBase64),
+          })),
         });
+        const applyErrs = applySnapshot(fs, py.files);
+        for (const m of applyErrs) fail('python', m);
         if (py.stderr) err.push(py.stderr);
         if (redirect && py.stdout) {
           const wErr = writeFile(redirect.file, py.stdout, redirect.op === '>>');
@@ -520,6 +535,8 @@ export async function runTerminal(
           out.push(py.stdout.replace(/\n$/, ''));
         }
       }
+    } else {
+
     } else {
       err.push(`${cmd}: command not found (run 'help' for supported commands)`);
     }
