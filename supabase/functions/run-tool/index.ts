@@ -2,6 +2,7 @@
 // Keeps parity with the inline runTool in supabase/functions/chat/index.ts.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { runTerminal } from '../_shared/virtualFs.ts';
+import { loadInstalledAddons, runAddonTool } from '../_shared/addonTools.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,6 +99,15 @@ Deno.serve(async (req) => {
         status = r.status; body = await r.text();
         if (!r.ok) { errorKind = 'http'; errorMessage = `${tool} returned HTTP ${r.status}.`; }
         else if (isEmptyPayload(body)) { errorKind = 'empty'; errorMessage = `${tool} returned no items.`; }
+      } else if (tool.includes(':')) {
+        // Addon tool retry, e.g. tool === "prefix:toolname"
+        const am = args.match(/^\/!([a-z][a-z0-9_]{1,23}):([\w-]+)\s*(.*)$/i);
+        if (!am) throw new Error('Malformed addon tool arguments');
+        const [, prefix, toolName, argsStr] = am;
+        const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+        const addons = await loadInstalledAddons(admin, user.id);
+        const res = await runAddonTool(admin, { prefix, toolName, argsStr, addons });
+        status = res.status; body = res.body; errorKind = res.errorKind ?? null; errorMessage = res.errorMessage ?? null;
       } else {
         return new Response(JSON.stringify({ error: 'Unknown tool' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
