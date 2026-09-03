@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.queue-worker]
 verify_jwt = false
+
+[functions.addons-manage]
+verify_jwt = false
