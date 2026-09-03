@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import Replicate from "https://esm.sh/replicate@0.25.2";
 import { runTerminal, readFsFile } from '../_shared/virtualFs.ts';
+import { loadInstalledAddons, buildAddonToolLines, buildAddonRegex, runAddonTool, type AddonRecord } from '../_shared/addonTools.ts';
 
 // Image generation models
 const IMAGE_MODEL_FAST = "google/gemini-2.5-flash-image";
@@ -181,8 +182,12 @@ Deno.serve(async (req) => {
       ccsong: !!(modelCostData as any).tool_ccsong,
       ccstream: !!(modelCostData as any).tool_ccstream,
       terminal: !!(modelCostData as any).tool_terminal && !!conversationId,
+      addons: (modelCostData as any).tool_addons !== false,
     };
     const maxToolCalls = Math.max(0, Math.min(20, Number((modelCostData as any).max_tool_calls ?? 3)));
+
+    // Addons this user has installed (only relevant if the addon tool system is enabled for this model).
+    const installedAddons: AddonRecord[] = toolFlags.addons ? await loadInstalledAddons(supabase, user.id) : [];
 
     // Check if this is an image generation request
     const isImageGen = model === 'google/gemini-2.5-flash-image' || model === 'google/gemini-3-pro-image-preview' || model === 'google/gemini-3.1-flash-image-preview';
@@ -636,6 +641,8 @@ Deno.serve(async (req) => {
   Commands: pwd, cd, ls, cat, echo/printf (with > and >>), touch, mkdir, rm, mv, cp, head, tail, wc, grep, zip <out.zip> <paths...>, unzip -l, base64, python <script.py>, python -c "code", help
   Examples: /!terminal echo "print('hi')" > main.py  •  /!terminal python main.py  •  /!terminal zip bundle.zip main.py
 - /!present_fs_file <path>                 — hand a file from the sandbox terminal to the user as a downloadable card (works for zips and other binaries). Example: /!present_fs_file bundle.zip`);
+    const addonToolLines = toolFlags.addons ? buildAddonToolLines(installedAddons) : [];
+    if (addonToolLines.length) optionalToolLines.push(...addonToolLines);
     const extraTools = optionalToolLines.length ? `\n${optionalToolLines.join("\n")}` : "";
     const toolInstructions = `\n\nAVAILABLE TOOLS (use only when genuinely useful):
 You may invoke tools by emitting one of these commands on its OWN LINE with no markdown/code fences. After the tool runs its output is added to the conversation and you may continue.
@@ -656,6 +663,19 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     const CC_DATA_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZXdrZG9sbW5yam1ncGx6eHJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NzE3MTQsImV4cCI6MjA3NzE0NzcxNH0.mtZiST9pfc5DLokcdY0OMAXlpSK1ftkHJY020u1DXQc";
     const CC_DATA_API_BASE = "https://kwewkdolmnrjmgplzxrk.supabase.co/rest/v1/rpc/data_api";
     const TOOL_RE = /^\s*\/!(csearch|web|news|switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream|terminal)\b.*$/gim;
+    const ADDON_TOOL_RE = toolFlags.addons ? buildAddonRegex(installedAddons) : null;
+    // Matches every recognized tool invocation line (built-in or addon), in the order they appear.
+    const matchAllTools = (content: string): string[] => {
+      const spans: { index: number; text: string }[] = [];
+      for (const m of content.matchAll(TOOL_RE)) spans.push({ index: m.index ?? 0, text: m[0] });
+      if (ADDON_TOOL_RE) for (const m of content.matchAll(ADDON_TOOL_RE)) spans.push({ index: m.index ?? 0, text: m[0] });
+      return spans.sort((a, b) => a.index - b.index).map((s) => s.text);
+    };
+    const stripAllToolLines = (content: string): string => {
+      let out = content.replace(TOOL_RE, "");
+      if (ADDON_TOOL_RE) out = out.replace(ADDON_TOOL_RE, "");
+      return out;
+    };
     const TOOL_TIMEOUT_MS = 15000;
 
     const withTimeout = async (fn: (signal: AbortSignal) => Promise<Response>) => {
@@ -920,6 +940,13 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
       if (/^\/!(switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream|terminal)\b/i.test(line)) {
         return { status: 403, body: "Tool disabled for this model.", errorKind: "config", errorMessage: "This tool is disabled for the current model." };
       }
+      // ---- Addon tools: /!<prefix>:<toolname> <args...> ---------------------
+      const addonMatch = line.match(/^\/!([a-z][a-z0-9_]{1,23}):([\w-]+)\s*(.*)$/i);
+      if (addonMatch) {
+        if (!toolFlags.addons) return { status: 403, body: "Addon tools are disabled for this model.", errorKind: "config", errorMessage: "Addon tools are disabled for the current model." };
+        const [, prefix, toolName, argsStr] = addonMatch;
+        return await runAddonTool(serviceClient, { prefix, toolName, argsStr, addons: installedAddons });
+      }
       return { status: null, body: "Unknown tool invocation.", errorKind: "unknown", errorMessage: "Unknown tool invocation." };
     };
 
@@ -975,7 +1002,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
             }
             const j = await r.json();
             const content: string = j.choices?.[0]?.message?.content ?? "";
-            const matches = content.match(TOOL_RE) || [];
+            const matches = matchAllTools(content);
             if (matches.length === 0 || iter === MAX_ITERS - 1 || toolCallCount >= maxToolCalls) {
               finalContent = content;
               break;
@@ -986,7 +1013,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
               toolCallCount++;
               const id = `t${Date.now()}_${toolCallCount}`;
               const trimmed = m.trim();
-              const nameMatch = trimmed.match(/^\/!(\w+)/);
+              const nameMatch = trimmed.match(/^\/!([\w-]+(?::[\w-]+)?)/);
               const toolName = nameMatch ? nameMatch[1].toLowerCase() : "tool";
               sendText(`[[TOOL_START]]${JSON.stringify({ id, tool: toolName, args: trimmed })}[[/TOOL_START]]\n`);
               const startedAt = Date.now();
@@ -1037,7 +1064,7 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           }
 
           // Strip any remaining tool command lines from the final visible content.
-          visibleBody = visibleBody.replace(TOOL_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+          visibleBody = stripAllToolLines(visibleBody).replace(/\n{3,}/g, "\n\n").trim();
 
           const header = toolCallCount > 0 ? `_${toolCallCount} Tool${toolCallCount > 1 ? "s" : ""} used_\n\n` : "";
           sendChunked(header + visibleBody);
