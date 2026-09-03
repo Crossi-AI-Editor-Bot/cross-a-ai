@@ -14,6 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
+      addons: {
+        Row: {
+          id: string
+          name: string
+          prefix: string
+          version: string | null
+          description: string | null
+          author_id: string | null
+          author_name: string | null
+          addon_json: Json
+          tools: Json
+          dependencies: Json
+          file_base64: string
+          file_size: number
+          install_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          name: string
+          prefix: string
+          version?: string | null
+          description?: string | null
+          author_id?: string | null
+          author_name?: string | null
+          addon_json?: Json
+          tools?: Json
+          dependencies?: Json
+          file_base64: string
+          file_size?: number
+          install_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          prefix?: string
+          version?: string | null
+          description?: string | null
+          author_id?: string | null
+          author_name?: string | null
+          addon_json?: Json
+          tools?: Json
+          dependencies?: Json
+          file_base64?: string
+          file_size?: number
+          install_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      addon_tool_sources: {
+        Row: {
+          addon_id: string
+          tool_name: string
+          file: string
+          source: string
+          description: string | null
+          parameters: Json
+        }
+        Insert: {
+          addon_id: string
+          tool_name: string
+          file: string
+          source: string
+          description?: string | null
+          parameters?: Json
+        }
+        Update: {
+          addon_id?: string
+          tool_name?: string
+          file?: string
+          source?: string
+          description?: string | null
+          parameters?: Json
+        }
+        Relationships: []
+      }
       admin_folders: {
         Row: {
           created_at: string
@@ -411,6 +492,7 @@ export type Database = {
           public_access: boolean
           silver_access: boolean
           system_prompt: string | null
+          tool_addons: boolean
           tool_ccpost: boolean
           tool_ccsong: boolean
           tool_ccstream: boolean
@@ -449,6 +531,7 @@ export type Database = {
           public_access?: boolean
           silver_access?: boolean
           system_prompt?: string | null
+          tool_addons?: boolean
           tool_ccpost?: boolean
           tool_ccsong?: boolean
           tool_ccstream?: boolean
@@ -487,6 +570,7 @@ export type Database = {
           public_access?: boolean
           silver_access?: boolean
           system_prompt?: string | null
+          tool_addons?: boolean
           tool_ccpost?: boolean
           tool_ccsong?: boolean
           tool_ccstream?: boolean
@@ -611,6 +695,24 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           value?: Json
+        }
+        Relationships: []
+      }
+      user_addons: {
+        Row: {
+          user_id: string
+          addon_id: string
+          installed_at: string
+        }
+        Insert: {
+          user_id: string
+          addon_id: string
+          installed_at?: string
+        }
+        Update: {
+          user_id?: string
+          addon_id?: string
+          installed_at?: string
         }
         Relationships: []
       }
