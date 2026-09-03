@@ -14,84 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
-      addons: {
-        Row: {
-          id: string
-          name: string
-          prefix: string
-          version: string | null
-          description: string | null
-          author_id: string | null
-          author_name: string | null
-          addon_json: Json
-          tools: Json
-          dependencies: Json
-          file_base64: string
-          file_size: number
-          install_count: number
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          name: string
-          prefix: string
-          version?: string | null
-          description?: string | null
-          author_id?: string | null
-          author_name?: string | null
-          addon_json?: Json
-          tools?: Json
-          dependencies?: Json
-          file_base64: string
-          file_size?: number
-          install_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          prefix?: string
-          version?: string | null
-          description?: string | null
-          author_id?: string | null
-          author_name?: string | null
-          addon_json?: Json
-          tools?: Json
-          dependencies?: Json
-          file_base64?: string
-          file_size?: number
-          install_count?: number
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       addon_tool_sources: {
         Row: {
           addon_id: string
-          tool_name: string
-          file: string
-          source: string
           description: string | null
+          file: string
           parameters: Json
+          source: string
+          tool_name: string
         }
         Insert: {
           addon_id: string
-          tool_name: string
-          file: string
-          source: string
           description?: string | null
+          file: string
           parameters?: Json
+          source: string
+          tool_name: string
         }
         Update: {
           addon_id?: string
-          tool_name?: string
-          file?: string
-          source?: string
           description?: string | null
+          file?: string
           parameters?: Json
+          source?: string
+          tool_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "addon_tool_sources_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "addons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      addons: {
+        Row: {
+          addon_json: Json
+          author_id: string | null
+          author_name: string | null
+          created_at: string
+          dependencies: Json
+          description: string | null
+          file_base64: string
+          file_size: number
+          id: string
+          install_count: number
+          name: string
+          prefix: string
+          tools: Json
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          addon_json?: Json
+          author_id?: string | null
+          author_name?: string | null
+          created_at?: string
+          dependencies?: Json
+          description?: string | null
+          file_base64: string
+          file_size?: number
+          id: string
+          install_count?: number
+          name: string
+          prefix: string
+          tools?: Json
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          addon_json?: Json
+          author_id?: string | null
+          author_name?: string | null
+          created_at?: string
+          dependencies?: Json
+          description?: string | null
+          file_base64?: string
+          file_size?: number
+          id?: string
+          install_count?: number
+          name?: string
+          prefix?: string
+          tools?: Json
+          updated_at?: string
+          version?: string | null
         }
         Relationships: []
       }
@@ -700,21 +708,29 @@ export type Database = {
       }
       user_addons: {
         Row: {
-          user_id: string
           addon_id: string
           installed_at: string
+          user_id: string
         }
         Insert: {
-          user_id: string
           addon_id: string
           installed_at?: string
+          user_id: string
         }
         Update: {
-          user_id?: string
           addon_id?: string
           installed_at?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_addons_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "addons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_audio_credits: {
         Row: {
@@ -1102,12 +1118,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1131,11 +1147,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1156,11 +1172,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1181,11 +1197,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1198,11 +1214,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
