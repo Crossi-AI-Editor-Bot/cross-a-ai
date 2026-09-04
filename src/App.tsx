@@ -15,6 +15,7 @@ import { useIpBanCheck } from "./hooks/useIpBanCheck";
 import { useApiErrorInterceptor } from "./hooks/useApiErrorInterceptor";
 import Mods from "./pages/Mods";
 import Addons from "./pages/Addons";
+import Connectors from "./pages/Connectors";
 import Settings from "./pages/Settings";
 import { ModsApplier } from "./hooks/useMods";
 
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/vip" element={<VipShop />} />
               <Route path="/mods" element={<Mods />} />
               <Route path="/addons" element={<Addons />} />
+              <Route path="/connectors" element={<Connectors />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/banned" element={<Banned />} />
               <Route path="/error" element={<ErrorPage />} />
