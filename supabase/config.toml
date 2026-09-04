@@ -47,3 +47,12 @@ verify_jwt = false
 
 [functions.addons-manage]
 verify_jwt = false
+
+[functions.connectors-manage]
+verify_jwt = false
+
+[functions.google-oauth-start]
+verify_jwt = false
+
+[functions.google-oauth-callback]
+verify_jwt = false
