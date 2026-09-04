@@ -1,4 +1,4 @@
-import { MessageSquarePlus, Trash2, Edit2, Phone, Puzzle, Blocks, Settings as SettingsIcon } from "lucide-react";
+import { MessageSquarePlus, Trash2, Edit2, Phone, Puzzle, Blocks, Plug, Settings as SettingsIcon } from "lucide-react";
 import QueueDialog from "./QueueDialog";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -111,14 +111,24 @@ const ConversationsList = ({
               Settings
             </Button>
           </div>
-          <Button
-            onClick={() => { setOpen(false); navigate("/addons"); }}
-            className="w-full justify-start"
-            variant="outline"
-          >
-            <Blocks className="w-4 h-4 mr-2" />
-            Addons
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => { setOpen(false); navigate("/addons"); }}
+              className="flex-1 justify-start"
+              variant="outline"
+            >
+              <Blocks className="w-4 h-4 mr-2" />
+              Addons
+            </Button>
+            <Button
+              onClick={() => { setOpen(false); navigate("/connectors"); }}
+              className="flex-1 justify-start"
+              variant="outline"
+            >
+              <Plug className="w-4 h-4 mr-2" />
+              Connectors
+            </Button>
+          </div>
           <div className="flex">
             <QueueDialog />
             <span className="ml-2 text-sm text-muted-foreground self-center">Generation queue</span>
