@@ -501,11 +501,11 @@ export type Database = {
           silver_access: boolean
           system_prompt: string | null
           tool_addons: boolean
-          tool_connectors: boolean
           tool_ccpost: boolean
           tool_ccsong: boolean
           tool_ccstream: boolean
           tool_ccvideo: boolean
+          tool_connectors: boolean
           tool_credits: boolean
           tool_croins: boolean
           tool_email: boolean
@@ -541,11 +541,11 @@ export type Database = {
           silver_access?: boolean
           system_prompt?: string | null
           tool_addons?: boolean
-          tool_connectors?: boolean
           tool_ccpost?: boolean
           tool_ccsong?: boolean
           tool_ccstream?: boolean
           tool_ccvideo?: boolean
+          tool_connectors?: boolean
           tool_credits?: boolean
           tool_croins?: boolean
           tool_email?: boolean
@@ -581,11 +581,11 @@ export type Database = {
           silver_access?: boolean
           system_prompt?: string | null
           tool_addons?: boolean
-          tool_connectors?: boolean
           tool_ccpost?: boolean
           tool_ccsong?: boolean
           tool_ccstream?: boolean
           tool_ccvideo?: boolean
+          tool_connectors?: boolean
           tool_credits?: boolean
           tool_croins?: boolean
           tool_email?: boolean
@@ -775,6 +775,51 @@ export type Database = {
           credits?: number
           id?: string
           last_reset_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_connectors: {
+        Row: {
+          access_token: string | null
+          access_token_expires_at: string | null
+          created_at: string
+          drive_read_enabled: boolean
+          gmail_read_enabled: boolean
+          gmail_write_enabled: boolean
+          google_email: string | null
+          granted_scopes: string[]
+          provider: string
+          refresh_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          created_at?: string
+          drive_read_enabled?: boolean
+          gmail_read_enabled?: boolean
+          gmail_write_enabled?: boolean
+          google_email?: string | null
+          granted_scopes?: string[]
+          provider?: string
+          refresh_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          access_token_expires_at?: string | null
+          created_at?: string
+          drive_read_enabled?: boolean
+          gmail_read_enabled?: boolean
+          gmail_write_enabled?: boolean
+          google_email?: string | null
+          granted_scopes?: string[]
+          provider?: string
+          refresh_token?: string | null
           updated_at?: string
           user_id?: string
         }
