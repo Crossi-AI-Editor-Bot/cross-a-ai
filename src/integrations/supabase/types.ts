@@ -501,6 +501,7 @@ export type Database = {
           silver_access: boolean
           system_prompt: string | null
           tool_addons: boolean
+          tool_connectors: boolean
           tool_ccpost: boolean
           tool_ccsong: boolean
           tool_ccstream: boolean
@@ -540,6 +541,7 @@ export type Database = {
           silver_access?: boolean
           system_prompt?: string | null
           tool_addons?: boolean
+          tool_connectors?: boolean
           tool_ccpost?: boolean
           tool_ccsong?: boolean
           tool_ccstream?: boolean
@@ -579,6 +581,7 @@ export type Database = {
           silver_access?: boolean
           system_prompt?: string | null
           tool_addons?: boolean
+          tool_connectors?: boolean
           tool_ccpost?: boolean
           tool_ccsong?: boolean
           tool_ccstream?: boolean
