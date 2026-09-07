@@ -1,9 +1,9 @@
 // Manages the /connectors page: reports connection + enabled-tool status
-// for the caller's Google account, lets them flip gmail:read / gmail:write
-// / drive:read on and off, and lets them fully disconnect (revokes the
-// token with Google and deletes the row). Never returns raw tokens to the
-// client. The actual OAuth handshake happens in google-oauth-start /
-// google-oauth-callback; tool execution lives in ../_shared/connectorTools.ts.
+// for the caller's GitHub account, lets them flip github:read / github:write
+// on and off, and lets them fully disconnect (deletes the stored token).
+// Never returns raw tokens to the client. The actual GitHub App
+// authorization happens in github-oauth-start / github-oauth-callback; tool
+// execution lives in ../_shared/connectorTools.ts.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -34,19 +34,18 @@ Deno.serve(async (req) => {
     const selectRow = () =>
       admin
         .from('user_connectors')
-        .select('google_email, refresh_token, gmail_read_enabled, gmail_write_enabled, drive_read_enabled')
+        .select('account_login, access_token, github_read_enabled, github_write_enabled')
         .eq('user_id', userId)
-        .eq('provider', 'google')
+        .eq('provider', 'github')
         .maybeSingle();
 
     if (action === 'status') {
       const { data } = await selectRow();
       return json({
-        connected: !!data?.refresh_token,
-        googleEmail: data?.google_email ?? null,
-        gmailReadEnabled: !!data?.gmail_read_enabled,
-        gmailWriteEnabled: !!data?.gmail_write_enabled,
-        driveReadEnabled: !!data?.drive_read_enabled,
+        connected: !!data?.access_token,
+        accountLogin: data?.account_login ?? null,
+        githubReadEnabled: !!data?.github_read_enabled,
+        githubWriteEnabled: !!data?.github_write_enabled,
       });
     }
 
@@ -54,40 +53,30 @@ Deno.serve(async (req) => {
       const tool = String(body.tool || '');
       const enabled = !!body.enabled;
       const columnByTool: Record<string, string> = {
-        'gmail:read': 'gmail_read_enabled',
-        'gmail:write': 'gmail_write_enabled',
-        'drive:read': 'drive_read_enabled',
+        'github:read': 'github_read_enabled',
+        'github:write': 'github_write_enabled',
       };
       const column = columnByTool[tool];
       if (!column) return json({ error: 'Unknown tool.' }, 400);
 
       const { data: existing } = await selectRow();
-      if (!existing?.refresh_token) return json({ error: 'Connect your Google account first.' }, 400);
+      if (!existing?.access_token) return json({ error: 'Connect your GitHub account first.' }, 400);
 
       const { error } = await admin
         .from('user_connectors')
         .update({ [column]: enabled, updated_at: new Date().toISOString() })
         .eq('user_id', userId)
-        .eq('provider', 'google');
+        .eq('provider', 'github');
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true });
     }
 
     if (action === 'disconnect') {
-      const { data: existing } = await selectRow();
-      const token = (existing as any)?.refresh_token as string | undefined;
-      if (token) {
-        try {
-          await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, { method: 'POST' });
-        } catch {
-          // best-effort revoke; still delete our copy below
-        }
-      }
       const { error } = await admin
         .from('user_connectors')
         .delete()
         .eq('user_id', userId)
-        .eq('provider', 'google');
+        .eq('provider', 'github');
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true });
     }
