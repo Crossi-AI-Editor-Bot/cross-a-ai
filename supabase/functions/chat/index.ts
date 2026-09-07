@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
 
     // Addons this user has installed (only relevant if the addon tool system is enabled for this model).
     const installedAddons: AddonRecord[] = toolFlags.addons ? await loadInstalledAddons(supabase, user.id) : [];
-    // Google connector (Gmail/Drive) this user has linked, if any.
+    // GitHub connector this user has linked, if any.
     const userConnector: ConnectorRow | null = toolFlags.connectors ? await loadUserConnector(supabase, user.id) : null;
 
     // Check if this is an image generation request
@@ -949,12 +949,12 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
       if (/^\/!(switchmodel|croins|vip|credits|email|shares|ccvideo|ccpost|ccsong|ccstream|terminal)\b/i.test(line)) {
         return { status: 403, body: "Tool disabled for this model.", errorKind: "config", errorMessage: "This tool is disabled for the current model." };
       }
-      // ---- Connector tools: /!gmail:read, /!gmail:write, /!drive:read -------
-      const connectorMatch = line.match(/^\/!(gmail:read|gmail:write|drive:read)\s*(.*)$/i);
+      // ---- Connector tools: /!github:read, /!github:write -------
+      const connectorMatch = line.match(/^\/!(github:read|github:write)\s*(.*)$/i);
       if (connectorMatch) {
         if (!toolFlags.connectors) return { status: 403, body: "Connector tools are disabled for this model.", errorKind: "config", errorMessage: "Connector tools are disabled for the current model." };
         const [, toolName, argsStr] = connectorMatch;
-        return await runConnectorTool(serviceClient, { toolName: toolName.toLowerCase() as "gmail:read" | "gmail:write" | "drive:read", argsStr, connector: userConnector });
+        return await runConnectorTool(serviceClient, { toolName: toolName.toLowerCase() as "github:read" | "github:write", argsStr, connector: userConnector });
       }
       // ---- Addon tools: /!<prefix>:<toolname> <args...> ---------------------
       const addonMatch = line.match(/^\/!([a-z][a-z0-9_]{1,23}):([\w-]+)\s*(.*)$/i);
