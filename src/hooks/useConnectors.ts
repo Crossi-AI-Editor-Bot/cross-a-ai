@@ -3,21 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface ConnectorStatus {
   connected: boolean;
-  googleEmail: string | null;
-  gmailReadEnabled: boolean;
-  gmailWriteEnabled: boolean;
-  driveReadEnabled: boolean;
+  accountLogin: string | null;
+  githubReadEnabled: boolean;
+  githubWriteEnabled: boolean;
 }
 
 const DEFAULT_STATUS: ConnectorStatus = {
   connected: false,
-  googleEmail: null,
-  gmailReadEnabled: false,
-  gmailWriteEnabled: false,
-  driveReadEnabled: false,
+  accountLogin: null,
+  githubReadEnabled: false,
+  githubWriteEnabled: false,
 };
 
-export type ConnectorTool = "gmail:read" | "gmail:write" | "drive:read";
+export type ConnectorTool = "github:read" | "github:write";
 
 export const useConnectors = () => {
   const [status, setStatus] = useState<ConnectorStatus>(DEFAULT_STATUS);
@@ -56,10 +54,10 @@ export const useConnectors = () => {
   const connect = useCallback(async () => {
     setConnecting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("google-oauth-start", {
+      const { data, error } = await supabase.functions.invoke("github-oauth-start", {
         body: { returnTo: "/connectors" },
       });
-      if (error || !(data as any)?.url) throw new Error(error?.message || "Could not start Google sign-in.");
+      if (error || !(data as any)?.url) throw new Error(error?.message || "Could not start GitHub sign-in.");
       window.location.href = (data as any).url;
     } finally {
       setConnecting(false);
@@ -82,9 +80,8 @@ export const useConnectors = () => {
       await invoke({ action: "toggle", tool, enabled });
       setStatus((s) => ({
         ...s,
-        gmailReadEnabled: tool === "gmail:read" ? enabled : s.gmailReadEnabled,
-        gmailWriteEnabled: tool === "gmail:write" ? enabled : s.gmailWriteEnabled,
-        driveReadEnabled: tool === "drive:read" ? enabled : s.driveReadEnabled,
+        githubReadEnabled: tool === "github:read" ? enabled : s.githubReadEnabled,
+        githubWriteEnabled: tool === "github:write" ? enabled : s.githubWriteEnabled,
       }));
     } finally {
       setBusyTool(null);
