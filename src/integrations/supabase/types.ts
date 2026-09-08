@@ -786,8 +786,7 @@ export type Database = {
           access_token_expires_at: string | null
           account_login: string | null
           created_at: string
-          github_read_enabled: boolean
-          github_write_enabled: boolean
+          enabled_actions: string[]
           granted_scopes: string[]
           installation_id: string | null
           provider: string
@@ -800,8 +799,7 @@ export type Database = {
           access_token_expires_at?: string | null
           account_login?: string | null
           created_at?: string
-          github_read_enabled?: boolean
-          github_write_enabled?: boolean
+          enabled_actions?: string[]
           granted_scopes?: string[]
           installation_id?: string | null
           provider?: string
@@ -814,8 +812,7 @@ export type Database = {
           access_token_expires_at?: string | null
           account_login?: string | null
           created_at?: string
-          github_read_enabled?: boolean
-          github_write_enabled?: boolean
+          enabled_actions?: string[]
           granted_scopes?: string[]
           installation_id?: string | null
           provider?: string
