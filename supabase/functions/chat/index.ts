@@ -1008,6 +1008,10 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           const MAX_ITERS = Math.max(1, maxToolCalls + 1);
           let finalContent = "";
 
+          // Free retries when the model returns an empty message (no credits re-charged).
+          const MAX_EMPTY_RETRIES = 3;
+          let emptyRetries = 0;
+
           for (let iter = 0; iter < MAX_ITERS; iter++) {
             const r = await doModelCall(convo, false);
             if (!r.ok) {
@@ -1018,11 +1022,23 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
             }
             const j = await r.json();
             const content: string = j.choices?.[0]?.message?.content ?? "";
+            if (!content.trim()) {
+              if (emptyRetries < MAX_EMPTY_RETRIES) {
+                emptyRetries++;
+                console.log(`Empty AI response — free retry ${emptyRetries}/${MAX_EMPTY_RETRIES}`);
+                iter--; // does not consume a tool iteration
+                await new Promise((res) => setTimeout(res, 500 * emptyRetries));
+                continue;
+              }
+              finalContent = "";
+              break;
+            }
             const matches = matchAllTools(content);
             if (matches.length === 0 || iter === MAX_ITERS - 1 || toolCallCount >= maxToolCalls) {
               finalContent = content;
               break;
             }
+
             const results: string[] = [];
             for (const m of matches) {
               if (toolCallCount >= maxToolCalls) break;
@@ -1081,9 +1097,13 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
 
           // Strip any remaining tool command lines from the final visible content.
           visibleBody = stripAllToolLines(visibleBody).replace(/\n{3,}/g, "\n\n").trim();
+          if (!visibleBody && files.length === 0) {
+            visibleBody = "The model returned an empty response. Please try again.";
+          }
 
           const header = toolCallCount > 0 ? `_${toolCallCount} Tool${toolCallCount > 1 ? "s" : ""} used_\n\n` : "";
           sendChunked(header + visibleBody);
+
           for (const f of files) {
             sendText(`\n\n[[FILE]]${JSON.stringify(f)}[[/FILE]]`);
           }
