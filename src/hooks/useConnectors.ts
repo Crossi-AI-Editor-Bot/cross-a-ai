@@ -1,27 +1,34 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface CatalogAction {
+  name: string;
+  label: string;
+  usage: string;
+}
+
 export interface ConnectorStatus {
   connected: boolean;
   accountLogin: string | null;
-  githubReadEnabled: boolean;
-  githubWriteEnabled: boolean;
+  enabledActions: string[];
+  catalog: { repo: CatalogAction[]; account: CatalogAction[] };
 }
 
 const DEFAULT_STATUS: ConnectorStatus = {
   connected: false,
   accountLogin: null,
-  githubReadEnabled: false,
-  githubWriteEnabled: false,
+  enabledActions: [],
+  catalog: { repo: [], account: [] },
 };
 
-export type ConnectorTool = "github:read" | "github:write";
+export type ConnectorScope = "repo" | "account" | "all";
 
 export const useConnectors = () => {
   const [status, setStatus] = useState<ConnectorStatus>(DEFAULT_STATUS);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
-  const [busyTool, setBusyTool] = useState<ConnectorTool | null>(null);
+  const [busyTool, setBusyTool] = useState<string | null>(null);
+  const [busyScope, setBusyScope] = useState<ConnectorScope | null>(null);
 
   const invoke = useCallback(async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("connectors-manage", { body });
@@ -74,19 +81,25 @@ export const useConnectors = () => {
     }
   }, [invoke, refresh]);
 
-  const toggle = useCallback(async (tool: ConnectorTool, enabled: boolean) => {
+  const toggle = useCallback(async (tool: string, enabled: boolean) => {
     setBusyTool(tool);
     try {
-      await invoke({ action: "toggle", tool, enabled });
-      setStatus((s) => ({
-        ...s,
-        githubReadEnabled: tool === "github:read" ? enabled : s.githubReadEnabled,
-        githubWriteEnabled: tool === "github:write" ? enabled : s.githubWriteEnabled,
-      }));
+      const data = await invoke({ action: "toggle", tool, enabled });
+      setStatus((s) => ({ ...s, enabledActions: (data as any).enabledActions ?? s.enabledActions }));
     } finally {
       setBusyTool(null);
     }
   }, [invoke]);
 
-  return { status, loading, connecting, busyTool, connect, disconnect, toggle, refresh };
+  const toggleAll = useCallback(async (scope: ConnectorScope, enabled: boolean) => {
+    setBusyScope(scope);
+    try {
+      const data = await invoke({ action: "toggle_all", scope, enabled });
+      setStatus((s) => ({ ...s, enabledActions: (data as any).enabledActions ?? s.enabledActions }));
+    } finally {
+      setBusyScope(null);
+    }
+  }, [invoke]);
+
+  return { status, loading, connecting, busyTool, busyScope, connect, disconnect, toggle, toggleAll, refresh };
 };
