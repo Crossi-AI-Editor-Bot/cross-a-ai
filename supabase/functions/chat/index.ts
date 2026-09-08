@@ -1097,9 +1097,13 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
 
           // Strip any remaining tool command lines from the final visible content.
           visibleBody = stripAllToolLines(visibleBody).replace(/\n{3,}/g, "\n\n").trim();
+          if (!visibleBody && files.length === 0) {
+            visibleBody = "The model returned an empty response. Please try again.";
+          }
 
           const header = toolCallCount > 0 ? `_${toolCallCount} Tool${toolCallCount > 1 ? "s" : ""} used_\n\n` : "";
           sendChunked(header + visibleBody);
+
           for (const f of files) {
             sendText(`\n\n[[FILE]]${JSON.stringify(f)}[[/FILE]]`);
           }
