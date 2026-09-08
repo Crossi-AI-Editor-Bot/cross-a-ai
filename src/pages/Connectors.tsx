@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,37 +11,27 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ArrowLeft, Plug, Github, Loader2, CheckCircle2, ExternalLink } from "lucide-react";
-import { useConnectors, type ConnectorTool } from "@/hooks/useConnectors";
+import { useConnectors, type CatalogAction, type ConnectorScope } from "@/hooks/useConnectors";
 import { toast } from "@/hooks/use-toast";
 
-const ToggleRow = ({
-  icon,
-  label,
-  code,
-  description,
+const ActionRow = ({
+  action,
   checked,
   disabled,
   busy,
   onChange,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  code: string;
-  description: string;
+  action: CatalogAction;
   checked: boolean;
   disabled: boolean;
   busy: boolean;
   onChange: (v: boolean) => void;
 }) => (
-  <div className="flex items-start justify-between gap-4 py-3">
-    <div className="flex items-start gap-3 min-w-0">
-      <div className="mt-0.5 text-primary">{icon}</div>
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium">{label}</span>
-          <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded border">/!{code}</code>
-        </div>
-        <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+  <div className="flex items-start justify-between gap-4 py-2.5">
+    <div className="min-w-0">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="font-medium text-sm">{action.label}</span>
+        <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded border">/!github:{action.name}</code>
       </div>
     </div>
     <div className="shrink-0 flex items-center gap-2">
@@ -51,16 +41,72 @@ const ToggleRow = ({
   </div>
 );
 
+const ScopeSection = ({
+  title,
+  description,
+  actions,
+  enabledSet,
+  disabled,
+  busyTool,
+  busyScope,
+  scope,
+  onToggle,
+  onToggleAll,
+}: {
+  title: string;
+  description: string;
+  actions: CatalogAction[];
+  enabledSet: Set<string>;
+  disabled: boolean;
+  busyTool: string | null;
+  busyScope: ConnectorScope | null;
+  scope: ConnectorScope;
+  onToggle: (name: string, enabled: boolean) => void;
+  onToggleAll: (scope: ConnectorScope, enabled: boolean) => void;
+}) => {
+  const allEnabled = actions.length > 0 && actions.every((a) => enabledSet.has(a.name));
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+        <div>
+          <p className="font-semibold">{title}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+        <Button
+          size="sm"
+          variant={allEnabled ? "outline" : "secondary"}
+          disabled={disabled || busyScope === scope}
+          onClick={() => onToggleAll(scope, !allEnabled)}
+        >
+          {busyScope === scope ? <Loader2 className="w-4 h-4 animate-spin" /> : allEnabled ? "Disable all" : "Enable all"}
+        </Button>
+      </div>
+      <div className="divide-y mt-2">
+        {actions.map((a) => (
+          <ActionRow
+            key={a.name}
+            action={a}
+            checked={enabledSet.has(a.name)}
+            disabled={disabled}
+            busy={busyTool === a.name}
+            onChange={(v) => onToggle(a.name, v)}
+          />
+        ))}
+      </div>
+    </Card>
+  );
+};
+
 const Connectors = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { status, loading, connecting, busyTool, connect, disconnect, toggle } = useConnectors();
+  const { status, loading, connecting, busyTool, busyScope, connect, disconnect, toggle, toggleAll } = useConnectors();
 
   useEffect(() => {
     const result = searchParams.get("connector");
     if (!result) return;
     if (result === "connected") {
-      toast({ title: "GitHub connected", description: "You can now enable read and write tools below." });
+      toast({ title: "GitHub connected", description: "Enable the actions you want the AI to use below." });
     } else {
       const message = searchParams.get("message");
       toast({ title: "Connection failed", description: message || "Something went wrong linking GitHub.", variant: "destructive" });
@@ -70,10 +116,15 @@ const Connectors = () => {
     setSearchParams(searchParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const handleToggle = (tool: ConnectorTool, enabled: boolean) => {
-    toggle(tool, enabled).catch((e) =>
-      toast({ title: "Couldn't update connector", description: e.message, variant: "destructive" })
-    );
+  const enabledSet = useMemo(() => new Set(status.enabledActions), [status.enabledActions]);
+  const allActionsCount = status.catalog.repo.length + status.catalog.account.length;
+  const allEnabled = allActionsCount > 0 && status.enabledActions.length === allActionsCount;
+
+  const handleToggle = (tool: string, enabled: boolean) => {
+    toggle(tool, enabled).catch((e) => toast({ title: "Couldn't update connector", description: e.message, variant: "destructive" }));
+  };
+  const handleToggleAll = (scope: ConnectorScope, enabled: boolean) => {
+    toggleAll(scope, enabled).catch((e) => toast({ title: "Couldn't update connector", description: e.message, variant: "destructive" }));
   };
 
   return (
@@ -93,68 +144,86 @@ const Connectors = () => {
           <h1 className="text-2xl font-bold">Connectors</h1>
         </div>
         <p className="text-sm text-muted-foreground mb-6">
-          Connect your GitHub account so the AI can read your repos, open issues, or commit files when you ask
-          it to. Your sign-in is saved to your account — you only connect once, then switch individual tools
-          on or off any time.
+          Connect your GitHub account so the AI can act on your repos and account when you ask it to. Your
+          sign-in is saved to your account — you only connect once, then switch individual actions on or off
+          any time.
         </p>
 
         {loading ? (
           <p className="text-muted-foreground">Loading…</p>
         ) : (
-          <Card className="p-4 mb-6">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
-                  <Github className="w-5 h-5" />
+          <>
+            <Card className="p-4 mb-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                    <Github className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium">GitHub Account</p>
+                    <p className="text-sm text-muted-foreground">
+                      {status.connected ? (status.accountLogin ? `@${status.accountLogin}` : "Connected") : "Not connected"}
+                    </p>
+                  </div>
+                  {status.connected && (
+                    <Badge variant="secondary" className="gap-1"><CheckCircle2 className="w-3 h-3" /> Connected</Badge>
+                  )}
                 </div>
-                <div>
-                  <p className="font-medium">GitHub Account</p>
-                  <p className="text-sm text-muted-foreground">
-                    {status.connected ? (status.accountLogin ? `@${status.accountLogin}` : "Connected") : "Not connected"}
-                  </p>
+                <div className="flex items-center gap-2">
+                  {status.connected && (
+                    <Button
+                      size="sm"
+                      variant={allEnabled ? "outline" : "secondary"}
+                      disabled={busyScope === "all"}
+                      onClick={() => handleToggleAll("all", !allEnabled)}
+                    >
+                      {busyScope === "all" ? <Loader2 className="w-4 h-4 animate-spin" /> : allEnabled ? "Disable all" : "Enable all"}
+                    </Button>
+                  )}
+                  {status.connected ? (
+                    <Button variant="outline" size="sm" disabled={connecting} onClick={() => {
+                      if (!confirm("Disconnect your GitHub account? This turns off every enabled action.")) return;
+                      disconnect().catch((e) => toast({ title: "Disconnect failed", description: e.message, variant: "destructive" }));
+                    }}>
+                      {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Disconnect"}
+                    </Button>
+                  ) : (
+                    <Button size="sm" disabled={connecting} onClick={() => connect().catch((e) => toast({ title: "Couldn't start sign-in", description: e.message, variant: "destructive" }))}>
+                      {connecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Github className="w-4 h-4 mr-2" />}
+                      Connect GitHub
+                    </Button>
+                  )}
                 </div>
-                {status.connected && (
-                  <Badge variant="secondary" className="gap-1"><CheckCircle2 className="w-3 h-3" /> Connected</Badge>
-                )}
               </div>
-              {status.connected ? (
-                <Button variant="outline" size="sm" disabled={connecting} onClick={() => {
-                  if (!confirm("Disconnect your GitHub account? This turns off read and write tools.")) return;
-                  disconnect().catch((e) => toast({ title: "Disconnect failed", description: e.message, variant: "destructive" }));
-                }}>
-                  {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Disconnect"}
-                </Button>
-              ) : (
-                <Button size="sm" disabled={connecting} onClick={() => connect().catch((e) => toast({ title: "Couldn't start sign-in", description: e.message, variant: "destructive" }))}>
-                  {connecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Github className="w-4 h-4 mr-2" />}
-                  Connect GitHub
-                </Button>
-              )}
-            </div>
+            </Card>
 
-            <div className="divide-y mt-2">
-              <ToggleRow
-                icon={<Github className="w-4 h-4" />}
-                label="GitHub — Read"
-                code="github:read"
-                description="Let the AI read files, list issues, and search code in your repos."
-                checked={status.githubReadEnabled}
+            <div className="space-y-4 mb-6">
+              <ScopeSection
+                title="Repository actions"
+                description="Need an owner/repo argument, e.g. /!github:commit acme/site ..."
+                actions={status.catalog.repo}
+                enabledSet={enabledSet}
                 disabled={!status.connected}
-                busy={busyTool === "github:read"}
-                onChange={(v) => handleToggle("github:read", v)}
+                busyTool={busyTool}
+                busyScope={busyScope}
+                scope="repo"
+                onToggle={handleToggle}
+                onToggleAll={handleToggleAll}
               />
-              <ToggleRow
-                icon={<Github className="w-4 h-4" />}
-                label="GitHub — Write"
-                code="github:write"
-                description="Let the AI open issues, add comments, and commit file changes when you ask it to."
-                checked={status.githubWriteEnabled}
+              <ScopeSection
+                title="Account actions"
+                description="Act on the signed-in GitHub account directly, no repo needed."
+                actions={status.catalog.account}
+                enabledSet={enabledSet}
                 disabled={!status.connected}
-                busy={busyTool === "github:write"}
-                onChange={(v) => handleToggle("github:write", v)}
+                busyTool={busyTool}
+                busyScope={busyScope}
+                scope="account"
+                onToggle={handleToggle}
+                onToggleAll={handleToggleAll}
               />
             </div>
-          </Card>
+          </>
         )}
 
         <Accordion type="single" collapsible className="w-full">
@@ -175,34 +244,31 @@ const Connectors = () => {
                     <a className="text-primary underline inline-flex items-center gap-1" href="https://github.com/settings/apps/new" target="_blank" rel="noreferrer">
                       github.com/settings/apps/new <ExternalLink className="w-3 h-3" />
                     </a>{" "}
-                    (or under your GitHub organization's Settings → Developer settings → GitHub Apps, if you
-                    want the app owned by an org instead of your personal account).
+                    (or under your GitHub organization's Settings → Developer settings → GitHub Apps).
                   </p>
                 </li>
                 <li>
                   <p className="font-medium">2. Fill in the basics</p>
                   <p className="text-muted-foreground">
-                    Give it a name (e.g. "MyChat Connector") and a homepage URL (your site's URL). Under{" "}
-                    <strong>Callback URL</strong>, enter:
+                    Give it a name and homepage URL (your site's URL). Under <strong>Callback URL</strong>, enter:
                   </p>
                   <code className="block text-xs font-mono bg-muted px-2 py-1.5 rounded border mt-1 break-all">
                     https://&lt;YOUR-SUPABASE-PROJECT-REF&gt;.supabase.co/functions/v1/github-oauth-callback
                   </code>
                   <p className="text-muted-foreground mt-1">
-                    Check <strong>"Request user authorization (OAuth) during installation"</strong> — this is what
-                    lets a user click one button to both install the app and sign in.
+                    Check <strong>"Request user authorization (OAuth) during installation"</strong> — this lets a
+                    user click one button to both install the app and sign in.
                   </p>
                 </li>
                 <li>
                   <p className="font-medium">3. Set permissions</p>
                   <p className="text-muted-foreground">
-                    Under <strong>Repository permissions</strong>, set:
+                    Grant whatever permissions you want to expose as actions below — each toggle on this page maps
+                    to one GitHub permission. At minimum for the actions built in here: <strong>Contents</strong>{" "}
+                    (read/write), <strong>Issues</strong> (read/write), <strong>Metadata</strong> (read-only,
+                    required automatically). Add more (Actions, Administration, Checks, Pull requests, etc.) to
+                    unlock the matching toggles.
                   </p>
-                  <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-0.5">
-                    <li><strong>Contents</strong>: Read and write (needed for reading/writing files)</li>
-                    <li><strong>Issues</strong>: Read and write (needed for reading/creating issues and comments)</li>
-                    <li><strong>Metadata</strong>: Read-only (required automatically)</li>
-                  </ul>
                   <p className="text-muted-foreground mt-1">
                     Under <strong>Where can this GitHub App be installed?</strong>, choose "Any account" so any
                     of your users can install it on their own account or org.
@@ -211,39 +277,28 @@ const Connectors = () => {
                 <li>
                   <p className="font-medium">4. Create the app and get credentials</p>
                   <p className="text-muted-foreground">
-                    Click <strong>Create GitHub App</strong>. On the app's page, note the <strong>Client ID</strong>,
-                    then click <strong>Generate a new client secret</strong> and copy it (you won't see it again).
+                    Click <strong>Create GitHub App</strong>. Note the <strong>Client ID</strong>, then click{" "}
+                    <strong>Generate a new client secret</strong> and copy it (you won't see it again).
                   </p>
                 </li>
                 <li>
                   <p className="font-medium">5. Add the credentials to Supabase</p>
                   <p className="text-muted-foreground">
                     In the Supabase dashboard, go to <strong>Project Settings → Edge Functions → Secrets</strong>{" "}
-                    (or run <code className="font-mono">supabase secrets set</code> from the CLI) and add:
+                    and add:
                   </p>
                   <code className="block text-xs font-mono bg-muted px-2 py-1.5 rounded border mt-1">
                     GITHUB_APP_CLIENT_ID=your-client-id<br />
-                    GITHUB_APP_CLIENT_SECRET=your-client-secret
+                    GITHUB_APP_CLIENT_SECRET=your-client-secret<br />
+                    SITE_URL=https://your-lovable-site.lovable.app
                   </code>
                   <p className="text-muted-foreground mt-1">
-                    Redeploy the <code className="font-mono">github-oauth-start</code>,{" "}
-                    <code className="font-mono">github-oauth-callback</code> and <code className="font-mono">chat</code>{" "}
-                    functions after adding secrets so they pick up the new values.
-                  </p>
-                </li>
-                <li>
-                  <p className="font-medium">6. That's it — no review needed</p>
-                  <p className="text-muted-foreground">
-                    Unlike Google's sensitive-scope verification, a GitHub App works immediately for any account
-                    that installs it — there's no waiting period. Users just click "Connect GitHub" above, pick
-                    which repos to grant access to, and they're done.
+                    Redeploy <code className="font-mono">github-oauth-start</code>,{" "}
+                    <code className="font-mono">github-oauth-callback</code>, <code className="font-mono">connectors-manage</code> and{" "}
+                    <code className="font-mono">chat</code> after adding secrets.
                   </p>
                 </li>
               </ol>
-              <p className="text-sm text-muted-foreground mt-4">
-                Once the secrets are set, the "Connect GitHub" button above will open GitHub's install/authorize
-                screen and save the result to the signed-in user's account.
-              </p>
             </AccordionContent>
           </AccordionItem>
         </Accordion>
