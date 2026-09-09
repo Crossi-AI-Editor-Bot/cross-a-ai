@@ -1,71 +1,38 @@
-import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getUserId, runThrottled } from "@/lib/authUser";
+import { createSharedStore } from "@/lib/sharedStore";
+
+const imageCreditsStore = createSharedStore<number>(async () => {
+  const userId = await getUserId();
+  if (!userId) return 30;
+
+  await runThrottled(`reset_weekly_image_credits:${userId}`, () =>
+    supabase.rpc('reset_weekly_image_credits', { p_user_id: userId }));
+
+  const { data, error } = await supabase
+    .from('user_image_credits')
+    .select('credits')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!error && data) return Number(data.credits);
+
+  const { data: newData } = await supabase
+    .from('user_image_credits')
+    .insert({ user_id: userId, credits: 30 })
+    .select('credits')
+    .single();
+  return newData ? Number(newData.credits) : 30;
+}, 30, { ttlMs: 60_000 });
 
 export const useImageCredits = () => {
-  const [imageCredits, setImageCredits] = useState<number>(30);
-  const [loading, setLoading] = useState(true);
+  const { value: imageCredits, loading } = imageCreditsStore.useStore();
   const { toast } = useToast();
 
-  const fetchImageCredits = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      // Try to reset weekly credits first
-      try {
-        await supabase.rpc('reset_weekly_image_credits', { p_user_id: user.id });
-      } catch {
-        // Ignore errors from reset
-      }
-
-      const { data, error } = await supabase
-        .from('user_image_credits')
-        .select('credits, last_reset_date')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        // If no record exists, create one
-        if (error.code === 'PGRST116') {
-          const { data: newData, error: insertError } = await supabase
-            .from('user_image_credits')
-            .insert({ user_id: user.id, credits: 30 })
-            .select('credits')
-            .single();
-
-          if (!insertError && newData) {
-            setImageCredits(newData.credits);
-          }
-        }
-      } else if (data) {
-        setImageCredits(data.credits);
-      }
-    } catch (error) {
-      console.error('Error fetching image credits:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchImageCredits();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
-      fetchImageCredits();
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
   const deductImageCredits = async (amount: number): Promise<boolean> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const userId = await getUserId();
+    if (!userId) {
       toast({
         title: "Login required",
         description: "Please log in to use image generation.",
@@ -86,9 +53,11 @@ export const useImageCredits = () => {
     return true;
   };
 
-  const updateImageCredits = (newCredits: number) => {
-    setImageCredits(newCredits);
+  return {
+    imageCredits,
+    deductImageCredits,
+    loading,
+    updateImageCredits: imageCreditsStore.set,
+    refetch: imageCreditsStore.refetch,
   };
-
-  return { imageCredits, deductImageCredits, loading, updateImageCredits, refetch: fetchImageCredits };
 };

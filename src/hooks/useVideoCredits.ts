@@ -1,33 +1,32 @@
-import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useVipStatus } from "@/hooks/useVipStatus";
+import { getUserId, runThrottled } from "@/lib/authUser";
+import { createSharedStore } from "@/lib/sharedStore";
+
+const videoCreditsStore = createSharedStore<number>(async () => {
+  const userId = await getUserId();
+  if (!userId) return 5;
+
+  await runThrottled(`reset_monthly_video_credits:${userId}`, () =>
+    supabase.rpc('reset_monthly_video_credits' as any, { p_user_id: userId }));
+
+  const { data, error } = await supabase
+    .from('user_video_credits' as any).select('credits').eq('user_id', userId).maybeSingle();
+
+  if (!error && data) return Number((data as any).credits);
+
+  await supabase.from('user_video_credits' as any).insert({ user_id: userId, credits: 5 } as any);
+  return 5;
+}, 5, { ttlMs: 60_000 });
 
 export const useVideoCredits = () => {
-  const [videoCredits, setVideoCredits] = useState<number>(5);
-  const [loading, setLoading] = useState(true);
+  const { value: videoCredits, loading } = videoCreditsStore.useStore();
   const { isUnlimited } = useVipStatus();
-
-  const fetch = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
-      try { await supabase.rpc('reset_monthly_video_credits' as any, { p_user_id: user.id }); } catch {}
-      const { data, error } = await supabase
-        .from('user_video_credits' as any).select('credits').eq('user_id', user.id).maybeSingle();
-      if (error || !data) {
-        await supabase.from('user_video_credits' as any).insert({ user_id: user.id, credits: 5 } as any);
-        setVideoCredits(5);
-      } else {
-        setVideoCredits(Number((data as any).credits));
-      }
-    } finally { setLoading(false); }
+  return {
+    videoCredits,
+    loading,
+    refetch: videoCreditsStore.refetch,
+    isUnlimited,
+    updateVideoCredits: videoCreditsStore.set,
   };
-
-  useEffect(() => {
-    fetch();
-    const { data } = supabase.auth.onAuthStateChange(() => fetch());
-    return () => data.subscription.unsubscribe();
-  }, []);
-
-  return { videoCredits, loading, refetch: fetch, isUnlimited, updateVideoCredits: setVideoCredits };
 };

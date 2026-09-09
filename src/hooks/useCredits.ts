@@ -1,64 +1,33 @@
-import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getUserId, runThrottled } from "@/lib/authUser";
+import { createSharedStore } from "@/lib/sharedStore";
+
+const creditsStore = createSharedStore<number>(async () => {
+  const userId = await getUserId();
+  if (!userId) return 0;
+
+  // Daily reset only needs to be attempted a couple of times a day per browser.
+  await runThrottled(`reset_daily_credits:${userId}`, () =>
+    (supabase.rpc as any)('reset_daily_credits', { p_user_id: userId }), 6 * 60 * 60 * 1000);
+
+  const result: any = await supabase
+    .from('user_credits')
+    .select('credits')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  return !result.error && result.data ? Number(result.data.credits) : 15;
+}, 15, { ttlMs: 60_000 });
 
 export const useCredits = () => {
-  const [credits, setCredits] = useState<number>(15);
-  const [loading, setLoading] = useState(true);
+  const { value: credits, loading } = creditsStore.useStore();
   const { toast } = useToast();
-
-  useEffect(() => {
-    fetchCredits();
-
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchCredits();
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchCredits = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setCredits(0);
-        setLoading(false);
-        return;
-      }
-
-      // Reset credits if it's a new day
-      try {
-        await (supabase.rpc as any)('reset_daily_credits', { p_user_id: user.id });
-      } catch (e) {
-        // Ignore RPC errors
-      }
-
-      // Fetch current credits
-      const result: any = await supabase
-        .from('user_credits')
-        .select('credits')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (!result.error && result.data) {
-        setCredits(result.data.credits);
-      } else {
-        setCredits(15);
-      }
-    } catch (error) {
-      console.error('Error fetching credits:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const deductCredits = async (amount: number): Promise<boolean> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
+      const userId = await getUserId();
+      if (!userId) {
         toast({
           title: "Please log in",
           description: "You need to be logged in to use the chat.",
@@ -77,12 +46,11 @@ export const useCredits = () => {
       }
 
       const newCredits = credits - amount;
-
       await (supabase.from('user_credits') as any)
         .update({ credits: newCredits })
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
-      setCredits(newCredits);
+      creditsStore.set(newCredits);
       return true;
     } catch (error) {
       console.error('Error deducting credits:', error);
@@ -95,9 +63,5 @@ export const useCredits = () => {
     }
   };
 
-  const updateCredits = (newCredits: number) => {
-    setCredits(newCredits);
-  };
-
-  return { credits, deductCredits, loading, updateCredits };
+  return { credits, deductCredits, loading, updateCredits: creditsStore.set };
 };

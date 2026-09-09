@@ -19,7 +19,19 @@ import Connectors from "./pages/Connectors";
 import Settings from "./pages/Settings";
 import { ModsApplier } from "./hooks/useMods";
 
-const queryClient = new QueryClient();
+// Cache aggressively: the same data is used across many pages/components,
+// so avoid refetching it on every mount, tab focus or reconnect.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: 1,
+    },
+  },
+});
 
 const BanGuard = ({ children }: { children: React.ReactNode }) => {
   const { isBanned, loading } = useIpBanCheck();
