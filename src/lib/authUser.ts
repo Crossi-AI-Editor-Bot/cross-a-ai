@@ -28,7 +28,7 @@ export const onUserChange = (cb: (userId: string | null) => void) => {
  * Runs a task at most once per key per period (default: once a day, per browser).
  * Used to avoid re-triggering credit-reset RPCs on every page load.
  */
-export const runThrottled = async (key: string, fn: () => Promise<unknown>, periodMs = 12 * 60 * 60 * 1000) => {
+export const runThrottled = async (key: string, fn: () => unknown, periodMs = 12 * 60 * 60 * 1000) => {
   try {
     const stamp = Number(localStorage.getItem(`throttle:${key}`) || 0);
     if (Date.now() - stamp < periodMs) return;
