@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { getUserId } from "@/lib/authUser";
 
 interface AdventClaim {
   day_number: number;
@@ -62,7 +63,7 @@ export const useAdventCalendar = () => {
       const { data, error } = await supabase
         .from('vip_status')
         .select('expires_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .gt('expires_at', new Date().toISOString())
         .maybeSingle();
 
