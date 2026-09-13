@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getUserId, onUserChange } from "@/lib/authUser";
 
 export type ModId = "text-size" | "credit-recolor" | "copy" | "app-style" | "like-dislike";
 
