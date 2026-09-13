@@ -1,4 +1,4 @@
-import { MessageSquarePlus, Trash2, Edit2, Phone, Puzzle, Blocks, Plug, Settings as SettingsIcon } from "lucide-react";
+import { MessageSquarePlus, Trash2, Edit2, Phone, Puzzle, Blocks, Plug, Settings as SettingsIcon, Monitor } from "lucide-react";
 import QueueDialog from "./QueueDialog";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
