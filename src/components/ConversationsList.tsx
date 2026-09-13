@@ -129,9 +129,17 @@ const ConversationsList = ({
               Connectors
             </Button>
           </div>
-          <div className="flex">
+          <div className="flex gap-2">
             <QueueDialog />
-            <span className="ml-2 text-sm text-muted-foreground self-center">Generation queue</span>
+            <span className="ml-2 text-sm text-muted-foreground self-center flex-1">Generation queue</span>
+            <Button
+              onClick={() => window.open("https://crossios.0fg.co", "_blank")}
+              className="justify-start"
+              variant="outline"
+            >
+              <Monitor className="w-4 h-4 mr-2" />
+              PC
+            </Button>
           </div>
 
           <ScrollArea className="h-[calc(100vh-180px)] mt-4">
