@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { getUserId } from "@/lib/authUser";
 
 interface AdventClaim {
   day_number: number;
@@ -25,19 +26,24 @@ export const useAdventCalendar = () => {
   const currentMonth = new Date().getMonth() + 1;
 
   useEffect(() => {
+    // Advent calendar only runs in December — skip all backend reads otherwise
+    if (currentMonth !== 12) {
+      setLoading(false);
+      return;
+    }
     fetchClaims();
     fetchVipStatus();
-  }, []);
+  }, [currentMonth]);
 
   const fetchClaims = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getUserId();
+      if (!userId) return;
 
       const { data, error } = await supabase
         .from('advent_claims')
         .select('day_number, credits_awarded, claimed_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('year', currentYear);
 
       if (error) throw error;
@@ -51,13 +57,13 @@ export const useAdventCalendar = () => {
 
   const fetchVipStatus = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getUserId();
+      if (!userId) return;
 
       const { data, error } = await supabase
         .from('vip_status')
         .select('expires_at')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .gt('expires_at', new Date().toISOString())
         .maybeSingle();
 

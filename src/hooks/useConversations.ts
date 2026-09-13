@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getUserId } from "@/lib/authUser";
 
 interface Conversation {
   id: string;
@@ -56,8 +57,8 @@ export const useConversations = () => {
 
   const fetchConversations = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getUserId();
+      if (!userId) return;
 
       const { data, error } = await supabase
         .from('conversations')
@@ -66,16 +67,23 @@ export const useConversations = () => {
 
       if (error) throw error;
 
-      // Filter out empty conversations
-      const nonEmptyConversations: Conversation[] = [];
-      for (const conv of data || []) {
-        const hasMsg = await checkHasMessages(conv.id);
-        if (hasMsg) {
-          nonEmptyConversations.push(conv);
-        } else {
-          // Delete empty conversation from database
-          await supabase.from('conversations').delete().eq('id', conv.id);
-        }
+      const all = data || [];
+      const ids = all.map((c) => c.id);
+
+      // One query instead of one count per conversation
+      let withMessages = new Set<string>();
+      if (ids.length) {
+        const { data: msgRows } = await supabase
+          .from('messages')
+          .select('conversation_id')
+          .in('conversation_id', ids);
+        withMessages = new Set((msgRows || []).map((m: any) => m.conversation_id));
+      }
+
+      const nonEmptyConversations: Conversation[] = all.filter((c) => withMessages.has(c.id));
+      const emptyIds = ids.filter((id) => !withMessages.has(id));
+      if (emptyIds.length) {
+        await supabase.from('conversations').delete().in('id', emptyIds);
       }
 
       setConversations(nonEmptyConversations);

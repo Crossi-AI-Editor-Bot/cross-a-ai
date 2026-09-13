@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getUserId } from "@/lib/authUser";
 
 /**
  * Subscribes to the user's generation_queue rows and shows a toast when
@@ -13,11 +14,11 @@ export const useQueueWatcher = (onDone?: () => void) => {
   useEffect(() => {
     let unsub = () => {};
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getUserId();
+      if (!userId) return;
       const channel = supabase
-        .channel(`queue-${user.id}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'generation_queue', filter: `user_id=eq.${user.id}` },
+        .channel(`queue-${userId}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'generation_queue', filter: `user_id=eq.${userId}` },
           (payload) => {
             const row: any = payload.new;
             if (row.status === 'done') {

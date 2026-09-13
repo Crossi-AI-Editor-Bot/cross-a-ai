@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getUserId, onUserChange } from "@/lib/authUser";
 
 export type ModId = "text-size" | "credit-recolor" | "copy" | "app-style" | "like-dislike";
 
@@ -41,12 +42,12 @@ let loaded = false;
 const ensureLoaded = async () => {
   if (loaded) return;
   loaded = true;
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  const userId = await getUserId();
+  if (!userId) {
     setState({ installed: [], settings: {}, loading: false });
     return;
   }
-  const { data } = await supabase.from("user_mods").select("installed, settings").eq("user_id", user.id).maybeSingle();
+  const { data } = await supabase.from("user_mods").select("installed, settings").eq("user_id", userId).maybeSingle();
   setState({
     installed: (data?.installed as ModId[]) || [],
     settings: (data?.settings as ModSettings) || {},
@@ -54,9 +55,9 @@ const ensureLoaded = async () => {
   });
 };
 
-supabase.auth.onAuthStateChange(() => {
+onUserChange(() => {
   loaded = false;
-  ensureLoaded();
+  if (listeners.size > 0) ensureLoaded();
 });
 
 export const useMods = () => {
@@ -69,15 +70,15 @@ export const useMods = () => {
   }, []);
 
   const persist = useCallback(async (next: { installed?: ModId[]; settings?: ModSettings }) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = await getUserId();
+    if (!userId) return;
     const merged = {
       installed: next.installed ?? cache.installed,
       settings: next.settings ?? cache.settings,
     };
     setState({ ...merged, loading: false });
     await supabase.from("user_mods").upsert([{
-      user_id: user.id,
+      user_id: userId,
       installed: merged.installed,
       settings: merged.settings as any,
       updated_at: new Date().toISOString(),

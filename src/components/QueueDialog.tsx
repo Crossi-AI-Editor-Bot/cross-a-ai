@@ -11,6 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { getUserId } from "@/lib/authUser";
 
 interface QueueItem {
   id: string;
@@ -29,12 +30,12 @@ const QueueDialog = () => {
 
   const load = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    const userId = await getUserId();
+    if (!userId) { setLoading(false); return; }
     const { data } = await supabase
       .from("generation_queue")
       .select("id, kind, prompt, status, position, error, created_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
     setItems((data as QueueItem[]) || []);
@@ -46,13 +47,13 @@ const QueueDialog = () => {
     load();
     let channel: any;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const userId = await getUserId();
+      if (!userId) return;
       channel = supabase
-        .channel(`queue-dialog-${user.id}`)
+        .channel(`queue-dialog-${userId}`)
         .on(
           "postgres_changes",
-          { event: "*", schema: "public", table: "generation_queue", filter: `user_id=eq.${user.id}` },
+          { event: "*", schema: "public", table: "generation_queue", filter: `user_id=eq.${userId}` },
           () => load(),
         )
         .subscribe();
