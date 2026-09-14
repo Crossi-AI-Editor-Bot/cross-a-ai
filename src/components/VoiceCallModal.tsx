@@ -25,7 +25,6 @@ const stateLabels: Record<VoiceCallState, string> = {
   idle: 'Ready to call',
   connecting: 'Connecting...',
   listening: 'Listening...',
-  processing: 'Processing...',
   speaking: 'Speaking...',
   error: 'Error',
 };

@@ -171,7 +171,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     if (!samples.length) return;
 
     const buffer = ctx.createBuffer(1, samples.length, OUTPUT_SAMPLE_RATE);
-    buffer.copyToChannel(samples, 0);
+    buffer.getChannelData(0).set(samples);
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
