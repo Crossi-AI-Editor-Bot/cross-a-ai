@@ -33,18 +33,16 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
   const {
     state,
     partialTranscript,
-    finalTranscript,
     aiResponse,
     error,
     callMessages,
     startCall,
     endCall,
-    answerNow,
     setConversationId,
   } = useVoiceCall({ onCreditsUpdate, modelCostId: selectedModel?.id });
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const canAnswerNow = state === 'listening' && !!(partialTranscript || finalTranscript);
+
 
   // Set conversation ID when modal opens
   useEffect(() => {
@@ -70,7 +68,8 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [callMessages, partialTranscript, finalTranscript, aiResponse]);
+  }, [callMessages, partialTranscript, aiResponse]);
+
 
   const handleClose = () => {
     endCall();
@@ -95,17 +94,16 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
                 state === 'idle' && "bg-muted",
                 state === 'connecting' && "bg-primary/20",
                 state === 'listening' && "bg-accent animate-pulse",
-                state === 'processing' && "bg-secondary",
                 state === 'speaking' && "bg-primary/30 animate-pulse",
                 state === 'error' && "bg-destructive/20"
               )}
             >
               {state === 'connecting' && <Loader2 className="w-6 h-6 text-primary animate-spin" />}
               {state === 'listening' && <Mic className="w-6 h-6 text-accent-foreground" />}
-              {state === 'processing' && <Loader2 className="w-6 h-6 text-secondary-foreground animate-spin" />}
               {state === 'speaking' && <Volume2 className="w-6 h-6 text-primary" />}
               {state === 'idle' && <Phone className="w-6 h-6 text-muted-foreground" />}
               {state === 'error' && <PhoneOff className="w-6 h-6 text-destructive" />}
+
             </div>
             <p className="text-sm font-medium text-foreground">
               {stateLabels[state]}
@@ -117,7 +115,8 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
             ref={scrollRef}
             className="flex-1 min-h-[200px] max-h-[400px] overflow-y-auto rounded-lg bg-muted/30 border border-border p-3 space-y-3"
           >
-            {callMessages.length === 0 && !partialTranscript && !finalTranscript && !aiResponse && !error && (
+            {callMessages.length === 0 && !partialTranscript && !aiResponse && !error && (
+
               <p className="text-sm text-muted-foreground text-center py-8">
                 {state === 'listening' ? 'Start speaking...' : 'Waiting...'}
               </p>
@@ -149,7 +148,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
               </div>
             ))}
 
-            {/* Live partial/final transcript */}
+            {/* Live transcript of what you are saying */}
             {partialTranscript && (
               <div className="flex gap-2 justify-end text-sm">
                 <div className="rounded-lg px-3 py-2 max-w-[80%] bg-primary/50 text-primary-foreground italic">
@@ -157,6 +156,18 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
                 </div>
                 <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center shrink-0 mt-0.5">
                   <User className="w-3.5 h-3.5 text-accent-foreground" />
+                </div>
+              </div>
+            )}
+
+            {/* Live transcript of the AI reply */}
+            {aiResponse && (
+              <div className="flex gap-2 justify-start text-sm">
+                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div className="rounded-lg px-3 py-2 max-w-[80%] bg-card border border-border text-foreground italic">
+                  {aiResponse}
                 </div>
               </div>
             )}
@@ -169,17 +180,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
           </div>
 
           {/* Controls */}
-          <div className="flex items-center gap-3 justify-center">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="flex-1 max-w-[200px]"
-              onClick={answerNow}
-              disabled={!canAnswerNow}
-            >
-              Answer now
-            </Button>
-
+          <div className="flex items-center justify-center">
             <Button
               variant="destructive"
               size="lg"
@@ -189,6 +190,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
               <PhoneOff className="w-5 h-5" />
             </Button>
           </div>
+
           
           <p className="text-xs text-muted-foreground text-center">
             {selectedModel ? `${selectedModel.cost} credit${selectedModel.cost !== 1 ? 's' : ''} per message` : '1 credit per message'}
