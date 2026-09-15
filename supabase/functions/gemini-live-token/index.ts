@@ -37,11 +37,13 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // FIX: Use case-insensitive regex to strip the Bearer prefix
     const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace("Bearer ", ""),
+      authHeader.replace(/^Bearer\s+/i, ""),
     );
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
+    // NOTE: Verify this isn't meant to be GOOGLE_API_KEY in your env vars
     const googleKey = Deno.env.get("GoogleAPIKEY");
     if (!googleKey) return json({ error: "Voice calls are not configured" }, 500);
 
@@ -93,7 +95,9 @@ serve(async (req) => {
       .select("credits")
       .eq("user_id", user.id)
       .maybeSingle();
-    if (!credits || credits.credits < Number(model.cost || 1)) {
+    
+    // FIX: Used ?? instead of || so a cost of 0 does not evaluate to 1
+    if (!credits || credits.credits < Number(model.cost ?? 1)) {
       return json({ error: "Insufficient credits" }, 402);
     }
 
@@ -126,7 +130,8 @@ serve(async (req) => {
       token: tokenData.name,
       model: `models/${liveModel}`,
       systemPrompt: model.system_prompt || DEFAULT_PROMPT,
-      cost: Number(model.cost || 1),
+      // FIX: Used ?? instead of || so a cost of 0 does not evaluate to 1
+      cost: Number(model.cost ?? 1),
       label: model.label,
     });
   } catch (error) {
