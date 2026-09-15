@@ -33,18 +33,16 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
   const {
     state,
     partialTranscript,
-    finalTranscript,
     aiResponse,
     error,
     callMessages,
     startCall,
     endCall,
-    answerNow,
     setConversationId,
   } = useVoiceCall({ onCreditsUpdate, modelCostId: selectedModel?.id });
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const canAnswerNow = state === 'listening' && !!(partialTranscript || finalTranscript);
+
 
   // Set conversation ID when modal opens
   useEffect(() => {
@@ -70,7 +68,8 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [callMessages, partialTranscript, finalTranscript, aiResponse]);
+  }, [callMessages, partialTranscript, aiResponse]);
+
 
   const handleClose = () => {
     endCall();
@@ -95,17 +94,16 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
                 state === 'idle' && "bg-muted",
                 state === 'connecting' && "bg-primary/20",
                 state === 'listening' && "bg-accent animate-pulse",
-                state === 'processing' && "bg-secondary",
                 state === 'speaking' && "bg-primary/30 animate-pulse",
                 state === 'error' && "bg-destructive/20"
               )}
             >
               {state === 'connecting' && <Loader2 className="w-6 h-6 text-primary animate-spin" />}
               {state === 'listening' && <Mic className="w-6 h-6 text-accent-foreground" />}
-              {state === 'processing' && <Loader2 className="w-6 h-6 text-secondary-foreground animate-spin" />}
               {state === 'speaking' && <Volume2 className="w-6 h-6 text-primary" />}
               {state === 'idle' && <Phone className="w-6 h-6 text-muted-foreground" />}
               {state === 'error' && <PhoneOff className="w-6 h-6 text-destructive" />}
+
             </div>
             <p className="text-sm font-medium text-foreground">
               {stateLabels[state]}
@@ -117,7 +115,8 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
             ref={scrollRef}
             className="flex-1 min-h-[200px] max-h-[400px] overflow-y-auto rounded-lg bg-muted/30 border border-border p-3 space-y-3"
           >
-            {callMessages.length === 0 && !partialTranscript && !finalTranscript && !aiResponse && !error && (
+            {callMessages.length === 0 && !partialTranscript && !aiResponse && !error && (
+
               <p className="text-sm text-muted-foreground text-center py-8">
                 {state === 'listening' ? 'Start speaking...' : 'Waiting...'}
               </p>
