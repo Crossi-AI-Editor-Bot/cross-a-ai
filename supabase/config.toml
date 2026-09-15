@@ -9,14 +9,12 @@ verify_jwt = false
 [functions.claim-advent]
 verify_jwt = false
 
-[functions.elevenlabs-token]
+[functions.gemini-live-token]
 verify_jwt = false
 
-[functions.elevenlabs-tts]
+[functions.call-charge]
 verify_jwt = false
 
-[functions.voice-chat]
-verify_jwt = false
 
 [functions.redeem-invite-code]
 verify_jwt = false
