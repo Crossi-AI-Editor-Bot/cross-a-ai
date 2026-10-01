@@ -102,14 +102,13 @@ serve(async (req) => {
           uses: 1,
           expireTime: new Date(now + 30 * 60_000).toISOString(),
           newSessionExpireTime: new Date(now + 2 * 60_000).toISOString(),
-          liveConnectConstraints: {
+          // REST name for the SDK's "liveConnectConstraints"
+          bidiGenerateContentSetup: {
             model: `models/${liveModel}`,
-            config: {
-              responseModalities: ["AUDIO"],
-              systemInstruction: { parts: [{ text: model.system_prompt || DEFAULT_PROMPT }] },
-              inputAudioTranscription: {},
-              outputAudioTranscription: {},
-            },
+            generationConfig: { responseModalities: ["AUDIO"] },
+            systemInstruction: { parts: [{ text: model.system_prompt || DEFAULT_PROMPT }] },
+            inputAudioTranscription: {},
+            outputAudioTranscription: {},
           },
         }),
       },
