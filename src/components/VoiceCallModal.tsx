@@ -110,38 +110,73 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
             </p>
           </div>
 
-          {/* Colorful sound waves */}
-          <div className="relative flex-1 min-h-[220px] rounded-2xl overflow-hidden border border-border bg-muted/30 flex items-center justify-center">
-            <div
-              className={cn(
-                "absolute w-40 h-40 rounded-full blur-3xl opacity-60 transition-all duration-700",
-                state === 'speaking' ? "bg-primary scale-125" : state === 'listening' ? "bg-accent scale-100" : "bg-muted scale-75"
-              )}
-              style={{ animation: state === 'speaking' || state === 'listening' ? 'pulse 2s ease-in-out infinite' : undefined }}
-            />
-            <div className="relative flex items-center gap-1.5 h-32">
-              {Array.from({ length: 24 }).map((_, i) => {
-                const active = state === 'speaking' || state === 'listening';
-                const hue = (i * 15 + (state === 'speaking' ? 0 : 180)) % 360;
-                return (
-                  <span
-                    key={i}
-                    className="w-1.5 rounded-full"
-                    style={{
-                      height: active ? '100%' : '12%',
-                      background: `linear-gradient(to top, hsl(${hue} 90% 55%), hsl(${(hue + 60) % 360} 90% 65%))`,
-                      animation: active ? `voiceWave ${0.6 + (i % 5) * 0.15}s ease-in-out ${i * 0.05}s infinite alternate` : undefined,
-                      transform: active ? undefined : 'scaleY(1)',
-                      transition: 'height 0.4s',
-                    }}
-                  />
-                );
-              })}
-            </div>
-            {error && (
-              <p className="absolute bottom-3 left-3 right-3 text-sm text-destructive text-center">{error}</p>
+          {/* Conversation history - scrollable */}
+          <div 
+            ref={scrollRef}
+            className="flex-1 min-h-[200px] max-h-[400px] overflow-y-auto rounded-lg bg-muted/30 border border-border p-3 space-y-3"
+          >
+            {callMessages.length === 0 && !partialTranscript && !aiResponse && !error && (
+
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {state === 'listening' ? 'Start speaking...' : 'Waiting...'}
+              </p>
             )}
-            <style>{`@keyframes voiceWave { 0% { transform: scaleY(0.15); } 100% { transform: scaleY(1); } }`}</style>
+
+            {callMessages.map((msg, index) => (
+              <div key={index} className={cn(
+                "flex gap-2 text-sm",
+                msg.role === 'user' ? "justify-end" : "justify-start"
+              )}>
+                {msg.role === 'assistant' && (
+                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                )}
+                <div className={cn(
+                  "rounded-lg px-3 py-2 max-w-[80%]",
+                  msg.role === 'user' 
+                    ? "bg-primary text-primary-foreground" 
+                    : "bg-card border border-border text-foreground"
+                )}>
+                  {msg.content}
+                </div>
+                {msg.role === 'user' && (
+                  <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5 text-accent-foreground" />
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Live transcript of what you are saying */}
+            {partialTranscript && (
+              <div className="flex gap-2 justify-end text-sm">
+                <div className="rounded-lg px-3 py-2 max-w-[80%] bg-primary/50 text-primary-foreground italic">
+                  {partialTranscript}
+                </div>
+                <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center shrink-0 mt-0.5">
+                  <User className="w-3.5 h-3.5 text-accent-foreground" />
+                </div>
+              </div>
+            )}
+
+            {/* Live transcript of the AI reply */}
+            {aiResponse && (
+              <div className="flex gap-2 justify-start text-sm">
+                <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div className="rounded-lg px-3 py-2 max-w-[80%] bg-card border border-border text-foreground italic">
+                  {aiResponse}
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <p className="text-sm text-destructive text-center py-2">
+                {error}
+              </p>
+            )}
           </div>
 
           {/* Controls */}
