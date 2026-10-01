@@ -17,7 +17,7 @@ interface UseVoiceCallOptions {
 }
 
 const LIVE_WS_BASE =
-  'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent';
+  'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained';
 
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
@@ -371,7 +371,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
             setAiResponse('');
             if (userText.trim() || modelText.trim()) {
               await persistExchange(userText, modelText);
-              await chargeExchange();
+              // calls are free
             }
           }
         };
