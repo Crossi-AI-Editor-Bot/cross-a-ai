@@ -112,28 +112,10 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     return data.id;
   }, []);
 
+  // Calls are ephemeral: nothing is saved to a chat.
   const persistExchange = useCallback(
-    async (userText: string, assistantText: string) => {
-      const trimmedUser = userText.trim();
-      const trimmedAssistant = assistantText.trim();
-      if (!trimmedUser && !trimmedAssistant) return;
-
-      const rows: CallMessage[] = [];
-      if (trimmedUser) rows.push({ role: 'user', content: trimmedUser });
-      if (trimmedAssistant) rows.push({ role: 'assistant', content: trimmedAssistant });
-
-      callMessagesRef.current = [...callMessagesRef.current, ...rows];
-      setCallMessages([...callMessagesRef.current]);
-
-      const convId = await ensureConversation();
-      if (!convId) return;
-      await supabase
-        .from('messages')
-        .insert(rows.map((r) => ({ conversation_id: convId, role: r.role, content: r.content })));
-      await supabase
-        .from('conversations')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', convId);
+    async (_userText: string, _assistantText: string) => {
+      void ensureConversation;
     },
     [ensureConversation],
   );
