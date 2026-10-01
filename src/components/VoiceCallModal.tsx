@@ -193,7 +193,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
 
           
           <p className="text-xs text-muted-foreground text-center">
-            {selectedModel ? `${selectedModel.cost} credit${selectedModel.cost !== 1 ? 's' : ''} per message` : '1 credit per message'}
+            Calls are free
           </p>
         </div>
       </DialogContent>

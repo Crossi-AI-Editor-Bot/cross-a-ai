@@ -89,18 +89,6 @@ serve(async (req) => {
     }
     if (!allowed) return json({ error: "This call model is VIP only" }, 403);
 
-    // Credit gate (one charge per spoken exchange happens in call-charge)
-    const { data: credits } = await supabase
-      .from("user_credits")
-      .select("credits")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    
-    // FIX: Used ?? instead of || so a cost of 0 does not evaluate to 1
-    if (!credits || credits.credits < Number(model.cost ?? 1)) {
-      return json({ error: "Insufficient credits" }, 402);
-    }
-
     const rawId = (model.model_id || "").split("/").pop() || DEFAULT_LIVE_MODEL;
     const liveModel = ALLOWED_LIVE_MODELS.includes(rawId) ? rawId : DEFAULT_LIVE_MODEL;
 
@@ -114,6 +102,15 @@ serve(async (req) => {
           uses: 1,
           expireTime: new Date(now + 30 * 60_000).toISOString(),
           newSessionExpireTime: new Date(now + 2 * 60_000).toISOString(),
+          liveConnectConstraints: {
+            model: `models/${liveModel}`,
+            config: {
+              responseModalities: ["AUDIO"],
+              systemInstruction: { parts: [{ text: model.system_prompt || DEFAULT_PROMPT }] },
+              inputAudioTranscription: {},
+              outputAudioTranscription: {},
+            },
+          },
         }),
       },
     );
@@ -131,7 +128,7 @@ serve(async (req) => {
       model: `models/${liveModel}`,
       systemPrompt: model.system_prompt || DEFAULT_PROMPT,
       // FIX: Used ?? instead of || so a cost of 0 does not evaluate to 1
-      cost: Number(model.cost ?? 1),
+      cost: 0,
       label: model.label,
     });
   } catch (error) {
