@@ -13,6 +13,7 @@ const PRICING: Record<string, { croinsPer10: number; table: string }> = {
   audio: { croinsPer10: 5, table: "user_audio_credits" },
   image: { croinsPer10: 15, table: "user_image_credits" },
   video: { croinsPer10: 200, table: "user_video_credits" },
+  call: { croinsPer10: 5, table: "user_call_credits" },
 };
 
 serve(async (req) => {

@@ -120,17 +120,43 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     [ensureConversation],
   );
 
-  const chargeExchange = useCallback(async () => {
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('call-charge', {
-        body: { modelCostId: options?.modelCostId },
-      });
-      if (fnError) return;
-      if (data?.credits !== undefined) options?.onCreditsUpdate?.(data.credits);
-    } catch {
-      /* charging failures must not break the call */
+  const pendingTokensRef = useRef(0);
+  const [callCredits, setCallCredits] = useState<number | null>(null);
+  const [callRate, setCallRate] = useState<number>(1);
+
+  const invokeCharge = useCallback(async (blocks: number) => {
+    const { data, error: fnError } = await supabase.functions.invoke('call-charge', {
+      body: { modelCostId: options?.modelCostId, blocks },
+    });
+    let payload: any = data;
+    let status = 200;
+    if (fnError) {
+      status = (fnError as any)?.context?.status ?? 500;
+      try { payload = await (fnError as any)?.context?.json?.(); } catch { /* ignore */ }
     }
+    if (payload?.credits !== undefined) {
+      setCallCredits(Number(payload.credits));
+      options?.onCreditsUpdate?.(Number(payload.credits));
+    }
+    if (payload?.rate !== undefined) setCallRate(Number(payload.rate));
+    return status;
   }, [options?.modelCostId, options?.onCreditsUpdate]);
+
+  // Returns false when the user ran out of call credits (and no Dynamic-VIP top-up worked).
+  const chargeExchange = useCallback(async (blocks: number): Promise<boolean> => {
+    try {
+      let status = await invokeCharge(blocks);
+      if (status === 402 && options?.isDynamic) {
+        const { data, error: e } = await supabase.functions.invoke('purchase-credits', {
+          body: { kind: 'call', amount: 10, discount_percent: options?.topupDiscountPercent ?? 10 },
+        });
+        if (!e && !(data as any)?.error) status = await invokeCharge(blocks);
+      }
+      return status !== 402;
+    } catch {
+      return true;
+    }
+  }, [invokeCharge, options?.isDynamic, options?.topupDiscountPercent]);
 
   /* ------------------------------- audio playback ------------------------------ */
 
