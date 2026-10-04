@@ -25,6 +25,7 @@ import { useVipTiers } from "@/hooks/useVipTiers";
 const VipTierComparisonChart = () => {
   const [openDialog, setOpenDialog] = useState<string | null>(null);
   const { tiers, loading: tiersLoading } = useVipTiers();
+  const visibleTiers = tiers.filter((t) => !(t as any).hidden);
 
   // Fetch models + their tier access from junction table
   const { data: modelsWithAccess = [] } = useQuery({
@@ -133,7 +134,7 @@ const VipTierComparisonChart = () => {
             <TableHeader>
               <TableRow className="bg-muted/30">
                 <TableHead className="w-[180px] font-semibold">Feature</TableHead>
-                {tiers.map((tier) => (
+                {visibleTiers.map((tier) => (
                   <TableHead key={tier.name} className="text-center min-w-[100px]">
                     <div className="flex flex-col items-center gap-1">
                       <VipTierIcon tier={tier.name} size="sm" />
@@ -148,7 +149,7 @@ const VipTierComparisonChart = () => {
             <TableBody>
               <TableRow className="bg-muted/10">
                 <TableCell className="font-medium text-sm">Exclusive VIP Models</TableCell>
-                {tiers.map((tier) => (
+                {visibleTiers.map((tier) => (
                   <TableCell key={tier.name} className="text-center text-sm">
                     {renderModelsCell(tier.name)}
                   </TableCell>
@@ -156,9 +157,11 @@ const VipTierComparisonChart = () => {
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium text-sm">Daily Credits</TableCell>
-                {tiers.map((tier) => (
+                {visibleTiers.map((tier) => (
                   <TableCell key={tier.name} className="text-center text-sm">
-                    <span className="font-medium">{tier.daily_credits}</span>
+                    <span className="font-medium">
+                      {(tier as any).unlimited ? "∞" : tier.daily_credits}
+                    </span>
                   </TableCell>
                 ))}
               </TableRow>

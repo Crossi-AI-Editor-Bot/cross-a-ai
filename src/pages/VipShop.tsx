@@ -165,7 +165,7 @@ const VipShop = () => {
                   <VipTierIcon tier={tier.name} size="xl" className="mx-auto mb-2" />
                   <CardTitle>{tier.display_name}</CardTitle>
                   <CardDescription>
-                    {tier.daily_credits} credits/day
+                    {(tier as any).unlimited ? "Unlimited credits/day" : `${tier.daily_credits} credits/day`}
                   </CardDescription>
                   {croinPrice > 0 && (
                     <div className="flex items-center justify-center gap-1 mt-1">
@@ -178,7 +178,11 @@ const VipShop = () => {
                   <ul className="space-y-2 mb-6">
                     <li className="flex items-start gap-2 text-sm">
                       <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span>{tier.daily_credits} daily credits</span>
+                      <span>
+                        {(tier as any).unlimited
+                          ? "Unlimited daily credits"
+                          : `${tier.daily_credits} daily credits`}
+                      </span>
                     </li>
                     <li className="flex items-start gap-2 text-sm">
                       <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
