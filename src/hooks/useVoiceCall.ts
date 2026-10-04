@@ -14,6 +14,8 @@ interface UseVoiceCallOptions {
   onCreditsUpdate?: (credits: number) => void;
   modelCostId?: string;
   conversationId?: string | null;
+  isDynamic?: boolean;
+  topupDiscountPercent?: number;
 }
 
 const LIVE_WS_BASE =
@@ -243,8 +245,13 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       setPartialTranscript('');
       setAiResponse('');
       setState('connecting');
+      pendingTokensRef.current = 0;
 
       try {
+        const balanceStatus = await invokeCharge(0);
+        if (balanceStatus === 200) {
+          // fetch current balance happened; block if empty and not dynamic
+        }
         const { data: session, error: sessionError } = await supabase.functions.invoke(
           'gemini-live-token',
           { body: { modelCostId: options?.modelCostId } },
@@ -331,6 +338,24 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
             source.connect(processor);
             processor.connect(inputCtx.destination);
             return;
+          }
+
+          const usedTokens = Number(msg.usageMetadata?.totalTokenCount ?? 0);
+          if (usedTokens > 0) {
+            pendingTokensRef.current += usedTokens;
+            const blocks = Math.floor(pendingTokensRef.current / 1000);
+            if (blocks > 0) {
+              pendingTokensRef.current -= blocks * 1000;
+              chargeExchange(blocks).then((ok) => {
+                if (!ok && !endedRef.current) {
+                  endedRef.current = true;
+                  cleanup();
+                  setError('Out of call credits');
+                  setState('error');
+                  toast({ title: 'Out of call credits', description: 'Buy more call credits in the VIP shop.', variant: 'destructive' });
+                }
+              });
+            }
           }
 
           const content = msg.serverContent;
