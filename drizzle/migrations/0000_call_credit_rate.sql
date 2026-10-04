@@ -1,0 +1,1 @@
+ALTER TABLE public.model_costs ADD COLUMN IF NOT EXISTS call_credits_per_1000_tokens numeric NOT NULL DEFAULT 1;

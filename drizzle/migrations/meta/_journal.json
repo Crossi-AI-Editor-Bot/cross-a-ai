@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791100822701,
+      "tag": "0000_call_credit_rate",
+      "breakpoints": true
+    }
+  ]
+}
