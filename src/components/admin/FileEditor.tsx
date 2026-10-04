@@ -34,6 +34,7 @@ interface ModelData {
   image_cost: number;
   video_credits_per_second?: number;
   audio_credits_per_second?: number;
+  call_credits_per_1000_tokens?: number;
   system_prompt?: string | null;
   is_fake?: boolean;
   fake_error_message?: string | null;
@@ -65,6 +66,7 @@ interface FileEditorProps {
   onUpdateImageCost?: (value: number) => void;
   onUpdateVideoCostPerSecond?: (value: number) => void;
   onUpdateAudioCostPer3Words?: (value: number) => void;
+  onUpdateCallCostPer1000?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
   onUpdateIsFake?: (value: boolean) => void;
   onUpdateFakeErrorMessage?: (value: string) => void;
@@ -86,6 +88,7 @@ export const FileEditor = ({
   onUpdateImageCost,
   onUpdateVideoCostPerSecond,
   onUpdateAudioCostPer3Words,
+  onUpdateCallCostPer1000,
   onUpdateSystemPrompt,
   onUpdateIsFake,
   onUpdateFakeErrorMessage,
@@ -252,6 +255,21 @@ export const FileEditor = ({
                 min="0"
                 value={model.audio_credits_per_second ?? 1}
                 onChange={(e) => onUpdateAudioCostPer3Words(parseFloat(e.target.value) || 0)}
+                className="h-7 w-24 text-sm font-mono bg-background text-purple-400"
+              />
+            </div>
+          )}
+
+          {onUpdateCallCostPer1000 && (model.folder || '').toLowerCase().startsWith('call models') && (
+            <div className="flex items-center gap-2">
+              <span className="text-purple-400">call_credits_per_1000_tokens</span>
+              <span className="text-muted-foreground">=</span>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                value={model.call_credits_per_1000_tokens ?? 1}
+                onChange={(e) => onUpdateCallCostPer1000(parseFloat(e.target.value) || 0)}
                 className="h-7 w-24 text-sm font-mono bg-background text-purple-400"
               />
             </div>
