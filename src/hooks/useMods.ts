@@ -6,7 +6,7 @@ export type ModId = "text-size" | "credit-recolor" | "copy" | "app-style" | "lik
 
 export const ALL_MODS: { id: ModId; name: string; description: string }[] = [
   { id: "text-size", name: "Text-Size-Changer", description: "Change the font size of the entire website." },
-  { id: "credit-recolor", name: "Credit-Recolor", description: "Recolor the audio, image and video credit pills." },
+  { id: "credit-recolor", name: "Credit-Recolor", description: "Recolor the audio, image, video and call credit pills." },
   { id: "copy", name: "Copy", description: "Adds a copy button to AI answers and your prompts." },
   { id: "app-style", name: "App-Style", description: "Change the app background and accent color — pick a preset or your own." },
   { id: "like-dislike", name: "Like/Dislike", description: "Rate AI messages — disliking regenerates the reply with a 50% credit discount." },
@@ -16,7 +16,7 @@ export type AppStylePreset = "classic" | "crossatrix" | "custom";
 
 export interface ModSettings {
   fontSize?: number; // px, default 16
-  creditColors?: { audio?: string; image?: string; video?: string };
+  creditColors?: { audio?: string; image?: string; video?: string; call?: string };
   appStyle?: {
     preset?: AppStylePreset;
     /** HSL triplets like "220 80% 12%" — only used when preset === "custom" */

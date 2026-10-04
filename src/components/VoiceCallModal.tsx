@@ -10,6 +10,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useVoiceCall, VoiceCallState } from '@/hooks/useVoiceCall';
 import { cn } from '@/lib/utils';
+import { useMods } from '@/hooks/useMods';
+import { useVipStatus } from '@/hooks/useVipStatus';
 import type { ModelCost } from '@/hooks/useModelCosts';
 
 interface VoiceCallModalProps {
@@ -30,16 +32,21 @@ const stateLabels: Record<VoiceCallState, string> = {
 };
 
 const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, existingConversationId }: VoiceCallModalProps) => {
+  const vip = useVipStatus() as any;
+  const mods = useMods() as any;
   const {
     state,
     partialTranscript,
     aiResponse,
     error,
     callMessages,
+    callCredits,
+    callRate,
     startCall,
     endCall,
     setConversationId,
-  } = useVoiceCall({ onCreditsUpdate, modelCostId: selectedModel?.id });
+  } = useVoiceCall({ onCreditsUpdate, modelCostId: selectedModel?.id, isDynamic: vip.isDynamic, topupDiscountPercent: vip.topupDiscountPercent });
+  const callColor = (mods as any)?.isInstalled?.('credit-recolor') ? (mods as any)?.settings?.creditColors?.call : undefined;
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -158,7 +165,14 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
 
           
           <p className="text-xs text-muted-foreground text-center">
-            Calls are free
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold border"
+              style={{ color: callColor || 'hsl(142 70% 50%)', borderColor: callColor || 'hsl(142 70% 50%)', background: 'hsl(142 70% 50% / 0.1)' }}
+            >
+              <Phone className="w-3 h-3" />
+              {callCredits === null ? '…' : Number(callCredits.toFixed(5))} call credits
+            </span>
+            <span className="block mt-1">{callRate} call credits per 1000 tokens</span>
           </p>
         </div>
       </DialogContent>

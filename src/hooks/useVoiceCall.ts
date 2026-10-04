@@ -248,10 +248,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       pendingTokensRef.current = 0;
 
       try {
-        const balanceStatus = await invokeCharge(0);
-        if (balanceStatus === 200) {
-          // fetch current balance happened; block if empty and not dynamic
-        }
+        await invokeCharge(0).catch(() => 0);
         const { data: session, error: sessionError } = await supabase.functions.invoke(
           'gemini-live-token',
           { body: { modelCostId: options?.modelCostId } },
@@ -432,7 +429,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
         toast({ title: 'Call failed', description: message, variant: 'destructive' });
       }
     },
-    [options?.modelCostId, cleanup, enqueueAudio, persistExchange, chargeExchange, stopPlayback, toast],
+    [options?.modelCostId, cleanup, enqueueAudio, persistExchange, chargeExchange, invokeCharge, stopPlayback, toast],
   );
 
   const endCall = useCallback(async () => {
@@ -479,6 +476,8 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     aiResponse,
     error,
     callMessages,
+    callCredits,
+    callRate,
     startCall,
     endCall,
     getConversationId,
