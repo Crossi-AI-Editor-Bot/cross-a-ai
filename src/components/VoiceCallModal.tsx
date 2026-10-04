@@ -46,7 +46,7 @@ const VoiceCallModal = ({ open, onOpenChange, onCreditsUpdate, selectedModel, ex
     endCall,
     setConversationId,
   } = useVoiceCall({ onCreditsUpdate, modelCostId: selectedModel?.id, isDynamic: vip.isDynamic, topupDiscountPercent: vip.topupDiscountPercent });
-  const callColor = (mods as any)?.isInstalled?.('credit-recolor') ? (mods as any)?.settings?.creditColors?.call : undefined;
+  const callColor = mods?.has?.('credit-recolor') ? mods?.settings?.creditColors?.call : undefined;
 
   const scrollRef = useRef<HTMLDivElement>(null);
 

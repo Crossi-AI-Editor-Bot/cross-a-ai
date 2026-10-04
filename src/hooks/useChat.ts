@@ -22,7 +22,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
   const { isDynamic, topupDiscountPercent } = useVipStatus();
 
   // Silently top up 10 credits at the configured Dynamic-VIP discount, returns true on success
-  const tryDynamicTopup = async (kind: "text" | "image" | "video" | "audio"): Promise<boolean> => {
+  const tryDynamicTopup = async (kind: "text" | "image" | "video" | "audio" | "call"): Promise<boolean> => {
     if (!isDynamic) return false;
     try {
       const { data, error } = await supabase.functions.invoke("purchase-credits", {
@@ -344,7 +344,7 @@ export const useChat = (conversationId: string | null, onTitleGenerated?: () => 
         const cloned = response.clone();
         const errData = await cloned.json().catch(() => ({}));
         // best-effort kind detection: assume text unless server hints otherwise
-        const hintedKind = (errData as any)?.kind as ("text" | "image" | "video" | "audio" | undefined);
+        const hintedKind = (errData as any)?.kind as ("text" | "image" | "video" | "audio" | "call" | undefined);
         const topped = await tryDynamicTopup(hintedKind || "text");
         if (topped) {
           response = await doChatCall();
