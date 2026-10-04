@@ -480,6 +480,7 @@ export type Database = {
         Row: {
           audio_credits_per_second: number | null
           bronze_access: boolean
+          call_credits_per_1000_tokens: number
           copper_access: boolean
           cost: number
           description: string | null
@@ -520,6 +521,7 @@ export type Database = {
         Insert: {
           audio_credits_per_second?: number | null
           bronze_access?: boolean
+          call_credits_per_1000_tokens?: number
           copper_access?: boolean
           cost: number
           description?: string | null
@@ -560,6 +562,7 @@ export type Database = {
         Update: {
           audio_credits_per_second?: number | null
           bronze_access?: boolean
+          call_credits_per_1000_tokens?: number
           copper_access?: boolean
           cost?: number
           description?: string | null

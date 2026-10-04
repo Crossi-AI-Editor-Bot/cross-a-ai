@@ -3,17 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Coins, MessageSquare, Mic, Image as ImageIcon, Video } from "lucide-react";
+import { Coins, Phone, MessageSquare, Mic, Image as ImageIcon, Video } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-type Kind = "text" | "audio" | "image" | "video";
+type Kind = "text" | "audio" | "image" | "video" | "call";
 
 const OPTIONS: { kind: Kind; label: string; per10: number; icon: any; color: string }[] = [
   { kind: "text", label: "Text Credits", per10: 2, icon: MessageSquare, color: "text-blue-500" },
   { kind: "audio", label: "Audio Credits", per10: 5, icon: Mic, color: "text-green-500" },
   { kind: "image", label: "Image Credits", per10: 15, icon: ImageIcon, color: "text-purple-500" },
   { kind: "video", label: "Video Credits", per10: 200, icon: Video, color: "text-red-500" },
+  { kind: "call", label: "Call Credits", per10: 5, icon: Phone, color: "text-green-500" },
 ];
 
 interface Props {
@@ -23,7 +24,7 @@ interface Props {
 
 const CreditPurchaseSection = ({ croinBalance, refetchCroins }: Props) => {
   const { toast } = useToast();
-  const [amounts, setAmounts] = useState<Record<Kind, number>>({ text: 10, audio: 10, image: 10, video: 10 });
+  const [amounts, setAmounts] = useState<Record<Kind, number>>({ text: 10, audio: 10, image: 10, video: 10, call: 10 });
   const [loading, setLoading] = useState<Kind | null>(null);
 
   const handleBuy = async (kind: Kind, per10: number) => {

@@ -33,6 +33,7 @@ interface ModelState {
   image_cost: number;
   video_credits_per_second: number;
   audio_credits_per_second: number;
+  call_credits_per_1000_tokens?: number;
   system_prompt: string | null;
   is_fake: boolean;
   fake_error_message: string | null;
@@ -128,6 +129,7 @@ const AdminPanel = () => {
       image_cost: model.image_cost || 0,
       video_credits_per_second: model.video_credits_per_second ?? 1,
       audio_credits_per_second: model.audio_credits_per_second ?? 1,
+      call_credits_per_1000_tokens: (model as any).call_credits_per_1000_tokens ?? 1,
       system_prompt: model.system_prompt || null,
       is_fake: !!model.is_fake,
       fake_error_message: model.fake_error_message ?? null,
@@ -381,6 +383,7 @@ const AdminPanel = () => {
             image_cost: model.image_cost,
             video_credits_per_second: model.video_credits_per_second,
             audio_credits_per_second: model.audio_credits_per_second,
+            call_credits_per_1000_tokens: model.call_credits_per_1000_tokens,
             system_prompt: model.system_prompt,
             is_fake: model.is_fake,
             fake_error_message: model.fake_error_message,
@@ -592,6 +595,7 @@ const AdminPanel = () => {
                 onUpdateImageCost={(value) => updateModel(selectedModel.id, { image_cost: value })}
                 onUpdateVideoCostPerSecond={(value) => updateModel(selectedModel.id, { video_credits_per_second: value })}
                 onUpdateAudioCostPer3Words={(value) => updateModel(selectedModel.id, { audio_credits_per_second: value })}
+                onUpdateCallCostPer1000={(value) => updateModel(selectedModel.id, { call_credits_per_1000_tokens: value } as any)}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
                 onUpdateIsFake={(value) => updateModel(selectedModel.id, { is_fake: value })}
                 onUpdateFakeErrorMessage={(value) => updateModel(selectedModel.id, { fake_error_message: value })}

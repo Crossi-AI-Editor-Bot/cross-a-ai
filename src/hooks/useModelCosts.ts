@@ -12,6 +12,7 @@ export interface ModelCost {
   image_cost: number;
   video_credits_per_second: number;
   audio_credits_per_second: number;
+  call_credits_per_1000_tokens?: number;
   folder: string | null;
   system_prompt: string | null;
   is_fake: boolean;
@@ -37,7 +38,7 @@ const modelCostsStore = createSharedStore<ModelCost[]>(async () => {
   const [modelsRes, accessRes] = await Promise.all([
     supabase
       .from("model_costs")
-      .select("id, model_id, label, description, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal")
+      .select("id, model_id, label, description, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, call_credits_per_1000_tokens, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal")
       .order("cost", { ascending: false }),
     supabase
       .from("model_tier_access" as any)
@@ -64,6 +65,7 @@ const modelCostsStore = createSharedStore<ModelCost[]>(async () => {
     image_cost: m.image_cost || 0,
     video_credits_per_second: Number(m.video_credits_per_second ?? 1),
     audio_credits_per_second: Number(m.audio_credits_per_second ?? 1),
+    call_credits_per_1000_tokens: Number(m.call_credits_per_1000_tokens ?? 1),
     folder: m.folder,
     system_prompt: m.system_prompt,
     is_fake: !!m.is_fake,

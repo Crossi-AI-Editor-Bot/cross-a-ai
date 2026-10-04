@@ -95,12 +95,12 @@ const Settings = () => {
                   <div className="font-semibold">Credit Colors</div>
                   <div className="text-sm text-muted-foreground">Recolor your credit pills.</div>
                 </div>
-                {(["audio", "image", "video"] as const).map((k) => (
+                {(["audio", "image", "video", "call"] as const).map((k) => (
                   <div key={k} className="flex items-center justify-between gap-3">
                     <Label className="capitalize">{k} credits</Label>
                     <input
                       type="color"
-                      value={(colors as any)[k] || (k === "audio" ? "#fdba74" : k === "image" ? "#d8b4fe" : "#7dd3fc")}
+                      value={(colors as any)[k] || (k === "audio" ? "#fdba74" : k === "image" ? "#d8b4fe" : k === "call" ? "#4ade80" : "#7dd3fc")}
                       onChange={(e) => updateSettings({ creditColors: { ...colors, [k]: e.target.value } })}
                       className="h-10 w-16 rounded cursor-pointer bg-transparent border border-border"
                     />

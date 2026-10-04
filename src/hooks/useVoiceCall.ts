@@ -14,6 +14,8 @@ interface UseVoiceCallOptions {
   onCreditsUpdate?: (credits: number) => void;
   modelCostId?: string;
   conversationId?: string | null;
+  isDynamic?: boolean;
+  topupDiscountPercent?: number;
 }
 
 const LIVE_WS_BASE =
@@ -120,17 +122,43 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     [ensureConversation],
   );
 
-  const chargeExchange = useCallback(async () => {
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('call-charge', {
-        body: { modelCostId: options?.modelCostId },
-      });
-      if (fnError) return;
-      if (data?.credits !== undefined) options?.onCreditsUpdate?.(data.credits);
-    } catch {
-      /* charging failures must not break the call */
+  const pendingTokensRef = useRef(0);
+  const [callCredits, setCallCredits] = useState<number | null>(null);
+  const [callRate, setCallRate] = useState<number>(1);
+
+  const invokeCharge = useCallback(async (blocks: number) => {
+    const { data, error: fnError } = await supabase.functions.invoke('call-charge', {
+      body: { modelCostId: options?.modelCostId, blocks },
+    });
+    let payload: any = data;
+    let status = 200;
+    if (fnError) {
+      status = (fnError as any)?.context?.status ?? 500;
+      try { payload = await (fnError as any)?.context?.json?.(); } catch { /* ignore */ }
     }
+    if (payload?.credits !== undefined) {
+      setCallCredits(Number(payload.credits));
+      options?.onCreditsUpdate?.(Number(payload.credits));
+    }
+    if (payload?.rate !== undefined) setCallRate(Number(payload.rate));
+    return status;
   }, [options?.modelCostId, options?.onCreditsUpdate]);
+
+  // Returns false when the user ran out of call credits (and no Dynamic-VIP top-up worked).
+  const chargeExchange = useCallback(async (blocks: number): Promise<boolean> => {
+    try {
+      let status = await invokeCharge(blocks);
+      if (status === 402 && options?.isDynamic) {
+        const { data, error: e } = await supabase.functions.invoke('purchase-credits', {
+          body: { kind: 'call', amount: 10, discount_percent: options?.topupDiscountPercent ?? 10 },
+        });
+        if (!e && !(data as any)?.error) status = await invokeCharge(blocks);
+      }
+      return status !== 402;
+    } catch {
+      return true;
+    }
+  }, [invokeCharge, options?.isDynamic, options?.topupDiscountPercent]);
 
   /* ------------------------------- audio playback ------------------------------ */
 
@@ -217,8 +245,10 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
       setPartialTranscript('');
       setAiResponse('');
       setState('connecting');
+      pendingTokensRef.current = 0;
 
       try {
+        await invokeCharge(0).catch(() => 0);
         const { data: session, error: sessionError } = await supabase.functions.invoke(
           'gemini-live-token',
           { body: { modelCostId: options?.modelCostId } },
@@ -307,6 +337,24 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
             return;
           }
 
+          const usedTokens = Number(msg.usageMetadata?.totalTokenCount ?? 0);
+          if (usedTokens > 0) {
+            pendingTokensRef.current += usedTokens;
+            const blocks = Math.floor(pendingTokensRef.current / 1000);
+            if (blocks > 0) {
+              pendingTokensRef.current -= blocks * 1000;
+              chargeExchange(blocks).then((ok) => {
+                if (!ok && !endedRef.current) {
+                  endedRef.current = true;
+                  cleanup();
+                  setError('Out of call credits');
+                  setState('error');
+                  toast({ title: 'Out of call credits', description: 'Buy more call credits in the VIP shop.', variant: 'destructive' });
+                }
+              });
+            }
+          }
+
           const content = msg.serverContent;
           if (!content) {
             if (msg.error) {
@@ -381,7 +429,7 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
         toast({ title: 'Call failed', description: message, variant: 'destructive' });
       }
     },
-    [options?.modelCostId, cleanup, enqueueAudio, persistExchange, chargeExchange, stopPlayback, toast],
+    [options?.modelCostId, cleanup, enqueueAudio, persistExchange, chargeExchange, invokeCharge, stopPlayback, toast],
   );
 
   const endCall = useCallback(async () => {
@@ -428,6 +476,8 @@ export const useVoiceCall = (options?: UseVoiceCallOptions) => {
     aiResponse,
     error,
     callMessages,
+    callCredits,
+    callRate,
     startCall,
     endCall,
     getConversationId,
