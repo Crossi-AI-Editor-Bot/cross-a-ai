@@ -12,7 +12,7 @@ export interface ModelCost {
   image_cost: number;
   video_credits_per_second: number;
   audio_credits_per_second: number;
-  call_credits_per_1000_tokens: number;
+  call_credits_per_1000_tokens?: number;
   folder: string | null;
   system_prompt: string | null;
   is_fake: boolean;
