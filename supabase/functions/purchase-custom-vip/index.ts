@@ -133,6 +133,17 @@ serve(async (req) => {
       });
     }
 
+    // Initialize custom balances
+    const nowIso = new Date().toISOString();
+    const today = nowIso.slice(0, 10);
+    await Promise.all([
+      serviceClient.from("user_credits").update({ credits: config.daily_credits, last_reset_date: today }).eq("user_id", userId),
+      serviceClient.from("user_image_credits").update({ credits: config.weekly_image_credits, last_reset_date: today }).eq("user_id", userId),
+      serviceClient.from("user_audio_credits").upsert({ user_id: userId, credits: config.weekly_audio_credits ?? 10, last_reset_date: nowIso }, { onConflict: "user_id" }),
+      serviceClient.from("user_video_credits").upsert({ user_id: userId, credits: config.monthly_video_credits ?? 5, last_reset_date: nowIso }, { onConflict: "user_id" }),
+      serviceClient.from("user_call_credits").update({ credits: config.weekly_call_credits ?? 100, last_reset_date: today }).eq("user_id", userId),
+    ]);
+
     // Update custom config status
     await serviceClient
       .from("custom_vip_configs")
