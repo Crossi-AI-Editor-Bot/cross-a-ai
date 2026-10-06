@@ -69,6 +69,9 @@ interface CustomConfig {
   colorIndex: number;
   daily_credits: number;
   weekly_image_credits: number;
+  weekly_audio_credits: number;
+  monthly_video_credits: number;
+  weekly_call_credits: number;
   model_access_tier: string;
   ai_price?: number | null;
   ai_reasoning?: string | null;
@@ -87,6 +90,9 @@ const CustomVipBuilder = () => {
     colorIndex: 0,
     daily_credits: 15,
     weekly_image_credits: 30,
+    weekly_audio_credits: 10,
+    monthly_video_credits: 5,
+    weekly_call_credits: 100,
     model_access_tier: visibleTiers[0]?.name || "bronze",
   });
 
@@ -121,6 +127,9 @@ const CustomVipBuilder = () => {
           colorIndex: colorIdx >= 0 ? colorIdx : 0,
           daily_credits: d.daily_credits,
           weekly_image_credits: d.weekly_image_credits,
+          weekly_audio_credits: d.weekly_audio_credits ?? 10,
+          monthly_video_credits: d.monthly_video_credits ?? 5,
+          weekly_call_credits: d.weekly_call_credits ?? 100,
           model_access_tier: d.model_access_tier,
           ai_price: d.ai_price,
           ai_reasoning: d.ai_reasoning,
@@ -136,6 +145,9 @@ const CustomVipBuilder = () => {
   const SelectedIcon = iconMap[config.icon_name] || Crown;
 
   const maxCredits = Math.max(...tiers.map(t => t.daily_credits), 50);
+  const maxAudioCredits = Math.max(...tiers.map(t => (t as any).weekly_audio_credits || 10), 100);
+  const maxVideoCredits = Math.max(...tiers.map(t => (t as any).monthly_video_credits || 5), 50);
+  const maxCallCredits = Math.max(...tiers.map(t => (t as any).weekly_call_credits || 100), 500);
   const maxImageCredits = Math.max(...tiers.map(t => (t as any).weekly_image_credits || 30), 100);
 
   const handleSubmitForPricing = async () => {
@@ -161,6 +173,9 @@ const CustomVipBuilder = () => {
             color_label: colorPreset.label,
             daily_credits: config.daily_credits,
             weekly_image_credits: config.weekly_image_credits,
+            weekly_audio_credits: config.weekly_audio_credits,
+            monthly_video_credits: config.monthly_video_credits,
+            weekly_call_credits: config.weekly_call_credits,
             model_access_tier: config.model_access_tier,
           } as any)
           .select()
@@ -182,6 +197,9 @@ const CustomVipBuilder = () => {
             color_label: colorPreset.label,
             daily_credits: config.daily_credits,
             weekly_image_credits: config.weekly_image_credits,
+            weekly_audio_credits: config.weekly_audio_credits,
+            monthly_video_credits: config.monthly_video_credits,
+            weekly_call_credits: config.weekly_call_credits,
             model_access_tier: config.model_access_tier,
             status: "pending",
           } as any)
@@ -254,6 +272,9 @@ const CustomVipBuilder = () => {
       colorIndex: 0,
       daily_credits: 15,
       weekly_image_credits: 30,
+    weekly_audio_credits: 10,
+    monthly_video_credits: 5,
+    weekly_call_credits: 100,
       model_access_tier: visibleTiers[0]?.name || "bronze",
     });
     setExistingConfig(null);
@@ -368,6 +389,48 @@ const CustomVipBuilder = () => {
           />
         </div>
 
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <Label className="text-xs">Weekly Audio Credits</Label>
+            <span className="text-xs font-mono font-bold">{config.weekly_audio_credits}</span>
+          </div>
+          <Slider
+            value={[config.weekly_audio_credits]}
+            onValueChange={([v]) => setConfig(p => ({ ...p, weekly_audio_credits: v, status: undefined, ai_price: null }))}
+            min={0}
+            max={maxAudioCredits}
+            step={5}
+          />
+        </div>
+
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <Label className="text-xs">Monthly Video Credits</Label>
+            <span className="text-xs font-mono font-bold">{config.monthly_video_credits}</span>
+          </div>
+          <Slider
+            value={[config.monthly_video_credits]}
+            onValueChange={([v]) => setConfig(p => ({ ...p, monthly_video_credits: v, status: undefined, ai_price: null }))}
+            min={0}
+            max={maxVideoCredits}
+            step={1}
+          />
+        </div>
+
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <Label className="text-xs">Weekly Call Credits</Label>
+            <span className="text-xs font-mono font-bold">{config.weekly_call_credits}</span>
+          </div>
+          <Slider
+            value={[config.weekly_call_credits]}
+            onValueChange={([v]) => setConfig(p => ({ ...p, weekly_call_credits: v, status: undefined, ai_price: null }))}
+            min={0}
+            max={maxCallCredits}
+            step={10}
+          />
+        </div>
+
         {/* Model Access Tier */}
         <div>
           <Label className="text-xs">Model Access (same as tier)</Label>
@@ -453,7 +516,7 @@ const CustomVipBuilder = () => {
               Subscribe to <strong>{config.display_name}</strong> for{" "}
               <strong className="text-yellow-500">¢{config.ai_price}</strong>/month?
               <span className="block mt-2 text-xs">
-                {config.daily_credits} daily credits, {config.weekly_image_credits} weekly image credits,
+                {config.daily_credits} daily credits, {config.weekly_image_credits} weekly image, {config.weekly_audio_credits} weekly audio, {config.monthly_video_credits} monthly video, {config.weekly_call_credits} weekly call credits,
                 {" "}{config.model_access_tier} tier model access. Auto-renews monthly.
               </span>
               {croinBalance !== null && config.ai_price && (
