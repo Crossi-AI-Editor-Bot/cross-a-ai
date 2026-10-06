@@ -1130,3 +1130,45 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     );
   }
 });
+
+// ---- CF API models (model_id prefix "cf/") ---------------------------------
+// Calls AIREQUESTURL with Bearer CFKEY using { system_prompt, prompt } and
+// adapts the reply into an OpenAI-compatible response (SSE or JSON).
+function extractCfText(d: any): string {
+  if (typeof d === "string") return d;
+  return d?.response ?? d?.result?.response ?? d?.text ?? d?.output ?? d?.answer ??
+    d?.choices?.[0]?.message?.content ?? d?.result ?? "";
+}
+async function callCfApi(msgs: any[], stream: boolean): Promise<Response> {
+  let url = Deno.env.get("AIREQUESTURL") ?? "";
+  const key = Deno.env.get("CFKEY") ?? "";
+  if (!url || !key) return new Response("CF API not configured", { status: 500 });
+  if (!/^https?:\/\//.test(url)) url = `https://${url}`;
+  const toText = (c: any) => typeof c === "string" ? c : Array.isArray(c) ? c.map((p: any) => p?.text ?? "").join("") : "";
+  const system_prompt = msgs.filter((m) => m.role === "system").map((m) => toText(m.content)).join("\n\n");
+  const convo = msgs.filter((m) => m.role !== "system");
+  const last = convo[convo.length - 1];
+  const history = convo.slice(0, -1).map((m) => `${m.role === "assistant" ? "Assistant" : m.role === "tool" ? "Tool" : "User"}: ${toText(m.content)}`).join("\n");
+  const prompt = history ? `${history}\nUser: ${toText(last?.content)}` : toText(last?.content);
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ system_prompt, prompt }),
+  });
+  const raw = await r.text();
+  if (!r.ok) return new Response(raw, { status: r.status });
+  let text = raw;
+  try { text = String(extractCfText(JSON.parse(raw)) || ""); } catch { /* plain text */ }
+  if (!stream) {
+    return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: text } }] }), { headers: { "Content-Type": "application/json" } });
+  }
+  const enc = new TextEncoder();
+  const body = new ReadableStream({
+    start(c) {
+      c.enqueue(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`));
+      c.enqueue(enc.encode("data: [DONE]\n\n"));
+      c.close();
+    },
+  });
+  return new Response(body, { headers: { "Content-Type": "text/event-stream" } });
+}
