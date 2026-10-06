@@ -8,6 +8,13 @@
       "when": 1791100822701,
       "tag": "0000_call_credit_rate",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791265378580,
+      "tag": "0001_custom_vip_media_call_credits",
+      "breakpoints": true
     }
   ]
 }

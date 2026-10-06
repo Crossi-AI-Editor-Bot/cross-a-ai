@@ -138,6 +138,7 @@ interface EditingTier {
   weekly_image_credits: number;
   weekly_audio_credits: number;
   monthly_video_credits: number;
+  weekly_call_credits: number;
   croin_price: number;
   sort_order: number;
   icon_name: string;
@@ -155,14 +156,14 @@ const VipTierManager = () => {
   const [editingTier, setEditingTier] = useState<EditingTier | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [activeTab, setActiveTab] = useState<'vip' | 'free'>('vip');
-  const [freeDefaults, setFreeDefaults] = useState({ daily_credits: 15, weekly_image: 30, weekly_audio: 10, monthly_video: 5 });
+  const [freeDefaults, setFreeDefaults] = useState({ daily_credits: 15, weekly_image: 30, weekly_audio: 10, monthly_video: 5, weekly_call: 100 });
   const [savingFree, setSavingFree] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       const { data } = await (await import('@/integrations/supabase/client')).supabase
         .from('site_settings').select('value').eq('key', 'free_tier_defaults').maybeSingle();
-      if (data?.value) setFreeDefaults({ daily_credits: 15, weekly_image: 30, weekly_audio: 10, monthly_video: 5, ...(data.value as any) });
+      if (data?.value) setFreeDefaults({ daily_credits: 15, weekly_image: 30, weekly_audio: 10, monthly_video: 5, weekly_call: 100, ...(data.value as any) });
     };
     load();
   }, []);
@@ -190,6 +191,7 @@ const VipTierManager = () => {
       weekly_image_credits: (tier as any).weekly_image_credits ?? 30,
       weekly_audio_credits: (tier as any).weekly_audio_credits ?? 10,
       monthly_video_credits: (tier as any).monthly_video_credits ?? 5,
+      weekly_call_credits: (tier as any).weekly_call_credits ?? 100,
       croin_price: (tier as any).croin_price ?? 0,
       sort_order: tier.sort_order,
       icon_name: tier.icon_name,
@@ -210,6 +212,7 @@ const VipTierManager = () => {
       weekly_image_credits: 30,
       weekly_audio_credits: 10,
       monthly_video_credits: 5,
+      weekly_call_credits: 100,
       croin_price: 0,
       sort_order: (tiers.length + 1) * 10,
       icon_name: "Crown",
@@ -233,6 +236,7 @@ const VipTierManager = () => {
       weekly_image_credits: editingTier.weekly_image_credits,
       weekly_audio_credits: editingTier.weekly_audio_credits,
       monthly_video_credits: editingTier.monthly_video_credits,
+      weekly_call_credits: editingTier.weekly_call_credits,
       croin_price: editingTier.croin_price,
       sort_order: editingTier.sort_order,
       icon_name: editingTier.icon_name,
@@ -337,6 +341,10 @@ const VipTierManager = () => {
                 <label className="text-xs text-muted-foreground">Monthly Video Credits</label>
                 <Input type="number" value={freeDefaults.monthly_video} onChange={(e) => setFreeDefaults({ ...freeDefaults, monthly_video: parseInt(e.target.value) || 0 })} className="h-8" />
               </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Weekly Call Credits</label>
+                <Input type="number" value={freeDefaults.weekly_call} onChange={(e) => setFreeDefaults({ ...freeDefaults, weekly_call: parseInt(e.target.value) || 0 })} className="h-8" />
+              </div>
             </div>
             <Button size="sm" onClick={saveFreeDefaults} disabled={savingFree}>
               <Save className="w-4 h-4 mr-1" /> {savingFree ? 'Saving…' : 'Save Free Defaults'}
@@ -432,6 +440,12 @@ const VipTierManager = () => {
                   <label className="text-xs text-muted-foreground">Monthly Video Credits</label>
                   <Input type="number" value={editingTier.monthly_video_credits}
                     onChange={(e) => setEditingTier({ ...editingTier, monthly_video_credits: parseInt(e.target.value) || 0 })}
+                    className="h-8 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Weekly Call Credits</label>
+                  <Input type="number" value={editingTier.weekly_call_credits}
+                    onChange={(e) => setEditingTier({ ...editingTier, weekly_call_credits: parseInt(e.target.value) || 0 })}
                     className="h-8 text-sm" />
                 </div>
                 <div>

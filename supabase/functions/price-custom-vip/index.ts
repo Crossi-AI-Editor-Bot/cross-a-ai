@@ -65,11 +65,11 @@ serve(async (req) => {
     // Get all existing VIP tiers for pricing context
     const { data: tiers } = await serviceClient
       .from("vip_tiers")
-      .select("name, display_name, daily_credits, weekly_image_credits, croin_price, sort_order")
+      .select("name, display_name, daily_credits, weekly_image_credits, weekly_audio_credits, monthly_video_credits, weekly_call_credits, croin_price, sort_order")
       .order("sort_order", { ascending: true });
 
     const tierInfo = (tiers || []).map(t => 
-      `${t.display_name}: ${t.daily_credits} daily credits, ${t.weekly_image_credits} weekly image credits, ¢${t.croin_price}/month`
+      `${t.display_name}: ${t.daily_credits} daily credits, ${t.weekly_image_credits} weekly image, ${t.weekly_audio_credits} weekly audio, ${t.monthly_video_credits} monthly video, ${t.weekly_call_credits} weekly call credits, ¢${t.croin_price}/month`
     ).join("\n");
 
     // Call GPT Nano via Lovable AI gateway to price this custom VIP
@@ -89,6 +89,9 @@ ${tierInfo}
 The user wants a custom VIP with:
 - Daily credits: ${config.daily_credits}
 - Weekly image credits: ${config.weekly_image_credits}
+- Weekly audio credits: ${config.weekly_audio_credits}
+- Monthly video credits: ${config.monthly_video_credits}
+- Weekly call credits: ${config.weekly_call_credits}
 - Model access equivalent to: ${config.model_access_tier} tier
 
 Rules:
