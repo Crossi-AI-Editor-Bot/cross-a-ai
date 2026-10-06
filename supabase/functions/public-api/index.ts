@@ -122,6 +122,26 @@ Deno.serve(async (req) => {
       return json(200, { task: data });
     }
 
+    if (modelId.startsWith('cf/')) {
+      let cfUrl = Deno.env.get('AIREQUESTURL') ?? '';
+      const cfKey = Deno.env.get('CFKEY') ?? '';
+      if (!cfUrl || !cfKey) return json(500, { error: 'CF API not configured' });
+      if (!/^https?:\/\//.test(cfUrl)) cfUrl = `https://${cfUrl}`;
+      const r = await fetch(cfUrl, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cfKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system_prompt: match.system_prompt || '', prompt }),
+      });
+      const raw = await r.text();
+      if (!r.ok) return json(r.status, { error: 'AI error', details: raw });
+      let text = raw;
+      try {
+        const d = JSON.parse(raw);
+        text = d?.response ?? d?.result?.response ?? d?.text ?? d?.output ?? d?.answer ?? raw;
+      } catch { /* plain */ }
+      return json(200, { model: match.label, response: text });
+    }
+
     // Text / chat path
     const apiUrl = isOpenRouter
       ? 'https://openrouter.ai/api/v1/chat/completions'
