@@ -111,6 +111,7 @@ export const FileExplorer = ({
   const [newModelLabel, setNewModelLabel] = useState("");
   const [showAddOpenRouterModel, setShowAddOpenRouterModel] = useState(false);
   const [newOpenRouterId, setNewOpenRouterId] = useState("");
+  const [showAddCfModel, setShowAddCfModel] = useState(false);
   const [showAddVideoModel, setShowAddVideoModel] = useState(false);
   const [selectedVideoSlug, setSelectedVideoSlug] = useState<string>(MAGIC_HOUR_VIDEO_ENDPOINTS[0].slug);
   const [showAddAudioModel, setShowAddMusicModel] = useState(false);
@@ -147,6 +148,15 @@ export const FileExplorer = ({
       setNewModelLabel("");
       setNewOpenRouterId("");
       setShowAddOpenRouterModel(false);
+    }
+  };
+
+  const handleAddCfModel = () => {
+    if (newModelLabel.trim() && onAddModel) {
+      const slug = newModelLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "model";
+      onAddModel(`cf/${slug}-${Date.now().toString(36)}`, newModelLabel.trim());
+      setNewModelLabel("");
+      setShowAddCfModel(false);
     }
   };
 
@@ -475,6 +485,16 @@ export const FileExplorer = ({
                 <Plus className="h-3 w-3 mr-1" />
                 OpenRouter
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowAddCfModel(true)}
+                title="Add CF API Model"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                CF
+              </Button>
             </>
           )}
           <Button
@@ -617,6 +637,30 @@ export const FileExplorer = ({
                 <X className="h-3 w-3" />
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Add new CF model input */}
+        {showAddCfModel && (
+          <div className="flex items-center gap-1 px-2 py-2 bg-primary/20 rounded-md mb-2">
+            <FileText className="h-4 w-4 text-primary shrink-0" />
+            <Input
+              autoFocus
+              value={newModelLabel}
+              onChange={(e) => setNewModelLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddCfModel();
+                if (e.key === "Escape") setShowAddCfModel(false);
+              }}
+              className="h-6 text-xs"
+              placeholder="CF model name..."
+            />
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddCfModel}>
+              <Save className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddCfModel(false)}>
+              <X className="h-3 w-3" />
+            </Button>
           </div>
         )}
 

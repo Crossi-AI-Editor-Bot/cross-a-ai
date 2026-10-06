@@ -967,6 +967,9 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
     };
 
     const doModelCall = async (msgs: any[], stream: boolean) => {
+      if (String(requestBody.model || "").startsWith("cf/")) {
+        return await callCfApi(msgs, stream);
+      }
       return await fetch(gatewayUrl, {
         method: "POST",
         headers: {
