@@ -285,10 +285,13 @@ export type Database = {
           icon_name: string
           id: string
           model_access_tier: string
+          monthly_video_credits: number
           status: string
           text_color: string
           updated_at: string
           user_id: string
+          weekly_audio_credits: number
+          weekly_call_credits: number
           weekly_image_credits: number
         }
         Insert: {
@@ -305,10 +308,13 @@ export type Database = {
           icon_name?: string
           id?: string
           model_access_tier?: string
+          monthly_video_credits?: number
           status?: string
           text_color?: string
           updated_at?: string
           user_id: string
+          weekly_audio_credits?: number
+          weekly_call_credits?: number
           weekly_image_credits?: number
         }
         Update: {
@@ -325,10 +331,13 @@ export type Database = {
           icon_name?: string
           id?: string
           model_access_tier?: string
+          monthly_video_credits?: number
           status?: string
           text_color?: string
           updated_at?: string
           user_id?: string
+          weekly_audio_credits?: number
+          weekly_call_credits?: number
           weekly_image_credits?: number
         }
         Relationships: []
