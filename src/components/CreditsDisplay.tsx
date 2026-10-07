@@ -5,6 +5,7 @@ import { isMediaModel, isMagicHourImage, isMagicHourVideo, isMagicHourAudio } fr
 import { useVideoCredits } from "@/hooks/useVideoCredits";
 import { useAudioCredits } from "@/hooks/useAudioCredits";
 import { useMods } from "@/hooks/useMods";
+import FreeAllowancePill from "./FreeAllowancePill";
 
 interface CreditsDisplayProps {
   credits: number;
@@ -85,7 +86,8 @@ const CreditsDisplay = ({ credits, imageCredits, selectedModelCostId, models }: 
       )}
 
       {/* Regular credits - only show when NOT a media model */}
-      {!isMedia && (
+      {!isMedia && modelData?.is_free && <FreeAllowancePill model={modelData} />}
+      {!isMedia && !modelData?.is_free && (
         <div className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-lg">
           <Coins className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium text-foreground">
