@@ -320,23 +320,8 @@ const AdminPanel = () => {
   const handleDeleteModel = async (id: string) => {
     try {
       const modelToDelete = models.find((m) => m.id === id);
-      // Allow deleting Nano models, OpenRouter models, and any Magnific models.
-      const mid = modelToDelete?.model_id || "";
-      const allowed =
-        !!modelToDelete &&
-        (mid === 'openai/gpt-5-nano' ||
-          mid.startsWith('openrouter/') ||
-          mid.startsWith('magic-hour-image/') ||
-          mid.startsWith('magic-hour-video/') ||
-          mid.startsWith('magic-hour-audio/'));
-      if (!allowed) {
-        toast({
-          title: "Cannot delete",
-          description: "This model cannot be removed.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Admins can delete any model.
+      if (!modelToDelete) return;
 
       const { error } = await supabase
         .from("model_costs")

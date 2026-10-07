@@ -102,10 +102,8 @@ export const FileEditor = ({
     IMAGE_MODELS.includes(model.model_id) || isMagicHourImage(model.model_id);
   const isVideoModel = isMagicHourVideo(model.model_id);
   const isAudioModel = isMagicHourAudio(model.model_id);
-  const isDeletable =
-    BUILTIN_DELETABLE.includes(model.model_id) ||
-    isMagicHourModel(model.model_id) ||
-    isOpenRouterModel(model.model_id);
+  // Admins can delete any model.
+  const isDeletable = true;
 
   const handleConfirmDelete = () => {
     setShowDeleteDialog(false);
