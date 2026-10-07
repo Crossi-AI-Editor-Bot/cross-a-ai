@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
     // Fetch model configuration from database using the unique record ID
     const { data: modelCostData, error: costError } = await supabase
       .from('model_costs')
-      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal')
+      .select('model_id, label, cost, enabled, public_access, image_cost, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal, is_free, free_tokens_per_percent, free_reset_time_utc')
       .eq('id', modelCostId)
       .single();
 
@@ -227,6 +227,30 @@ Deno.serve(async (req) => {
         if (tierRow && (tierRow as any).unlimited === true) isUnlimited = true;
       }
     }
+
+    // Free model: uses a token allowance instead of credits
+    if ((modelCostData as any).is_free) {
+      const tpp = Math.max(1, Number((modelCostData as any).free_tokens_per_percent) || 1000);
+      const [hh, mm] = String((modelCostData as any).free_reset_time_utc || '00:00').split(':').map((n) => parseInt(n) || 0);
+      const now = new Date();
+      const lastReset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), hh, mm));
+      if (lastReset > now) lastReset.setUTCDate(lastReset.getUTCDate() - 1);
+      const { data: usage } = await supabase.from('user_free_model_usage')
+        .select('tokens_used, period_start').eq('user_id', user.id).eq('model_cost_id', modelCostId).maybeSingle();
+      let used = usage && new Date(usage.period_start) >= lastReset ? Number(usage.tokens_used) : 0;
+      if (used >= tpp * 100) {
+        return new Response(JSON.stringify({ error: 'Your free allowance for this model is used up. It resets daily.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const chars = messages.reduce((s: number, m: any) => s + (typeof m.content === 'string' ? m.content.length : JSON.stringify(m.content).length), 0);
+      used += Math.ceil(chars / 4) + 500; // input tokens + estimated output
+      await supabase.from('user_free_model_usage').upsert({
+        user_id: user.id, model_cost_id: modelCostId, tokens_used: used,
+        period_start: usage && new Date(usage.period_start) >= lastReset ? usage.period_start : now.toISOString(),
+      });
+      isUnlimited = true;
+    }
+
 
     // Check and deduct credits server-side
     const { data: userCredits, error: creditsError } = await supabase
