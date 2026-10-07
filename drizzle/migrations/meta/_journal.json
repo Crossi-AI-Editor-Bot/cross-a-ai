@@ -15,6 +15,13 @@
       "when": 1791265378580,
       "tag": "0001_custom_vip_media_call_credits",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791350819636,
+      "tag": "0002_free_models_allowance",
+      "breakpoints": true
     }
   ]
 }
