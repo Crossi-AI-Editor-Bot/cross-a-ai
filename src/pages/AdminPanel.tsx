@@ -50,6 +50,9 @@ interface ModelState {
   tool_ccsong: boolean;
   tool_ccstream: boolean;
   tool_terminal: boolean;
+  is_free?: boolean;
+  free_tokens_per_percent?: number;
+  free_reset_time_utc?: string;
   tier_access: Record<string, boolean>;
 }
 
@@ -132,6 +135,9 @@ const AdminPanel = () => {
       call_credits_per_1000_tokens: (model as any).call_credits_per_1000_tokens ?? 1,
       system_prompt: model.system_prompt || null,
       is_fake: !!model.is_fake,
+      is_free: !!(model as any).is_free,
+      free_tokens_per_percent: (model as any).free_tokens_per_percent ?? 1000,
+      free_reset_time_utc: (model as any).free_reset_time_utc || "00:00",
       fake_error_message: model.fake_error_message ?? null,
       fake_corrupted_output: !!(model as any).fake_corrupted_output,
       max_tool_calls: (model as any).max_tool_calls ?? 3,
@@ -371,6 +377,9 @@ const AdminPanel = () => {
             call_credits_per_1000_tokens: model.call_credits_per_1000_tokens,
             system_prompt: model.system_prompt,
             is_fake: model.is_fake,
+            is_free: (model as any).is_free,
+            free_tokens_per_percent: (model as any).free_tokens_per_percent,
+            free_reset_time_utc: (model as any).free_reset_time_utc,
             fake_error_message: model.fake_error_message,
             fake_corrupted_output: model.fake_corrupted_output,
             max_tool_calls: model.max_tool_calls,
@@ -583,6 +592,7 @@ const AdminPanel = () => {
                 onUpdateCallCostPer1000={(value) => updateModel(selectedModel.id, { call_credits_per_1000_tokens: value } as any)}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
                 onUpdateIsFake={(value) => updateModel(selectedModel.id, { is_fake: value })}
+                onUpdateFree={(u) => updateModel(selectedModel.id, u as any)}
                 onUpdateFakeErrorMessage={(value) => updateModel(selectedModel.id, { fake_error_message: value })}
                 onUpdateFakeCorruptedOutput={(value) => updateModel(selectedModel.id, { fake_corrupted_output: value })}
                 onUpdateMaxToolCalls={(value) => updateModel(selectedModel.id, { max_tool_calls: value })}

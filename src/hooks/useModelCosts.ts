@@ -30,6 +30,9 @@ export interface ModelCost {
   tool_ccsong: boolean;
   tool_ccstream: boolean;
   tool_terminal: boolean;
+  is_free?: boolean;
+  free_tokens_per_percent?: number;
+  free_reset_time_utc?: string;
   // Dynamic tier access map: { copper: true, bronze: false, ... }
   tier_access: Record<string, boolean>;
 }
@@ -38,7 +41,7 @@ const modelCostsStore = createSharedStore<ModelCost[]>(async () => {
   const [modelsRes, accessRes] = await Promise.all([
     supabase
       .from("model_costs")
-      .select("id, model_id, label, description, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, call_credits_per_1000_tokens, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal")
+      .select("id, model_id, label, description, cost, enabled, public_access, image_cost, video_credits_per_second, audio_credits_per_second, call_credits_per_1000_tokens, folder, system_prompt, is_fake, fake_error_message, fake_corrupted_output, max_tool_calls, tool_switchmodel, tool_croins, tool_vip, tool_credits, tool_email, tool_shares, tool_ccvideo, tool_ccpost, tool_ccsong, tool_ccstream, tool_terminal, is_free, free_tokens_per_percent, free_reset_time_utc")
       .order("cost", { ascending: false }),
     supabase
       .from("model_tier_access" as any)
@@ -83,6 +86,9 @@ const modelCostsStore = createSharedStore<ModelCost[]>(async () => {
     tool_ccsong: !!m.tool_ccsong,
     tool_ccstream: !!m.tool_ccstream,
     tool_terminal: !!m.tool_terminal,
+    is_free: !!m.is_free,
+    free_tokens_per_percent: Number(m.free_tokens_per_percent ?? 1000),
+    free_reset_time_utc: m.free_reset_time_utc || "00:00",
     tier_access: accessMap.get(m.id) || {},
   })) as ModelCost[];
 }, [], { ttlMs: 5 * 60_000, resetOnUserChange: false });

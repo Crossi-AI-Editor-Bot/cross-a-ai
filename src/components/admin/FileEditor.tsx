@@ -50,6 +50,9 @@ interface ModelData {
   tool_ccsong?: boolean;
   tool_ccstream?: boolean;
   tool_terminal?: boolean;
+  is_free?: boolean;
+  free_tokens_per_percent?: number;
+  free_reset_time_utc?: string;
   tier_access: Record<string, boolean>;
 }
 
@@ -68,6 +71,7 @@ interface FileEditorProps {
   onUpdateCallCostPer1000?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
   onUpdateIsFake?: (value: boolean) => void;
+  onUpdateFree?: (u: { is_free?: boolean; free_tokens_per_percent?: number; free_reset_time_utc?: string }) => void;
   onUpdateFakeErrorMessage?: (value: string) => void;
   onUpdateFakeCorruptedOutput?: (value: boolean) => void;
   onUpdateMaxToolCalls?: (value: number) => void;
@@ -90,6 +94,7 @@ export const FileEditor = ({
   onUpdateCallCostPer1000,
   onUpdateSystemPrompt,
   onUpdateIsFake,
+  onUpdateFree,
   onUpdateFakeErrorMessage,
   onUpdateFakeCorruptedOutput,
   onUpdateMaxToolCalls,
@@ -404,6 +409,38 @@ export const FileEditor = ({
                   className="min-h-[100px] text-sm font-mono bg-background"
                 />
               </div>
+            </>
+          )}
+
+          {onUpdateFree && (
+            <>
+              <div className="h-px bg-border my-4" />
+              <div className="text-muted-foreground mb-2">
+                <span className="text-green-500">{"// "}</span>
+                <span>Free Model (token allowance circle instead of credits)</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-purple-400">is_free</span>
+                <Switch checked={!!model.is_free} onCheckedChange={(v) => onUpdateFree({ is_free: v })} />
+              </div>
+              {model.is_free && (
+                <>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-purple-400">tokens_per_1_percent</span>
+                    <span className="text-muted-foreground">=</span>
+                    <Input type="number" min="1" step="1" value={model.free_tokens_per_percent ?? 1000}
+                      onChange={(e) => onUpdateFree({ free_tokens_per_percent: Math.max(1, parseInt(e.target.value) || 1) })}
+                      className="h-7 w-28 text-sm font-mono bg-background text-orange-400" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-purple-400">daily_reset_utc</span>
+                    <span className="text-muted-foreground">=</span>
+                    <Input type="time" value={model.free_reset_time_utc || "00:00"}
+                      onChange={(e) => onUpdateFree({ free_reset_time_utc: e.target.value || "00:00" })}
+                      className="h-7 w-28 text-sm font-mono bg-background" />
+                  </div>
+                </>
+              )}
             </>
           )}
 

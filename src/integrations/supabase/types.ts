@@ -498,10 +498,13 @@ export type Database = {
           fake_corrupted_output: boolean
           fake_error_message: string | null
           folder: string | null
+          free_reset_time_utc: string
+          free_tokens_per_percent: number
           gold_access: boolean
           id: string
           image_cost: number | null
           is_fake: boolean
+          is_free: boolean
           kind: string
           label: string
           max_tool_calls: number
@@ -539,10 +542,13 @@ export type Database = {
           fake_corrupted_output?: boolean
           fake_error_message?: string | null
           folder?: string | null
+          free_reset_time_utc?: string
+          free_tokens_per_percent?: number
           gold_access?: boolean
           id?: string
           image_cost?: number | null
           is_fake?: boolean
+          is_free?: boolean
           kind?: string
           label: string
           max_tool_calls?: number
@@ -580,10 +586,13 @@ export type Database = {
           fake_corrupted_output?: boolean
           fake_error_message?: string | null
           folder?: string | null
+          free_reset_time_utc?: string
+          free_tokens_per_percent?: number
           gold_access?: boolean
           id?: string
           image_cost?: number | null
           is_fake?: boolean
+          is_free?: boolean
           kind?: string
           label?: string
           max_tool_calls?: number
@@ -860,6 +869,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_free_model_usage: {
+        Row: {
+          model_cost_id: string
+          period_start: string
+          tokens_used: number
+          user_id: string
+        }
+        Insert: {
+          model_cost_id: string
+          period_start?: string
+          tokens_used?: number
+          user_id: string
+        }
+        Update: {
+          model_cost_id?: string
+          period_start?: string
+          tokens_used?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_free_model_usage_model_cost_id_fkey"
+            columns: ["model_cost_id"]
+            isOneToOne: false
+            referencedRelation: "model_costs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_image_credits: {
         Row: {
