@@ -19,6 +19,7 @@ import type { VipTierConfig } from "@/hooks/useVipTiers";
 import { isMagicHourImage, isMagicHourVideo, isMagicHourAudio } from "@/lib/externalModels";
 
 const IMAGE_MODELS = ['google/gemini-2.5-flash-image', 'google/gemini-3-pro-image-preview'];
+const NANO_MODEL_ID = 'openai/gpt-5-nano';
 
 interface ModelData {
   id: string;
