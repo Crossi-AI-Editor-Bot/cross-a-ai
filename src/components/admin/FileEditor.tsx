@@ -50,6 +50,9 @@ interface ModelData {
   tool_ccsong?: boolean;
   tool_ccstream?: boolean;
   tool_terminal?: boolean;
+  is_free?: boolean;
+  free_tokens_per_percent?: number;
+  free_reset_time_utc?: string;
   tier_access: Record<string, boolean>;
 }
 
@@ -68,6 +71,7 @@ interface FileEditorProps {
   onUpdateCallCostPer1000?: (value: number) => void;
   onUpdateSystemPrompt?: (value: string) => void;
   onUpdateIsFake?: (value: boolean) => void;
+  onUpdateFree?: (u: { is_free?: boolean; free_tokens_per_percent?: number; free_reset_time_utc?: string }) => void;
   onUpdateFakeErrorMessage?: (value: string) => void;
   onUpdateFakeCorruptedOutput?: (value: boolean) => void;
   onUpdateMaxToolCalls?: (value: number) => void;
@@ -90,6 +94,7 @@ export const FileEditor = ({
   onUpdateCallCostPer1000,
   onUpdateSystemPrompt,
   onUpdateIsFake,
+  onUpdateFree,
   onUpdateFakeErrorMessage,
   onUpdateFakeCorruptedOutput,
   onUpdateMaxToolCalls,

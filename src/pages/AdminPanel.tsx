@@ -50,6 +50,9 @@ interface ModelState {
   tool_ccsong: boolean;
   tool_ccstream: boolean;
   tool_terminal: boolean;
+  is_free?: boolean;
+  free_tokens_per_percent?: number;
+  free_reset_time_utc?: string;
   tier_access: Record<string, boolean>;
 }
 
