@@ -589,6 +589,7 @@ const AdminPanel = () => {
                 onUpdateCallCostPer1000={(value) => updateModel(selectedModel.id, { call_credits_per_1000_tokens: value } as any)}
                 onUpdateSystemPrompt={(value) => updateModel(selectedModel.id, { system_prompt: value })}
                 onUpdateIsFake={(value) => updateModel(selectedModel.id, { is_fake: value })}
+                onUpdateFree={(u) => updateModel(selectedModel.id, u as any)}
                 onUpdateFakeErrorMessage={(value) => updateModel(selectedModel.id, { fake_error_message: value })}
                 onUpdateFakeCorruptedOutput={(value) => updateModel(selectedModel.id, { fake_corrupted_output: value })}
                 onUpdateMaxToolCalls={(value) => updateModel(selectedModel.id, { max_tool_calls: value })}
