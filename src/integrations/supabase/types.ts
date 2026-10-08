@@ -1171,6 +1171,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ensure_queue_worker_scheduled: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1195,6 +1196,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      stop_queue_worker_if_idle: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"
