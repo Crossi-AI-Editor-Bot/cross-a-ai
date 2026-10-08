@@ -182,5 +182,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ processed }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  // Stop the 3-minute schedule once nothing is waiting; a new queue entry re-arms it.
+  const { data: stopped } = await service.rpc('stop_queue_worker_if_idle' as any);
+
+  return new Response(JSON.stringify({ processed, stopped }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 });
