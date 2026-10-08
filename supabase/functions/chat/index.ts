@@ -237,17 +237,16 @@ Deno.serve(async (req) => {
       if (lastReset > now) lastReset.setUTCDate(lastReset.getUTCDate() - 1);
       const { data: usage } = await supabase.from('user_free_model_usage')
         .select('tokens_used, period_start').eq('user_id', user.id).eq('model_cost_id', modelCostId).maybeSingle();
-      let used = usage && new Date(usage.period_start) >= lastReset ? Number(usage.tokens_used) : 0;
+      const used = usage && new Date(usage.period_start) >= lastReset ? Number(usage.tokens_used) : 0;
       if (used >= tpp * 100) {
         return new Response(JSON.stringify({ error: 'Your free allowance for this model is used up. It resets daily.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      const chars = messages.reduce((s: number, m: any) => s + (typeof m.content === 'string' ? m.content.length : JSON.stringify(m.content).length), 0);
-      used += Math.ceil(chars / 4) + 500; // input tokens + estimated output
-      await supabase.from('user_free_model_usage').upsert({
-        user_id: user.id, model_cost_id: modelCostId, tokens_used: used,
-        period_start: usage && new Date(usage.period_start) >= lastReset ? usage.period_start : now.toISOString(),
-      });
+      // Exact usage is recorded after the model call from the returned `usage` field.
+      freeUsageCtx = {
+        used,
+        periodStart: usage && new Date(usage.period_start) >= lastReset ? usage.period_start : now.toISOString(),
+      };
       isUnlimited = true;
     }
 
@@ -1048,6 +1047,12 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
               break;
             }
             const j = await r.json();
+            {
+              const u = j?.usage;
+              const t = typeof u === "number" ? u
+                : Number(u?.total_tokens ?? ((Number(u?.prompt_tokens) || 0) + (Number(u?.completion_tokens) || 0)));
+              if (Number.isFinite(t) && t > 0) usedTokens += t;
+            }
             const content: string = j.choices?.[0]?.message?.content ?? "";
             if (!content.trim()) {
               if (emptyRetries < MAX_EMPTY_RETRIES) {
@@ -1138,6 +1143,15 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
           console.error("Streaming loop error:", e);
           sendText(`\n\n[Error: ${e instanceof Error ? e.message : String(e)}]`);
         } finally {
+          if (freeUsageCtx && usedTokens > 0) {
+            try {
+              await supabase.from('user_free_model_usage').upsert({
+                user_id: user.id, model_cost_id: modelCostId,
+                tokens_used: freeUsageCtx.used + usedTokens,
+                period_start: freeUsageCtx.periodStart,
+              });
+            } catch (e) { console.error('Free usage update failed:', e); }
+          }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         }
@@ -1182,9 +1196,16 @@ async function callCfApi(msgs: any[], stream: boolean): Promise<Response> {
   const raw = await r.text();
   if (!r.ok) return new Response(raw, { status: r.status });
   let text = raw;
-  try { text = String(extractCfText(JSON.parse(raw)) || ""); } catch { /* plain text */ }
+  let usage: any = undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    text = String(extractCfText(parsed) || "");
+    const u = parsed?.usage ?? parsed?.result?.usage;
+    if (typeof u === "number") usage = { total_tokens: u };
+    else if (u && typeof u === "object") usage = u;
+  } catch { /* plain text */ }
   if (!stream) {
-    return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: text } }] }), { headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: text } }], usage }), { headers: { "Content-Type": "application/json" } });
   }
   const enc = new TextEncoder();
   const body = new ReadableStream({
