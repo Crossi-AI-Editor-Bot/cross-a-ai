@@ -61,19 +61,39 @@ serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // Retry transient backend errors (e.g. 5xx while the backend is waking up).
+    const isTransient = (e: any) => {
+      const s = Number(e?.status);
+      return (Number.isFinite(s) && s >= 500) || /HTTP 5\d\d|fetch failed|timed? ?out/i.test(String(e?.message ?? ""));
+    };
+    const withRetry = async <T extends { error: any }>(fn: () => Promise<T>): Promise<T> => {
+      let r = await fn();
+      for (let i = 1; i <= 4 && r.error && isTransient(r.error); i++) {
+        await new Promise((res) => setTimeout(res, 1500 * i));
+        r = await fn();
+      }
+      return r;
+    };
+    const unavailable = () => new Response(JSON.stringify({ error: "Login is temporarily unavailable. Please try again in a minute." }), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
     // Try signing in first
     const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
-    let signInResult = await anonClient.auth.signInWithPassword({ email, password });
+    let signInResult = await withRetry(() => anonClient.auth.signInWithPassword({ email, password }));
+    if (signInResult.error && isTransient(signInResult.error)) return unavailable();
 
     if (signInResult.error) {
       // User doesn't exist locally — create them
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+      const { data: newUser, error: createError } = await withRetry(() => supabase.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-      });
+      }));
 
       if (createError) {
+        if (isTransient(createError)) return unavailable();
         return new Response(JSON.stringify({ error: "Failed to create local account: " + createError.message }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

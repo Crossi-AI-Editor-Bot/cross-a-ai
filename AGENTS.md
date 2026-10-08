@@ -1,0 +1,1 @@
+- The generation-queue worker cron is armed by an insert trigger and unschedules itself when the queue is empty — avoids keeping the database awake 24/7.
