@@ -229,6 +229,8 @@ Deno.serve(async (req) => {
     }
 
     // Free model: uses a token allowance instead of credits
+    let freeUsageCtx: { used: number; periodStart: string } | null = null;
+    let usedTokens = 0;
     if ((modelCostData as any).is_free) {
       const tpp = Math.max(1, Number((modelCostData as any).free_tokens_per_percent) || 1000);
       const [hh, mm] = String((modelCostData as any).free_reset_time_utc || '00:00').split(':').map((n) => parseInt(n) || 0);
