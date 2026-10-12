@@ -38,6 +38,39 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const accessToken = params.get("access_token");
+    const tokenEmail = params.get("email");
+    if (!accessToken || !tokenEmail) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    setLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/crossatrix-login`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ access_token: accessToken, email: tokenEmail }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok || !data.session) throw new Error(data.error || "Token login failed");
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+        toast({ title: "Welcome!", description: "Signed in with Crossatrix Account." });
+      } catch (error: any) {
+        toast({ title: "Login Failed", description: error.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/");

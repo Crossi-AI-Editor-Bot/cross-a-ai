@@ -15,6 +15,61 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+
+    // Token login (used by other websites): verify access_token with Crossatrix, no refresh token sent.
+    if (typeof body.access_token === "string" && body.access_token) {
+      const tokenEmail = typeof body.email === "string" ? body.email.trim() : "";
+      if (!tokenEmail || body.access_token.length > 8192) {
+        return new Response(JSON.stringify({ error: "access_token and email are required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const cRes = await fetch(CROSSATRIX_AUTH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token: body.access_token, email: tokenEmail }),
+      });
+      const cData = await cRes.json().catch(() => ({}));
+      if (!cRes.ok) {
+        return new Response(JSON.stringify({ error: cData.error || "Invalid or expired token" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const email: string = (cData.user?.email ?? tokenEmail).toLowerCase();
+      const cxId = cData.user?.id;
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      // Create local account if missing (random password; errors if it already exists, which is fine)
+      await admin.auth.admin.createUser({
+        email, password: crypto.randomUUID() + crypto.randomUUID(), email_confirm: true,
+      });
+      const { data: link, error: linkErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+      if (linkErr || !link?.properties?.hashed_token) {
+        return new Response(JSON.stringify({ error: "Could not create session" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const anon = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data: v, error: vErr } = await anon.auth.verifyOtp({
+        type: "magiclink", token_hash: link.properties.hashed_token,
+      });
+      if (vErr || !v.session) {
+        return new Response(JSON.stringify({ error: "Could not create session" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (cxId && v.user) {
+        await admin.from("profiles").update({ crossatrix_id: cxId }).eq("user_id", v.user.id);
+      }
+      return new Response(JSON.stringify({ session: v.session, user: v.user }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const identifier: string | undefined = body.identifier ?? body.email ?? body.username;
     const password: string | undefined = body.password;
 
