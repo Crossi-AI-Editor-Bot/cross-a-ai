@@ -33,6 +33,7 @@ const CallModelSelector = ({ open, onOpenChange, onSelectModel }: CallModelSelec
   }, [modelCosts]);
 
   const canAccessModel = (model: ModelCost): boolean => {
+    if (userTier && model.tier_access[userTier] === false && (dynamicModelIds?.length || !model.public_access)) return false;
     if (dynamicModelIds?.includes(model.id)) return true;
     if (model.public_access) return true;
     if (!userTier) return false;

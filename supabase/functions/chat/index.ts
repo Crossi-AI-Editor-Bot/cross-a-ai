@@ -305,25 +305,23 @@ Deno.serve(async (req) => {
     if (!isAdmin) {
       let hasAccess = modelCostData.public_access;
 
-      if (!hasAccess) {
-        // Check VIP tier access via junction table
-        const { data: vipData } = await supabase
-          .from('vip_status')
-          .select('tier, expires_at')
-          .eq('user_id', user.id)
-          .gt('expires_at', new Date().toISOString())
-          .maybeSingle();
+      const { data: vipData } = await supabase
+        .from('vip_status')
+        .select('tier, expires_at')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle();
 
-        if (vipData) {
-          // Query the junction table for this model + tier
-          const { data: accessData } = await supabase
-            .from('model_tier_access')
-            .select('has_access')
-            .eq('model_cost_id', modelCostId)
-            .eq('tier_name', vipData.tier)
-            .maybeSingle();
-
-          if (accessData) {
+      if (vipData) {
+        const [{ data: accessData }, { data: tierRow }] = await Promise.all([
+          supabase.from('model_tier_access').select('has_access')
+            .eq('model_cost_id', modelCostId).eq('tier_name', vipData.tier).maybeSingle(),
+          supabase.from('vip_tiers').select('is_dynamic').eq('name', vipData.tier).maybeSingle(),
+        ]);
+        if (accessData) {
+          if ((tierRow as any)?.is_dynamic && accessData.has_access === false) {
+            hasAccess = false; // disabled for Dynamic VIP: blocked even if public
+          } else if (!hasAccess) {
             hasAccess = accessData.has_access;
           }
         }
