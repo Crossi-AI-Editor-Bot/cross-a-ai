@@ -171,6 +171,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (modelId.startsWith('anthropic/')) {
+      const system = sysPrompts.map((m: any) => m.content).join('\n\n');
+      const cr = await fetch('https://ai.gateway.lovable.dev/v1/messages', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiAuth}`, 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: modelId, max_tokens: 8192, system: system || undefined, messages: [{ role: 'user', content: prompt }] }),
+      });
+      const cd = await cr.json();
+      if (!cr.ok) return json(cr.status, { error: 'AI error', details: cd });
+      const ctext = (cd?.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('');
+      return json(200, { model: match.label, response: ctext });
+    }
+
     const r = await fetch(apiUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiAuth}`, 'Content-Type': 'application/json' },

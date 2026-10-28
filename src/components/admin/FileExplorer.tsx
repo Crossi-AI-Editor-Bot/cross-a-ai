@@ -50,6 +50,14 @@ interface ModelFile {
   tier_access: Record<string, boolean>;
 }
 
+const CLAUDE_MODELS = [
+  { id: "anthropic/claude-sonnet-5", label: "Claude Sonnet 5" },
+  { id: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5" },
+  { id: "anthropic/claude-opus-5-5", label: "Claude Opus 5.5" },
+  { id: "anthropic/claude-opus-5", label: "Claude Opus 5" },
+  { id: "anthropic/claude-fable-5-1", label: "Claude Fable 5.1" },
+];
+
 interface FileExplorerProps {
   models: ModelFile[];
   selectedFile: string | null;
@@ -112,6 +120,8 @@ export const FileExplorer = ({
   const [showAddOpenRouterModel, setShowAddOpenRouterModel] = useState(false);
   const [newOpenRouterId, setNewOpenRouterId] = useState("");
   const [showAddCfModel, setShowAddCfModel] = useState(false);
+  const [showAddClaudeModel, setShowAddClaudeModel] = useState(false);
+  const [selectedClaude, setSelectedClaude] = useState<string>(CLAUDE_MODELS[0].id);
   const [showAddVideoModel, setShowAddVideoModel] = useState(false);
   const [selectedVideoSlug, setSelectedVideoSlug] = useState<string>(MAGIC_HOUR_VIDEO_ENDPOINTS[0].slug);
   const [showAddAudioModel, setShowAddMusicModel] = useState(false);
@@ -157,6 +167,15 @@ export const FileExplorer = ({
       onAddModel(`cf/${slug}-${Date.now().toString(36)}`, newModelLabel.trim());
       setNewModelLabel("");
       setShowAddCfModel(false);
+    }
+  };
+
+  const handleAddClaudeModel = () => {
+    if (onAddModel && selectedClaude) {
+      const label = newModelLabel.trim() || CLAUDE_MODELS.find((m) => m.id === selectedClaude)?.label || selectedClaude;
+      onAddModel(selectedClaude, label);
+      setNewModelLabel("");
+      setShowAddClaudeModel(false);
     }
   };
 
@@ -495,6 +514,16 @@ export const FileExplorer = ({
                 <Plus className="h-3 w-3 mr-1" />
                 CF
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setShowAddClaudeModel(true)}
+                title="Add Claude Model"
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Claude
+              </Button>
             </>
           )}
           <Button
@@ -661,6 +690,39 @@ export const FileExplorer = ({
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddCfModel(false)}>
               <X className="h-3 w-3" />
             </Button>
+          </div>
+        )}
+
+        {/* Add new Claude model input */}
+        {showAddClaudeModel && (
+          <div className="flex flex-col gap-1 px-2 py-2 bg-primary/20 rounded-md mb-2">
+            <Select value={selectedClaude} onValueChange={setSelectedClaude}>
+              <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CLAUDE_MODELS.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1">
+              <Input
+                autoFocus
+                value={newModelLabel}
+                onChange={(e) => setNewModelLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddClaudeModel();
+                  if (e.key === "Escape") setShowAddClaudeModel(false);
+                }}
+                className="h-6 text-xs"
+                placeholder="Display name..."
+              />
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleAddClaudeModel}>
+                <Save className="h-3 w-3" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowAddClaudeModel(false)}>
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         )}
 

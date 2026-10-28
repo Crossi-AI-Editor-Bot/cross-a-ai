@@ -995,6 +995,9 @@ You may call multiple tools in one turn (one per line). Do NOT explain that you 
       if (String(requestBody.model || "").startsWith("cf/")) {
         return await callCfApi(msgs, stream);
       }
+      if (String(requestBody.model || "").startsWith("anthropic/")) {
+        return await callClaudeApi(String(requestBody.model), msgs, stream);
+      }
       return await fetch(gatewayUrl, {
         method: "POST",
         headers: {
@@ -1213,6 +1216,80 @@ async function callCfApi(msgs: any[], stream: boolean): Promise<Response> {
   const body = new ReadableStream({
     start(c) {
       c.enqueue(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`));
+      c.enqueue(enc.encode("data: [DONE]\n\n"));
+      c.close();
+    },
+  });
+  return new Response(body, { headers: { "Content-Type": "text/event-stream" } });
+}
+
+// Claude via Lovable AI Gateway (/v1/messages). Returns OpenAI-shaped responses.
+async function callClaudeApi(model: string, msgs: any[], stream: boolean): Promise<Response> {
+  const key = Deno.env.get("LOVABLE_API_KEY") ?? "";
+  const toText = (c: any) => typeof c === "string" ? c : Array.isArray(c) ? c.map((p: any) => p?.text ?? "").join("") : String(c ?? "");
+  const system = msgs.filter((m) => m.role === "system").map((m) => toText(m.content)).join("\n\n");
+  const out: any[] = [];
+  for (const m of msgs) {
+    if (m.role === "system") continue;
+    const role = m.role === "assistant" ? "assistant" : "user";
+    let content: any[];
+    if (Array.isArray(m.content)) {
+      content = m.content.map((p: any) => {
+        if (p?.type === "image_url") {
+          const url = String(p.image_url?.url ?? "");
+          const mm = url.match(/^data:([^;]+);base64,(.*)$/);
+          return mm ? { type: "image", source: { type: "base64", media_type: mm[1], data: mm[2] } } : { type: "image", source: { type: "url", url } };
+        }
+        return { type: "text", text: p?.text ?? "" };
+      }).filter((p: any) => p.type !== "text" || p.text);
+    } else {
+      const t = toText(m.content);
+      content = t ? [{ type: "text", text: m.role === "tool" ? `Tool result:\n${t}` : t }] : [];
+    }
+    if (!content.length) continue;
+    const prev = out[out.length - 1];
+    if (prev && prev.role === role) prev.content.push(...content);
+    else out.push({ role, content });
+  }
+  if (out[0]?.role === "assistant") out.unshift({ role: "user", content: [{ type: "text", text: "(continue)" }] });
+  const r = await fetch("https://ai.gateway.lovable.dev/v1/messages", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model, max_tokens: 8192, system: system || undefined, messages: out, stream }),
+  });
+  if (!r.ok) return new Response(await r.text(), { status: r.status });
+  const mkUsage = (i: number, o: number) => ({ prompt_tokens: i, completion_tokens: o, total_tokens: i + o });
+  if (!stream) {
+    const d = await r.json();
+    const text = (d?.content ?? []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+    return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: text } }], usage: mkUsage(d?.usage?.input_tokens ?? 0, d?.usage?.output_tokens ?? 0) }), { headers: { "Content-Type": "application/json" } });
+  }
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+  const reader = r.body!.getReader();
+  let inTok = 0, outTok = 0, buf = "";
+  const body = new ReadableStream({
+    async start(c) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let idx;
+        while ((idx = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, idx).trim();
+          buf = buf.slice(idx + 1);
+          if (!line.startsWith("data:")) continue;
+          try {
+            const ev = JSON.parse(line.slice(5).trim());
+            if (ev.type === "message_start") inTok = ev.message?.usage?.input_tokens ?? 0;
+            else if (ev.type === "message_delta") outTok = ev.usage?.output_tokens ?? outTok;
+            else if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta") {
+              c.enqueue(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: ev.delta.text } }] })}\n\n`));
+            }
+          } catch { /* ignore */ }
+        }
+      }
+      c.enqueue(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: {} }], usage: mkUsage(inTok, outTok) })}\n\n`));
       c.enqueue(enc.encode("data: [DONE]\n\n"));
       c.close();
     },
