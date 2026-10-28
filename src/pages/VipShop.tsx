@@ -59,10 +59,10 @@ const VipShop = () => {
     }
   };
 
-  // All enabled models are eligible for Dynamic VIP selection
+  // Enabled models not disabled for the selected Dynamic VIP tier
   const dynamicEligibleModels = useMemo(
-    () => modelCosts.filter((m) => m.enabled),
-    [modelCosts]
+    () => modelCosts.filter((m) => m.enabled && !(selectedTier && m.tier_access[selectedTier] === false)),
+    [modelCosts, selectedTier]
   );
 
   const handlePurchaseWithCroins = async () => {

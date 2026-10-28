@@ -53,6 +53,8 @@ const hasModelAccess = (
   isAdmin: boolean,
   dynamicModelIds: string[] = [],
 ): boolean => {
+  if (isAdmin) return true;
+  if (tier && model.tier_access[tier] === false && (dynamicModelIds.length > 0 || !model.public_access)) return false;
   if (dynamicModelIds.includes(model.id)) return true;
   if (!tier && model.public_access) return true;
   if (!tier) return false;

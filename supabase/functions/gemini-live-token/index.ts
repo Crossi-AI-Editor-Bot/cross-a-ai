@@ -75,16 +75,18 @@ serve(async (req) => {
         .gt("expires_at", new Date().toISOString())
         .maybeSingle();
 
-      if (vip?.dynamic_model_ids?.includes(model.id)) allowed = true;
-
-      if (!allowed && vip?.tier) {
+      if (vip?.tier) {
         const { data: access } = await supabase
           .from("model_tier_access")
           .select("has_access")
           .eq("model_cost_id", model.id)
           .eq("tier_name", vip.tier)
           .maybeSingle();
-        allowed = !!access?.has_access;
+        if (access?.has_access === false) {
+          allowed = false;
+        } else {
+          allowed = !!access?.has_access || !!vip?.dynamic_model_ids?.includes(model.id);
+        }
       }
     }
     if (!allowed) return json({ error: "This call model is VIP only" }, 403);
