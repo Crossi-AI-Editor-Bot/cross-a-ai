@@ -64,6 +64,10 @@ export default function ApiKeyManager() {
         <CardDescription>
           Use: <code className="text-xs break-all">{FN_BASE}?key=API_KEY&model=Model_Label&prompt=Hello</code>
           <br />Replace spaces in model name with <code>_</code>. Unlimited usage.
+          <br /><br /><strong>Credits API</strong> (read or decrease only):
+          <br />Read: <code className="text-xs break-all">{FN_BASE.replace("public-api", "credits-api")}?key=API_KEY&email=user@x.com</code>
+          <br />Decrease: <code className="text-xs break-all">{FN_BASE.replace("public-api", "credits-api")}?key=API_KEY&email=user@x.com&action=decrease&amount=2&type=text</code>
+          <br />type: text, image, video, audio, call. Or use <code>Authorization: Bearer USER_ACCESS_TOKEN</code> instead of key + email.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
