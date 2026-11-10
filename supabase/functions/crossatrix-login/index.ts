@@ -8,6 +8,15 @@ const corsHeaders = {
 
 const CROSSATRIX_AUTH_URL = "https://digjxtmzafzcgytgcwmb.supabase.co/functions/v1/crossatrix-auth";
 
+// Keep the user's Crossatrix token (service-only table) so Crossi Cloud uploads can authenticate.
+async function saveCxToken(admin: any, userId: string | undefined, token: unknown) {
+  if (!userId || typeof token !== "string" || !token) return;
+  try {
+    await admin.from("user_connectors").delete().eq("user_id", userId).eq("provider", "crossatrix");
+    await admin.from("user_connectors").insert({ user_id: userId, provider: "crossatrix", access_token: token });
+  } catch (e) { console.error("save cx token", e); }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -65,6 +74,7 @@ serve(async (req) => {
       if (cxId && v.user) {
         await admin.from("profiles").update({ crossatrix_id: cxId }).eq("user_id", v.user.id);
       }
+      await saveCxToken(admin, v.user?.id, cData.access_token ?? body.access_token);
       return new Response(JSON.stringify({ session: v.session, user: v.user }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -181,6 +191,8 @@ serve(async (req) => {
           .eq("user_id", signInResult.data.user.id);
       }
     }
+
+    await saveCxToken(supabase, signInResult.data.user?.id, crossatrixData.access_token ?? crossatrixData.session?.access_token);
 
     return new Response(
       JSON.stringify({
