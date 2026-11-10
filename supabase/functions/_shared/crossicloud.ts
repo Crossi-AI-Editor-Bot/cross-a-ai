@@ -1,34 +1,31 @@
-// Uploads generated media to the user's Crossicloud in a "Crossi AI" folder.
+// Uploads generated media to the user's Crossi Cloud in a "Crossi AI" folder.
 // Best-effort: never throws, failures are only logged.
-const BASE = "https://preview--crossicloud.lovable.app/api/public/v1";
+const BASE = "https://crossicloud.lovable.app/api/public/v1";
 const FOLDER_NAME = "Crossi AI";
 
-function headers(crossatrixId: string, token?: string): Record<string, string> {
-  const h: Record<string, string> = {
+function headers(crossatrixId: string, token: string): Record<string, string> {
+  return {
     "X-API-Key": Deno.env.get("CROSSICLOUD_API_KEY") ?? "",
     "X-Crossatrix-User-Id": crossatrixId,
+    Authorization: `Bearer ${token}`,
   };
-  if (token) h["Authorization"] = `Bearer ${token}`;
-  return h;
 }
 
-async function getFolderId(crossatrixId: string, token?: string): Promise<string | null> {
+function tokenExpired(token: string): boolean {
   try {
-    const r = await fetch(`${BASE}/folders`, { headers: headers(crossatrixId, token) });
-    if (r.ok) {
-      const j = await r.json().catch(() => ({}));
-      const list = Array.isArray(j) ? j : (j.folders ?? j.data ?? []);
-      const f = list.find((x: any) => x?.name === FOLDER_NAME);
-      if (f?.id) return String(f.id);
-    }
-    const c = await fetch(`${BASE}/folders`, {
-      method: "POST",
-      headers: { ...headers(crossatrixId, token), "Content-Type": "application/json" },
-      body: JSON.stringify({ name: FOLDER_NAME }),
-    });
-    const cj = await c.json().catch(() => ({}));
-    const id = cj?.id ?? cj?.folder?.id ?? cj?.data?.id;
-    return id ? String(id) : null;
+    const p = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof p.exp === "number" && p.exp * 1000 < Date.now();
+  } catch { return false; }
+}
+
+// The API only documents listing (no folder creation), so use an existing "Crossi AI" root folder if present.
+async function getFolderId(cxId: string, token: string): Promise<string | null> {
+  try {
+    const r = await fetch(`${BASE}/files`, { headers: headers(cxId, token) });
+    if (!r.ok) { console.error("crossicloud list failed", r.status, (await r.text()).slice(0, 200)); return null; }
+    const j = await r.json().catch(() => ({}));
+    const f = (j.files ?? []).find((x: any) => x?.is_folder && x?.name === FOLDER_NAME);
+    return f?.id ? String(f.id) : null;
   } catch (e) {
     console.error("crossicloud folder error", e);
     return null;
@@ -40,13 +37,17 @@ export async function uploadToCrossicloud(
   userId: string,
   source: string, // data URL or http URL
   kind: "image" | "video" | "audio",
-  token?: string,
 ): Promise<void> {
   try {
     if (!Deno.env.get("CROSSICLOUD_API_KEY")) return;
     const { data: profile } = await service.from("profiles").select("crossatrix_id").eq("user_id", userId).maybeSingle();
     const cxId = profile?.crossatrix_id;
-    if (!cxId) return;
+    if (!cxId) { console.log("crossicloud skip: no crossatrix id"); return; }
+    const { data: conn } = await service.from("user_connectors").select("access_token")
+      .eq("user_id", userId).eq("provider", "crossatrix").maybeSingle();
+    const token: string | undefined = conn?.access_token;
+    if (!token) { console.log("crossicloud skip: no crossatrix token (user must log in again)"); return; }
+    if (tokenExpired(token)) { console.log("crossicloud skip: crossatrix token expired"); return; }
 
     let blob: Blob;
     const m = source.match(/^data:([^;]+);base64,(.+)$/);
@@ -56,8 +57,7 @@ export async function uploadToCrossicloud(
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       blob = new Blob([bytes], { type: m[1] });
     } else {
-      const r = await fetch(source);
-      blob = await r.blob();
+      blob = await (await fetch(source)).blob();
     }
     const mime = blob.type || "";
     const ext = mime.split("/")[1]?.split(";")[0] || (kind === "image" ? "png" : kind === "video" ? "mp4" : "mp3");
