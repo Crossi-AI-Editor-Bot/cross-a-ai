@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { uploadToCrossicloud } from '../_shared/crossicloud.ts';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -154,6 +155,7 @@ Deno.serve(async (req) => {
       }
 
       const dataUrl = await toDataUrl(success.url);
+      await uploadToCrossicloud(service, item.user_id, dataUrl, kind);
       const update: Record<string, unknown> = { status: 'done' };
       if (kind === 'image') update.result_image = dataUrl;
       else if (kind === 'video') update.result_video = dataUrl;

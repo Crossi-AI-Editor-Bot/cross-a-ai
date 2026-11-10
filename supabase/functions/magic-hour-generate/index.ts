@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
+import { uploadToCrossicloud } from '../_shared/crossicloud.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -305,6 +306,9 @@ Deno.serve(async (req) => {
         const newCredits = currentCredits - cost;
         await service.from(creditTable).update({ credits: newCredits }).eq('user_id', user.id);
         const dataUrl = await toDataUrl(result.url);
+        const up = uploadToCrossicloud(service, user.id, dataUrl, kind);
+        // @ts-ignore EdgeRuntime exists in Supabase runtime
+        if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(up); else await up;
         const payload: Record<string, unknown> = { credits: newCredits };
         if (kind === 'image') payload.image = dataUrl;
         else if (kind === 'video') payload.video = dataUrl;
